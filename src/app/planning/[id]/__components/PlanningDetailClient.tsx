@@ -9,6 +9,19 @@ import { ContentIdeasTab } from "./ContentIdeasTab"
 import { StoryboardsTab } from "./StoryboardsTab"
 import { ShareModal } from "./ShareModal"
 
+const months: Record<string, string> = {
+  "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
+  "05": "Mayo", "06": "Junio", "07": "Julio", "08": "Agosto",
+  "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre",
+}
+
+function formatPeriod(p: string) {
+  if (!p) return ""
+  const parts = p.split("-")
+  if (parts.length === 2) return `${months[parts[1]] ?? parts[1]} ${parts[0]}`
+  return p
+}
+
 const statusLabels: Record<string, string> = {
   DRAFT: "Borrador",
   IN_PROGRESS: "En Progreso",
@@ -37,6 +50,7 @@ interface PlanningData {
   id: string
   title: string
   description: string
+  period: string
   status: string
   targetAudience: string
   goals: string
@@ -93,6 +107,8 @@ interface Props {
 export function PlanningDetailClient({ planning: initial, clients }: Props) {
   const router = useRouter()
   const [planning, setPlanning] = useState(initial)
+  const [editingPeriod, setEditingPeriod] = useState(false)
+  const [periodDraft, setPeriodDraft] = useState(initial.period)
   const [activeTab, setActiveTab] = useState<TabId>("contenido")
   const [showShare, setShowShare] = useState(false)
 
@@ -106,6 +122,17 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
     router.push("/dashboard")
   }
 
+  const savePeriod = async () => {
+    setEditingPeriod(false)
+    if (periodDraft === planning.period) return
+    await fetch(`/api/plannings/${planning.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ period: periodDraft }),
+    })
+    setPlanning((prev) => ({ ...prev, period: periodDraft }))
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <header className="mb-6 flex items-center justify-between">
@@ -114,7 +141,30 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{planning.title}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{planning.title}</h1>
+              {editingPeriod ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="month"
+                    className="h-7 rounded border bg-background px-2 text-xs focus:outline-none"
+                    value={periodDraft}
+                    onChange={(e) => setPeriodDraft(e.target.value)}
+                    autoFocus
+                    onBlur={savePeriod}
+                    onKeyDown={(e) => { if (e.key === "Enter") savePeriod() }}
+                  />
+                </div>
+              ) : planning.period ? (
+                <button type="button" onClick={() => { setPeriodDraft(planning.period); setEditingPeriod(true) }} className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted/80 transition-colors">
+                  {formatPeriod(planning.period)}
+                </button>
+              ) : (
+                <button type="button" onClick={() => { setPeriodDraft(""); setEditingPeriod(true) }} className="rounded bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted/80 transition-colors">
+                  + mes
+                </button>
+              )}
+            </div>
             {planning.client && (
               <p className="text-sm text-muted-foreground">Cliente: {planning.client.name}</p>
             )}
