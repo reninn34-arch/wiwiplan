@@ -40,8 +40,8 @@ export default async function SharePage({ params }: Props) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-muted-foreground">Enlace Expirado</h1>
-          <p className="mt-2 text-muted-foreground">Este enlace ha expirado. Solicita uno nuevo.</p>
+          <h1 className="text-2xl font-bold text-zinc-500">Enlace Expirado</h1>
+          <p className="mt-2 text-zinc-500">Este enlace ha expirado. Solicita uno nuevo.</p>
         </div>
       </main>
     )

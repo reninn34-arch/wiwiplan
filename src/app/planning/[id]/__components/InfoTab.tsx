@@ -78,35 +78,35 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <label className="text-sm font-medium">Título</label>
+        <label className="text-sm font-medium text-zinc-400">Título</label>
         <Input value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Descripción</label>
+        <label className="text-sm font-medium text-zinc-400">Descripción</label>
         <RichEditor value={description} onChange={setDescription} placeholder="Descripción del proyecto..." />
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Audiencia Objetivo</label>
+        <label className="text-sm font-medium text-zinc-400">Audiencia Objetivo</label>
         <RichEditor value={targetAudience} onChange={setTargetAudience} placeholder="¿A quién está dirigido este contenido?" />
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Objetivos</label>
+        <label className="text-sm font-medium text-zinc-400">Objetivos</label>
         <RichEditor value={goals} onChange={setGoals} placeholder="¿Qué querés lograr con este contenido?" />
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Notas</label>
+        <label className="text-sm font-medium text-zinc-400">Notas</label>
         <RichEditor value={notes} onChange={setNotes} placeholder="Notas adicionales..." />
       </div>
 
       <div className="flex gap-4">
         <div className="flex-1 space-y-2">
-          <label className="text-sm font-medium">Estado</label>
+          <label className="text-sm font-medium text-zinc-400">Estado</label>
           <select
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -119,9 +119,9 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
         </div>
       </div>
 
-      <div className="space-y-3 rounded-lg border bg-card p-4">
+      <div className="space-y-3 rounded-lg border border-white/5 bg-[#0c0c0e] p-4">
         <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-200">
             <Users className="h-4 w-4" /> Clientes
           </h3>
           <Button size="sm" variant="outline" onClick={() => setShowNewClient(!showNewClient)}>
@@ -148,11 +148,11 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
         )}
 
         <div className="space-y-1">
-          <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+          <div className="flex items-center gap-2 rounded-md bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-500">
             <span className="flex-1">Asignar a planificación:</span>
           </div>
           <select
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600"
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
           >
@@ -166,13 +166,13 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
         {clients.length > 0 && (
           <div className="space-y-1">
             {clients.map((c) => (
-              <div key={c.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <div key={c.id} className="flex items-center gap-2 rounded-md border border-white/5 px-3 py-2 text-sm">
                 <div className="flex-1">
-                  <span className="font-medium">{c.name}</span>
-                  {c.email && <span className="ml-2 text-muted-foreground">{c.email}</span>}
+                  <span className="font-medium text-zinc-200">{c.name}</span>
+                  {c.email && <span className="ml-2 text-zinc-500">{c.email}</span>}
                 </div>
                 <button type="button" onClick={() => deleteClient(c.id)}>
-                  <Trash2 className="h-3 w-3 text-destructive" />
+                  <Trash2 className="h-3 w-3 text-red-400" />
                 </button>
               </div>
             ))}

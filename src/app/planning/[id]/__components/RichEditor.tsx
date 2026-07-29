@@ -33,7 +33,7 @@ export function RichEditor({ value, onChange, placeholder, className }: Props) {
     <button
       type="button"
       onMouseDown={(e) => { e.preventDefault(); onClick() }}
-      className={`rounded p-1 text-xs ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+      className={`rounded p-1 text-xs ${active ? "bg-white/20 text-white" : "text-zinc-500 hover:bg-white/5"}`}
       title={label}
     >
       {label === "bold" ? <Bold className="h-3.5 w-3.5" /> :
@@ -47,8 +47,8 @@ export function RichEditor({ value, onChange, placeholder, className }: Props) {
   )
 
   return (
-    <div className={`rounded-md border border-input bg-background ${className ?? ""}`}>
-      <div className="flex items-center gap-0.5 border-b px-2 py-1">
+    <div className={`rounded-md border border-white/5 bg-[#0c0c0e] ${className ?? ""}`}>
+      <div className="flex items-center gap-0.5 border-b border-white/5 px-2 py-1">
         {btn("bold", editor.isActive("bold"), () => editor.chain().focus().toggleBold().run())}
         {btn("italic", editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run())}
         <span className="mx-1 h-4 w-px bg-border" />

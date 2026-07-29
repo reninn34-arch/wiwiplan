@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, type ClipboardEvent } from "react"
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Columns3, Table2, MessageSquare, Send,
-  ArrowUpDown, ArrowUp, ArrowDown, Settings, LayoutGrid, Bell, CheckCircle2, Circle,
+  ArrowUp, LayoutGrid, Bell, CheckCircle2, Circle,
   MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -583,83 +583,6 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
       setIdeas(prev)
       toast.error("Error al reordenar")
     }
-  }
-
-  const SortIcon = ({ k }: { k: SortKey }) => {
-    if (sortKey !== k) return <ArrowUpDown className="ml-1 h-2.5 w-2.5 opacity-30" />
-    return sortDir === "asc" ? <ArrowUp className="ml-1 h-2.5 w-2.5" /> : <ArrowDown className="ml-1 h-2.5 w-2.5" />
-  }
-
-  const Th = ({ k, label, w, center }: { k: (typeof COLUMNS)[number]["key"]; label: string; w?: string; center?: boolean }) => {
-    if (!visibleCols.has(k)) return null
-    return (
-      <th className={`${w ?? ""} px-2 py-2 ${center ? "text-center" : "text-left"} font-medium text-xs uppercase tracking-wide text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors`} onClick={() => handleSort(k)}>
-        <span className="inline-flex items-center">{label}<SortIcon k={k} /></span>
-      </th>
-    )
-  }
-
-  const renderTable = () => {
-    const colsArray = COLUMNS.filter((c) => visibleCols.has(c.key))
-    const tableCols = (
-      <>
-        <th className="w-8 px-2 py-2"></th>
-        {colsArray.map((c) => <Th key={c.key} k={c.key} label={c.label} w={c.w} center={c.center} />)}
-        <th className="w-10 px-2 py-2"></th>
-      </>
-    )
-
-    const renderRows = (items: Idea[]) => items.map((idea) => (
-      <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} setPreviewImage={setPreviewImage} search={search} onUpdateTags={updateTagsGlobally} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
-    ))
-
-    if (!mounted) {
-      return (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50"><tr className="border-b">{tableCols}</tr></thead>
-            <tbody>{renderRows(filtered)}</tbody>
-          </table>
-        </div>
-      )
-    }
-
-    if (groupBy !== "none" && grouped) {
-      return (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50"><tr className="border-b">{tableCols}</tr></thead>
-            <tbody>
-              {grouped.map(([key, items]) => (
-                <>
-                  <tr key={key} className="bg-muted/20 border-b">
-                    <td colSpan={colsArray.length + 2} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {key} <span className="font-normal text-[10px]">({items.length})</span>
-                    </td>
-                  </tr>
-                  {renderRows(items)}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )
-    }
-
-    return (
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50"><tr className="border-b">{tableCols}</tr></thead>
-            <tbody>
-              <SortableContext items={filtered.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                {renderRows(filtered)}
-              </SortableContext>
-            </tbody>
-          </table>
-        </div>
-      </DndContext>
-    )
   }
 
   const renderKanban = () => (

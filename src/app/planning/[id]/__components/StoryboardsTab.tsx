@@ -180,8 +180,8 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
             onClick={() => setActiveSb(sb.id)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               sb.id === activeSb
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-accent"
+                ? "bg-white text-black"
+                : "bg-white/5 text-zinc-400 hover:bg-white/10"
             }`}
           >
             {sb.title}
@@ -195,9 +195,9 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
       {activeStoryboard ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Input
-              className="max-w-xs text-lg font-semibold"
-              value={activeStoryboard.title}
+              <Input
+                className="max-w-xs border border-white/10 bg-[#18181b] text-lg font-semibold text-zinc-200"
+                value={activeStoryboard.title}
               onChange={(e) => activeSb && updateStoryboardTitle(activeSb, e.target.value)}
             />
             <Button size="sm" variant="outline" onClick={() => activeSb && addPanel(activeSb)}>
@@ -206,17 +206,17 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
           </div>
 
           {activeStoryboard.panels.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">
+            <p className="py-8 text-center text-zinc-500">
               No hay escenas. Agregá la primera.
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {activeStoryboard.panels.map((panel, idx) => (
-                <div key={panel.id} className="rounded-lg border bg-card" onPaste={(e) => handleImagePaste(e, (url) => updatePanel(panel.id, { imageUrl: url }))}>
-                  <div className="flex items-center gap-1 border-b bg-muted/50 px-3 py-2">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs font-medium">Escena {idx + 1}</span>
-                    <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                <div key={panel.id} className="rounded-lg border border-white/5 bg-[#0c0c0e]" onPaste={(e) => handleImagePaste(e, (url) => updatePanel(panel.id, { imageUrl: url }))}>
+                  <div className="flex items-center gap-1 border-b border-white/5 bg-white/[0.03] px-3 py-2">
+                    <GripVertical className="h-4 w-4 text-zinc-500" />
+                    <span className="text-xs font-medium text-zinc-400">Escena {idx + 1}</span>
+                    <div className="ml-auto flex items-center gap-1 text-xs text-zinc-500">
                       <button type="button" onClick={() => movePanel(panel.id, "up")} disabled={idx === 0} className="disabled:opacity-30">
                         <ChevronUp className="h-3 w-3" />
                       </button>
@@ -232,11 +232,11 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
                       />
                     </div>
                     <button type="button" onClick={() => deletePanel(panel.id)}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
+                      <Trash2 className="h-3 w-3 text-red-400" />
                     </button>
                   </div>
 
-                  <div className="flex aspect-video items-center justify-center bg-muted/30">
+                  <div className="flex aspect-video items-center justify-center bg-white/[0.02]">
                     {panel.imageUrl && !panel.imageUrl.startsWith("blob:") ? (
                       <img
                         src={panel.imageUrl}
@@ -244,7 +244,7 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <label className="flex cursor-pointer flex-col items-center gap-1 text-xs text-muted-foreground">
+                      <label className="flex cursor-pointer flex-col items-center gap-1 text-xs text-zinc-500">
                         <ImagePlus className="h-6 w-6" />
                         <span>Agregar imagen</span>
                         <input
@@ -266,13 +266,13 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
 
                   <div className="space-y-2 p-3">
                     <textarea
-                      className="min-h-[60px] w-full resize-none rounded border-0 bg-transparent text-sm focus:outline-none"
+                      className="min-h-[60px] w-full resize-none rounded border border-white/10 bg-transparent p-2 text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600"
                       value={panel.description}
                       onChange={(e) => updatePanel(panel.id, { description: e.target.value })}
                       placeholder="Descripción de la escena..."
                     />
                     <input
-                      className="w-full bg-transparent text-xs text-muted-foreground focus:outline-none"
+                      className="w-full border border-white/10 bg-transparent px-2 py-1 text-xs text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600"
                       value={panel.notes}
                       onChange={(e) => updatePanel(panel.id, { notes: e.target.value })}
                       placeholder="Notas adicionales..."
@@ -285,7 +285,7 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
         </div>
       ) : (
         <div className="py-12 text-center">
-          <p className="text-muted-foreground">No hay storyboards. Creá uno nuevo.</p>
+          <p className="text-zinc-500">No hay storyboards. Creá uno nuevo.</p>
           <Button className="mt-4" onClick={createStoryboard}>
             <Plus className="h-4 w-4" /> Crear Storyboard
           </Button>

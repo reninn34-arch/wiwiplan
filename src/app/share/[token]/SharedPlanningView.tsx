@@ -11,11 +11,11 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusColors: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-800",
-  IN_PROGRESS: "bg-blue-100 text-blue-800",
-  REVIEW: "bg-yellow-100 text-yellow-800",
-  APPROVED: "bg-green-100 text-green-800",
-  PUBLISHED: "bg-purple-100 text-purple-800",
+  DRAFT: "bg-white/5 text-zinc-400",
+  IN_PROGRESS: "bg-blue-500/10 text-blue-400",
+  REVIEW: "bg-yellow-500/10 text-yellow-400",
+  APPROVED: "bg-green-500/10 text-green-400",
+  PUBLISHED: "bg-purple-500/10 text-purple-400",
 }
 
 const platformLabels: Record<string, string> = {
@@ -113,10 +113,10 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
     <>
       <tr className="border-b last:border-0">
         <td className="px-3 py-2">
-          <p className="font-medium text-sm">{idea.title}</p>
+          <p className="font-medium text-sm text-zinc-200">{idea.title}</p>
         </td>
         <td className="px-3 py-2">
-          {idea.description ? <p className="text-xs text-muted-foreground line-clamp-2">{idea.description}</p> : <span className="text-xs text-muted-foreground">—</span>}
+          {idea.description ? <p className="text-xs text-zinc-500 line-clamp-2">{idea.description}</p> : <span className="text-xs text-zinc-600">—</span>}
         </td>
         <td className="px-3 py-2">
           {idea.referenceEmbed && (idea.platform === "YOUTUBE" || idea.platform === "VIMEO") ? (
@@ -124,26 +124,26 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
               <iframe src={idea.referenceEmbed} className="h-full w-full" allowFullScreen title={idea.title} />
             </div>
           ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
-            <img src={idea.referenceEmbed} alt={idea.title} className="h-10 w-10 shrink-0 rounded object-cover bg-muted cursor-pointer hover:opacity-80 transition-opacity" onClick={() => onPreviewImage(idea.referenceEmbed)} />
+            <img src={idea.referenceEmbed} alt={idea.title} className="h-10 w-10 shrink-0 rounded object-cover bg-white/[0.03] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => onPreviewImage(idea.referenceEmbed)} />
           ) : idea.referenceUrl ? (
-            <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary underline">
+            <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-white underline">
               <ExternalLink className="h-3 w-3" /> {platformLabel(idea.platform)}
             </a>
           ) : idea.storyboard ? (
             <button
               type="button"
               onClick={() => document.getElementById(`sb-${idea.storyboard!.id}`)?.scrollIntoView({ behavior: "smooth" })}
-              className="inline-flex items-center gap-1 text-xs rounded bg-muted px-2 py-0.5 hover:bg-muted/80"
+              className="inline-flex items-center gap-1 text-xs rounded bg-white/5 px-2 py-0.5 text-zinc-400 hover:bg-white/10"
             >
               <Layout className="h-3 w-3" /> {idea.storyboard.title}
             </button>
           ) : (
-            <span className="text-xs text-muted-foreground">—</span>
+            <span className="text-xs text-zinc-600">—</span>
           )}
         </td>
-        <td className="px-3 py-2 text-xs">{idea.pilar || <span className="text-muted-foreground">—</span>}</td>
+        <td className="px-3 py-2 text-xs text-zinc-400">{idea.pilar || <span className="text-zinc-600">—</span>}</td>
         <td className="px-3 py-2">
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{ideaStatusLabels[idea.status]}</span>
+          <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400">{ideaStatusLabels[idea.status]}</span>
         </td>
         <td className="px-3 py-2 text-center">
           <button type="button" onClick={() => setOpen(!open)} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
@@ -154,26 +154,26 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
       </tr>
       {open && (
         <tr>
-          <td colSpan={6} className="bg-muted/20 px-6 py-3">
+          <td colSpan={6} className="bg-white/[0.02] px-6 py-3">
             <div className="space-y-2">
-              {comments.length === 0 && <p className="text-xs text-muted-foreground">Sin comentarios.</p>}
+              {comments.length === 0 && <p className="text-xs text-zinc-500">Sin comentarios.</p>}
               {comments.map((c) => (
-                <div key={c.id} className="rounded-lg border bg-card px-3 py-2">
-                  <p className="text-xs font-medium">{c.authorName}</p>
-                  <p className="text-sm">{c.text}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+                <div key={c.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] px-3 py-2">
+                  <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
+                  <p className="text-sm text-zinc-200">{c.text}</p>
+                  <p className="text-[10px] text-zinc-500">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
                 </div>
               ))}
               <div className="flex gap-2">
                 <input
-                  className="min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-xs focus:outline-none disabled:opacity-50"
+                  className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
                   placeholder="Escribí un comentario..."
                   disabled={sending}
                 />
-                <button type="button" onClick={addComment} disabled={sending} className="rounded-md bg-primary px-2 py-1.5 text-xs text-primary-foreground disabled:opacity-50">
+                <button type="button" onClick={addComment} disabled={sending} className="rounded-md bg-white px-2 py-1.5 text-xs text-black disabled:opacity-50">
                   <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
                 </button>
               </div>
@@ -208,10 +208,10 @@ export function SharedPlanningView({ planning }: Props) {
         <header className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">{planning.title}</h1>
+              <h1 className="text-3xl font-bold text-zinc-200">{planning.title}</h1>
               {planning.client && (
-                <p className="mt-1 text-muted-foreground">
-                  Planificación para: <span className="font-medium">{planning.client.name}</span>
+                <p className="mt-1 text-zinc-500">
+                  Planificación para: <span className="font-medium text-zinc-300">{planning.client.name}</span>
                 </p>
               )}
             </div>
@@ -223,41 +223,41 @@ export function SharedPlanningView({ planning }: Props) {
 
         {planning.description && (
           <section className="mb-8">
-            <h2 className="mb-2 text-lg font-semibold">Descripción</h2>
-            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: planning.description }} />
+            <h2 className="mb-2 text-lg font-semibold text-zinc-200">Descripción</h2>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-zinc-400" dangerouslySetInnerHTML={{ __html: planning.description }} />
           </section>
         )}
 
         <div className="mb-8 grid gap-6 sm:grid-cols-2">
           {planning.targetAudience && (
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="mb-1 text-sm font-semibold">Audiencia Objetivo</h3>
-              <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: planning.targetAudience }} />
+            <div className="rounded-lg border border-white/5 bg-[#0c0c0e] p-4">
+              <h3 className="mb-1 text-sm font-semibold text-zinc-300">Audiencia Objetivo</h3>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-zinc-400" dangerouslySetInnerHTML={{ __html: planning.targetAudience }} />
             </div>
           )}
           {planning.goals && (
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="mb-1 text-sm font-semibold">Objetivos</h3>
-              <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: planning.goals }} />
+            <div className="rounded-lg border border-white/5 bg-[#0c0c0e] p-4">
+              <h3 className="mb-1 text-sm font-semibold text-zinc-300">Objetivos</h3>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-zinc-400" dangerouslySetInnerHTML={{ __html: planning.goals }} />
             </div>
           )}
         </div>
 
         {planning.contentIdeas.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-200">
               <Lightbulb className="h-5 w-5" /> Ideas de Contenido
             </h2>
-            <div className="overflow-x-auto rounded-lg border">
+            <div className="overflow-x-auto rounded-lg border border-white/5">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr className="border-b">
-                    <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Tema</th>
-                    <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Objetivo</th>
-                    <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Referencia</th>
-                    <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Pilar</th>
-                    <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Estado</th>
-                    <th className="w-14 px-3 py-2 text-center font-medium text-xs uppercase tracking-wide text-muted-foreground"><MessageSquare className="h-3 w-3" /></th>
+                <thead className="bg-white/[0.03]">
+                  <tr className="border-b border-white/5">
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Tema</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Objetivo</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Referencia</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Pilar</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Estado</th>
+                    <th className="w-14 px-3 py-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-400"><MessageSquare className="h-3 w-3" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -272,40 +272,40 @@ export function SharedPlanningView({ planning }: Props) {
 
         {planning.notes && (
           <section className="mb-8">
-            <h2 className="mb-2 text-lg font-semibold">Notas</h2>
-            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: planning.notes }} />
+            <h2 className="mb-2 text-lg font-semibold text-zinc-200">Notas</h2>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-zinc-400" dangerouslySetInnerHTML={{ __html: planning.notes }} />
           </section>
         )}
 
         {planning.storyboards.map((sb) => (
           <section key={sb.id} id={`sb-${sb.id}`} className="mb-8 scroll-mt-8">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-200">
               <Layout className="h-5 w-5" /> {sb.title}
             </h2>
             {sb.panels.length === 0 ? (
-              <p className="text-muted-foreground">Sin escenas.</p>
+              <p className="text-zinc-500">Sin escenas.</p>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {sb.panels.map((panel, idx) => (
-                  <div key={panel.id} className="rounded-lg border bg-card">
-                    <div className="flex items-center gap-2 border-b bg-muted/50 px-3 py-2">
-                      <span className="text-sm font-medium">Escena {idx + 1}</span>
+                  <div key={panel.id} className="rounded-lg border border-white/5 bg-[#0c0c0e]">
+                    <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.03] px-3 py-2">
+                      <span className="text-sm font-medium text-zinc-300">Escena {idx + 1}</span>
                       {panel.duration && (
-                        <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="ml-auto flex items-center gap-1 text-xs text-zinc-500">
                           <Clock className="h-3 w-3" /> {panel.duration}
                         </span>
                       )}
                     </div>
-                    <div className="flex aspect-video items-center justify-center bg-muted/30">
+                    <div className="flex aspect-video items-center justify-center bg-white/[0.02]">
                       {panel.imageUrl && !panel.imageUrl.startsWith("blob:") ? (
                         <img src={panel.imageUrl} alt={`Escena ${idx + 1}`} className="h-full w-full object-cover cursor-pointer" onClick={() => setPreviewImage(panel.imageUrl)} />
                       ) : (
-                        <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                        <ImagePlus className="h-8 w-8 text-zinc-600" />
                       )}
                     </div>
                     <div className="p-3">
-                      <div className="prose prose-sm dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: panel.description || "Sin descripción" }} />
-                      {panel.notes && <div className="prose prose-xs dark:prose-invert max-w-none mt-1 text-xs text-muted-foreground" dangerouslySetInnerHTML={{ __html: panel.notes }} />}
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-zinc-300" dangerouslySetInnerHTML={{ __html: panel.description || "Sin descripción" }} />
+                      {panel.notes && <div className="prose prose-xs dark:prose-invert max-w-none mt-1 text-xs text-zinc-500" dangerouslySetInnerHTML={{ __html: panel.notes }} />}
                     </div>
                   </div>
                 ))}
@@ -316,7 +316,7 @@ export function SharedPlanningView({ planning }: Props) {
 
         {status !== "APPROVED" && (
           <div className="flex justify-center py-8">
-            <Button size="lg" onClick={handleApprove} disabled={isApproving} className="gap-2">
+            <Button size="lg" onClick={handleApprove} disabled={isApproving} className="gap-2 bg-white text-black hover:bg-zinc-200">
               <CheckCircle className="h-5 w-5" />
               {isApproving ? "Aprobando..." : "Aprobar Planificación"}
             </Button>
@@ -325,9 +325,9 @@ export function SharedPlanningView({ planning }: Props) {
 
         {status === "APPROVED" && (
           <div className="py-8 text-center">
-            <div className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-6 py-3 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+            <div className="inline-flex items-center gap-2 rounded-lg bg-green-500/10 px-6 py-3 font-medium text-green-400">
               <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">Planificación aprobada</span>
+              <span>Planificación aprobada</span>
             </div>
           </div>
         )}

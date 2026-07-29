@@ -41,27 +41,27 @@ export function ShareModal({ planningId, shareLinks: initial, onClose }: Props) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-background p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div className="w-full max-w-md rounded-lg border border-white/5 bg-[#0c0c0e] p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Compartir Planificación</h2>
-          <button type="button" onClick={onClose}>
+          <h2 className="text-lg font-semibold text-zinc-200">Compartir Planificación</h2>
+          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <Button className="mb-4 w-full" onClick={createLink}>
+        <Button className="mb-4 w-full bg-white text-black hover:bg-zinc-200" onClick={createLink}>
           Generar nuevo enlace
         </Button>
 
         {links.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
+          <p className="py-4 text-center text-sm text-zinc-500">
             No hay enlaces de compartir generados.
           </p>
         ) : (
           <div className="space-y-2">
             {links.map((link) => (
-              <div key={link.id} className="flex items-center gap-2 rounded-md border bg-card p-2">
+              <div key={link.id} className="flex items-center gap-2 rounded-md border border-white/5 bg-[#0c0c0e] p-2">
                 <Input
                   readOnly
                   value={`${window.location.origin}/share/${link.token}`}

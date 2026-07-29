@@ -125,8 +125,8 @@ function ToolbarButton({
       onClick={onClick}
       className={`flex h-7 w-7 items-center justify-center rounded text-sm transition-colors ${
         active
-          ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          ? "bg-white/10 text-white"
+          : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
       } ${className ?? ""}`}
     >
       {label}

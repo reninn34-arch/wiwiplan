@@ -64,7 +64,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="relative rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        className="relative rounded-md p-1.5 text-zinc-500 hover:bg-white/5 hover:text-zinc-300 transition-colors"
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
@@ -74,33 +74,33 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border bg-card shadow-lg">
-          <div className="flex items-center justify-between border-b px-3 py-2">
-            <span className="text-xs font-semibold">Notificaciones</span>
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-white/5 bg-[#0c0c0e] shadow-lg">
+          <div className="flex items-center justify-between border-b border-white/5 px-3 py-2">
+            <span className="text-xs font-semibold text-zinc-300">Notificaciones</span>
             {unread > 0 && (
-              <button type="button" onClick={markAsRead} className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
+              <button type="button" onClick={markAsRead} className="inline-flex items-center gap-1 text-[10px] text-white hover:underline">
                 <CheckCheck className="h-3 w-3" /> Leer todas
               </button>
             )}
           </div>
           <div className="max-h-72 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-muted-foreground">Sin notificaciones</p>
+              <p className="px-3 py-6 text-center text-xs text-zinc-500">Sin notificaciones</p>
             ) : (
               notifications.map((n) => (
                 <Link
                   key={n.id}
                   href={n.link}
                   onClick={() => setOpen(false)}
-                  className={`flex items-start gap-2 border-b px-3 py-2 text-xs transition-colors hover:bg-muted/50 ${n.read ? "" : "bg-muted/20"}`}
+                  className={`flex items-start gap-2 border-b border-white/5 px-3 py-2 text-xs transition-colors hover:bg-white/[0.03] ${n.read ? "" : "bg-white/[0.02]"}`}
                 >
                   {icon(n.type)}
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{n.title}</p>
-                    <p className="text-muted-foreground line-clamp-2">{n.message}</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(n.createdAt).toLocaleString("es-AR")}</p>
+                    <p className="font-medium text-zinc-200">{n.title}</p>
+                    <p className="text-zinc-500 line-clamp-2">{n.message}</p>
+                    <p className="mt-0.5 text-[10px] text-zinc-600">{new Date(n.createdAt).toLocaleString("es-AR")}</p>
                   </div>
-                  <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-zinc-600" />
                 </Link>
               ))
             )}

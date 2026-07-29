@@ -75,23 +75,23 @@ export function TagInput({ selectedIds, onChange }: Props) {
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/10 px-2 py-0.5 text-[10px] text-zinc-500 hover:text-zinc-300"
         >
           <Plus className="h-2.5 w-2.5" />
         </button>
       </div>
 
       {open && (
-        <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-lg border bg-popover p-2 shadow-lg">
+        <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-lg border border-white/5 bg-[#18181b] p-2 shadow-lg">
           <div className="mb-2 flex gap-1">
             <input
-              className="min-w-0 flex-1 rounded border bg-transparent px-2 py-1 text-xs focus:outline-none"
+              className="min-w-0 flex-1 rounded border border-white/10 bg-transparent px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); createTag() } }}
               placeholder="Nuevo tag..."
             />
-            <button type="button" onClick={createTag} className="shrink-0 rounded bg-primary px-2 py-1 text-xs text-primary-foreground">
+            <button type="button" onClick={createTag} className="shrink-0 rounded bg-white px-2 py-1 text-xs text-black">
               <Plus className="h-3 w-3" />
             </button>
           </div>
@@ -101,13 +101,13 @@ export function TagInput({ selectedIds, onChange }: Props) {
                 key={tag.id}
                 type="button"
                 onClick={() => toggleTag(tag.id)}
-                className={`flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-muted ${selectedIds.includes(tag.id) ? "bg-muted" : ""}`}
+                className={`flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 ${selectedIds.includes(tag.id) ? "bg-white/5" : ""}`}
               >
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tag.color }} />
                 {tag.name}
               </button>
             ))}
-            {allTags.length === 0 && <p className="px-2 py-1 text-[10px] text-muted-foreground">No hay tags todavía</p>}
+            {allTags.length === 0 && <p className="px-2 py-1 text-[10px] text-zinc-500">No hay tags todavía</p>}
           </div>
         </div>
       )}
