@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useRef, type ClipboardEvent } from "react"
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Columns3, Table2, MessageSquare, Send,
-  ArrowUpDown, ArrowUp, ArrowDown, Settings, LayoutGrid,
+  ArrowUpDown, ArrowUp, ArrowDown, Settings, LayoutGrid, Bell, CheckCircle2, Circle,
+  MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,6 +47,30 @@ const COLUMNS = [
 ]
 
 type SortKey = (typeof COLUMNS)[number]["key"] | "order" | null
+
+function StatusIcon({ status }: { status: string }) {
+  switch (status) {
+    case "IDEA": return <Circle size={14} className="text-zinc-500" strokeWidth={2.5} />
+    case "SELECTED": return <Circle size={14} className="text-amber-400 fill-amber-400/20" strokeWidth={2.5} />
+    case "IN_PRODUCTION": return <Circle size={14} className="text-blue-400 fill-blue-400/20" strokeWidth={2.5} />
+    case "DONE": return <CheckCircle2 size={14} className="text-emerald-500" strokeWidth={2.5} />
+    default: return <Circle size={14} className="text-zinc-500" />
+  }
+}
+
+function PriorityIcon({ priority }: { priority: string }) {
+  if (priority === "HIGH") return <ArrowUp size={14} className="text-rose-400" />
+  if (priority === "MEDIUM") return <ChevronRight size={14} className="text-amber-400" />
+  return <ChevronRight size={14} className="text-zinc-500 rotate-45" />
+}
+
+function PlatformIcon({ platform }: { platform: string }) {
+  if (platform === "INSTAGRAM") return <Camera size={14} className="text-pink-500" />
+  if (platform === "TIKTOK") return <Smartphone size={14} className="text-cyan-400" />
+  if (platform === "YOUTUBE") return <MonitorPlay size={14} className="text-red-500" />
+  if (platform === "VIMEO") return <MonitorPlay size={14} className="text-blue-400" />
+  return <Globe size={14} className="text-zinc-500" />
+}
 
 function priorityColor(p: string) {
   switch (p) {
@@ -152,124 +177,83 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
 
   return (
     <>
-    <tr ref={setNodeRef} style={style} className="border-b last:border-0 hover:bg-muted/30">
-      <td className="w-8 px-2 py-2">
-        <button type="button" className="cursor-grab active:cursor-grabbing p-0.5" suppressHydrationWarning {...attributes} {...listeners}>
-          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
-      </td>
-      {cols.has("postType") && (
-        <td className="px-2 py-2">
-          <select
-            className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground focus:outline-none"
-            value={idea.postType}
-            onChange={(e) => updateIdea(idea.id, { postType: e.target.value })}
-          >
-            {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
-          </select>
-        </td>
-      )}
-      {cols.has("title") && (
-        <td className="px-2 py-2">
+    <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
+      <div className="flex items-center justify-center text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
+        <GripVertical size={14} />
+      </div>
+
+      <div className="min-w-0 pr-4" onClick={() => onEdit(idea)}>
+        <input
+          className="w-full bg-transparent text-sm font-medium text-zinc-100 focus:outline-none truncate group-hover:text-white transition-colors cursor-pointer"
+          value={idea.title}
+          onClick={(e) => { e.stopPropagation(); onEdit(idea) }}
+          onChange={(e) => updateIdea(idea.id, { title: e.target.value })}
+          placeholder="Tema..."
+        />
+        {cols.has("description") ? (
           <input
-            className="min-w-0 w-full bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
-            value={idea.title}
-            onClick={() => onEdit(idea)}
-            onChange={(e) => updateIdea(idea.id, { title: e.target.value })}
-            placeholder="Tema..."
-          />
-        </td>
-      )}
-      {cols.has("description") && (
-        <td className="px-2 py-2">
-          <input
-            className="w-full bg-transparent text-xs text-muted-foreground focus:outline-none"
+            className="w-full bg-transparent text-xs text-zinc-500 focus:outline-none truncate mt-0.5"
             value={idea.description}
             onChange={(e) => updateIdea(idea.id, { description: e.target.value })}
             placeholder="Objetivo / detalle..."
           />
-        </td>
-      )}
-      {cols.has("reference") && (
-        <td className="px-2 py-2">
-          <div className="flex items-center gap-1">
-            {idea.referenceEmbed && (idea.platform === "YOUTUBE" || idea.platform === "VIMEO") ? (
-              <div className="aspect-video w-14 shrink-0 rounded overflow-hidden bg-muted">
-                <iframe src={idea.referenceEmbed} className="h-full w-full" allowFullScreen title={idea.title} />
-              </div>
-            ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
-              <button type="button" onClick={() => setPreviewImage(idea.referenceEmbed)} className="shrink-0">
-                <img src={idea.referenceEmbed} alt={idea.title} className="h-7 w-7 shrink-0 rounded object-cover bg-muted cursor-pointer hover:opacity-80 transition-opacity" />
-              </button>
-            ) : null}
-            <div className="min-w-0 flex-1 flex items-center gap-1">
-              <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">{platformLabel(idea.platform)}</span>
-              <input
-                className="min-w-0 flex-1 bg-transparent text-xs focus:outline-none"
-                value={idea.referenceUrl}
-                onChange={(e) => { const val = e.target.value; updateIdea(idea.id, { referenceUrl: val }); const embed = detectEmbed(val); if (embed) setTimeout(() => updateIdea(idea.id, { referenceEmbed: embed.embedUrl, platform: embed.platform }), 100) }}
-                onPaste={(e) => handleImagePaste(e, (dataUrl) => updateIdea(idea.id, { referenceEmbed: dataUrl, referenceUrl: "", platform: "IMAGE" }))}
-                placeholder="URL..."
-              />
-              {idea.referenceUrl ? (
-                <button type="button" onClick={() => updateIdea(idea.id, { referenceUrl: "", referenceEmbed: "" })} className="shrink-0"><X className="h-3 w-3 text-destructive" /></button>
-              ) : idea.referenceEmbed ? (
-                <button type="button" onClick={() => updateIdea(idea.id, { referenceEmbed: "", platform: "OTHER" })} className="shrink-0"><X className="h-3 w-3 text-destructive" /></button>
-              ) : null}
-            </div>
-            {storyboards.length > 0 && (
-            <div className="flex items-center gap-1 mt-1">
-              <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">SB</span>
-              <select
-                className="min-w-0 flex-1 bg-transparent text-[10px] focus:outline-none"
-                value={idea.storyboardId ?? ""}
-                onChange={(e) => updateIdea(idea.id, { storyboardId: e.target.value || null, storyboard: e.target.value ? storyboards.find((s) => s.id === e.target.value) : null })}
-              >
-                <option value="">Sin storyboard</option>
-                {storyboards.map((sb) => <option key={sb.id} value={sb.id}>{sb.title}</option>)}
-              </select>
-            </div>
-            )}
-          </div>
-        </td>
-      )}
-      {cols.has("pilar") && (
-        <td className="px-2 py-2">
-          <div className="flex items-center gap-1">
-            <input
-              className="min-w-0 w-full bg-transparent text-xs focus:outline-none"
-              value={idea.pilar}
-              onChange={(e) => updateIdea(idea.id, { pilar: e.target.value })}
-              placeholder="Pilar..."
-              list={`pillar-list-${idea.id}`}
-            />
-            <datalist id={`pillar-list-${idea.id}`}>
-              {pillarOpts.map((p) => <option key={p} value={p} />)}
-            </datalist>
-          </div>
-        </td>
-      )}
-      {cols.has("tags") && (
-        <td className="px-2 py-2">
-          <TagInput
-            selectedIds={tagIds}
-            onChange={(newIds) => onUpdateTags(idea.id, newIds)}
-          />
-        </td>
-      )}
-      {cols.has("status") && (
-        <td className="px-2 py-2">
+        ) : (
+          <p className="text-xs text-zinc-500 truncate mt-0.5">{idea.description}</p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {cols.has("status") ? (
           <select
-            className={`rounded border-0 bg-transparent text-[11px] font-medium focus:outline-none ${statusColor(idea.status)}`}
+            className="rounded border-0 bg-transparent text-[11px] font-medium text-zinc-400 focus:outline-none"
             value={idea.status}
             onChange={(e) => updateIdea(idea.id, { status: e.target.value })}
           >
             {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
           </select>
-        </td>
-      )}
-      {cols.has("priority") && (
-        <td className="px-2 py-2">
+        ) : (
+          <>
+            <StatusIcon status={idea.status} />
+            <span className="text-sm text-zinc-400">{ideaStatusLabels[idea.status]}</span>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center w-6 h-6 rounded bg-white/5 border border-white/5">
+          <PlatformIcon platform={idea.platform} />
+        </div>
+        <select
+          className="rounded border-0 bg-transparent text-xs text-zinc-300 focus:outline-none"
+          value={idea.postType}
+          onChange={(e) => updateIdea(idea.id, { postType: e.target.value })}
+        >
+          {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
+        </select>
+      </div>
+
+      <div>
+        {cols.has("pilar") ? (
+          <input
+            className="w-full bg-transparent text-xs text-zinc-400 focus:outline-none"
+            value={idea.pilar}
+            onChange={(e) => updateIdea(idea.id, { pilar: e.target.value })}
+            placeholder="Pilar..."
+            list={`pillar-list-${idea.id}`}
+          />
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-800/50 text-zinc-400 text-xs font-medium border border-white/5">
+            <Hash size={10} className="text-zinc-500" />
+            {idea.pilar || "—"}
+          </span>
+        )}
+        <datalist id={`pillar-list-${idea.id}`}>
+          {pillarOpts.map((p) => <option key={p} value={p} />)}
+        </datalist>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        {cols.has("priority") ? (
           <select
             className={`rounded border-0 bg-transparent text-[10px] font-semibold focus:outline-none ${priorityColor(idea.priority)}`}
             value={idea.priority}
@@ -277,47 +261,42 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
           >
             {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
           </select>
-        </td>
-      )}
-      {cols.has("dueDate") && (
-        <td className="px-2 py-2">
-          <input
-            type="date"
-            className="w-full rounded border-0 bg-transparent text-xs focus:outline-none"
-            value={idea.dueDate ? idea.dueDate.slice(0, 10) : ""}
-            onChange={(e) => updateIdea(idea.id, { dueDate: e.target.value || null })}
-          />
-        </td>
-      )}
-      {cols.has("comments") && (
-        <td className="px-2 py-2 text-center">
-          <button type="button" onClick={() => setShowComments((p) => !p)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" title="Comentarios del cliente">
-            <MessageSquare className="h-3 w-3" />
-            <span className="text-[10px]">{idea.comments?.length ?? 0}</span>
+        ) : (
+          <>
+            <PriorityIcon priority={idea.priority} />
+            <span className={`text-sm ${idea.priority === "HIGH" ? "text-zinc-300" : "text-zinc-500"}`}>{priorityLabels[idea.priority]}</span>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        {idea.comments?.length > 0 && (
+          <button type="button" onClick={() => setShowComments((p) => !p)} className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300" title="Comentarios del cliente">
+            <MessageSquare size={12} />
+            {idea.comments.length}
           </button>
-        </td>
-      )}
-      <td className="w-10 px-2 py-2 text-center">
-        <button type="button" onClick={() => deleteIdea(idea.id)} title="Eliminar">
-          <Trash2 className="h-3.5 w-3.5 text-destructive hover:text-destructive/80" />
+        )}
+        <button type="button" onClick={() => onEdit(idea)} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-all">
+          <ExternalLink size={14} />
         </button>
-      </td>
-    </tr>
+        <button type="button" onClick={() => deleteIdea(idea.id)} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
     {showComments && (
-      <tr>
-        <td colSpan={cols.size + 2} className="bg-muted/20 px-6 py-3">
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {(idea.comments?.length ?? 0) === 0 && <p className="text-xs text-muted-foreground">Sin comentarios del cliente.</p>}
-            {idea.comments?.map((c) => (
-              <div key={c.id} className="rounded-lg border bg-card px-3 py-2">
-                <p className="text-xs font-medium">{c.authorName}</p>
-                <p className="text-sm">{c.text}</p>
-                <p className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
-              </div>
-            ))}
-          </div>
-        </td>
-      </tr>
+      <div className="border-b border-white/5 bg-white/[0.01] px-12 py-3">
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {(idea.comments?.length ?? 0) === 0 && <p className="text-xs text-zinc-500">Sin comentarios del cliente.</p>}
+          {idea.comments?.map((c) => (
+            <div key={c.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] px-3 py-2">
+              <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
+              <p className="text-sm text-zinc-400">{c.text}</p>
+              <p className="text-[10px] text-zinc-600">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     )}
     </>
   )
@@ -688,18 +667,26 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
       {statusOpts.map((status) => {
         const items = filtered.filter((i) => i.status === status)
         return (
-          <div key={status} className="rounded-lg border bg-muted/20 p-3">
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide">{ideaStatusLabels[status]} ({items.length})</h4>
+          <div key={status} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{ideaStatusLabels[status]} ({items.length})</h4>
             <div className="space-y-2">
               {items.map((idea) => (
-                <div key={idea.id} className="rounded-lg border bg-card p-3 shadow-sm">
+                <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] p-3">
                   <div className="mb-1 flex items-center justify-between">
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">{postTypeLabel(idea.postType)}</span>
-                    <button type="button" onClick={() => deleteIdea(idea.id)}><Trash2 className="h-3 w-3 text-destructive" /></button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-5 h-5 rounded bg-white/5 border border-white/5">
+                        <PlatformIcon platform={idea.platform} />
+                      </div>
+                      <span className="text-[10px] font-medium text-zinc-500">{postTypeLabel(idea.postType)}</span>
+                    </div>
+                    <button type="button" onClick={() => deleteIdea(idea.id)} className="text-zinc-600 hover:text-red-400"><Trash2 size={12} /></button>
                   </div>
-                  <p className="cursor-pointer text-xs font-medium hover:underline" onClick={() => openEditDialog(idea)}>{idea.title}</p>
-                  {idea.description && <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-2">{idea.description}</p>}
-                  {idea.dueDate && <p className="mt-1 text-[10px] text-muted-foreground">📅 {formatDate(idea.dueDate)}</p>}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <StatusIcon status={idea.status} />
+                    <p className="cursor-pointer text-xs font-medium text-zinc-200 hover:text-white" onClick={() => openEditDialog(idea)}>{idea.title}</p>
+                  </div>
+                  {idea.description && <p className="mt-0.5 text-[10px] text-zinc-500 line-clamp-2">{idea.description}</p>}
+                  {idea.dueDate && <p className="mt-1 text-[10px] text-zinc-600">📅 {formatDate(idea.dueDate)}</p>}
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {idea.contentIdeaTags?.map((ct) => (
                       <span key={ct.tag.id} className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: ct.tag.color }}>{ct.tag.name}</span>
@@ -707,12 +694,12 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                   </div>
                   <div className="mt-2 flex gap-1">
                     {statusOpts.filter((s) => s !== status).map((s) => (
-                      <button key={s} type="button" onClick={() => updateIdea(idea.id, { status: s })} className="rounded bg-muted px-1.5 py-0.5 text-[9px] hover:bg-muted/80">{ideaStatusLabels[s]}</button>
+                      <button key={s} type="button" onClick={() => updateIdea(idea.id, { status: s })} className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-zinc-400 hover:bg-white/10 hover:text-zinc-200">{ideaStatusLabels[s]}</button>
                     ))}
                   </div>
                 </div>
               ))}
-              {items.length === 0 && <p className="py-4 text-center text-[10px] text-muted-foreground">Vacío</p>}
+              {items.length === 0 && <p className="py-4 text-center text-[10px] text-zinc-600">Vacío</p>}
             </div>
           </div>
         )
@@ -723,36 +710,47 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
   return (
     <div className="space-y-3">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
+
+        <div className="flex items-center gap-2 flex-1">
+          {/* Command-style Search */}
+          <div className="relative group w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
             <input
-              className="h-8 w-44 rounded-md border bg-background pl-7 pr-2 text-xs focus:outline-none"
-              placeholder="Buscar..."
+              type="text"
+              placeholder="Buscar ideas..."
+              className="w-full bg-[#18181b] border border-white/10 rounded-lg pl-9 pr-12 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-zinc-600 text-zinc-200"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] text-zinc-500 font-medium">
+              <Command size={10} /> K
+            </div>
           </div>
-          <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-            <option value="ALL">Prioridad</option>
-            {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
-          </select>
-          <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+
+          <div className="h-4 w-px bg-white/10 mx-2" />
+
+          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="ALL">Estado</option>
             {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
           </select>
-          <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+            <option value="ALL">Prioridad</option>
+            {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
+          </select>
+          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
             <option value="ALL">Formato</option>
             {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
           </select>
-          <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}>
+          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}>
             <option value="ALL">Plataforma</option>
             {platformOpts.map((p) => <option key={p} value={p}>{platformLabel(p)}</option>)}
           </select>
         </div>
-        <div className="flex items-center gap-1">
-          <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-2">
+          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors focus:outline-none" value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
             <option value="none">Sin agrupar</option>
             <option value="status">Estado</option>
             <option value="priority">Prioridad</option>
@@ -760,88 +758,91 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
             <option value="postType">Formato</option>
           </select>
           <div className="relative">
-            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setShowColumnSettings(!showColumnSettings)}><Settings className="h-3.5 w-3.5" /></Button>
+            <button type="button" onClick={() => setShowColumnSettings(!showColumnSettings)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors">
+              <SlidersHorizontal size={14} /> Ver
+            </button>
             {showColumnSettings && (
-              <div className="absolute right-0 top-full z-40 mt-1 w-44 rounded-lg border bg-card p-2 shadow-lg">
-                <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Columnas</p>
+              <div className="absolute right-0 top-full z-40 mt-1 w-44 rounded-lg border border-white/10 bg-[#18181b] p-2 shadow-lg">
+                <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Columnas</p>
                 {COLUMNS.map((c) => (
-                  <label key={c.key} className="flex items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted cursor-pointer">
-                    <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} className="rounded" />
+                  <label key={c.key} className="flex items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-white/5 cursor-pointer text-zinc-400">
+                    <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} className="rounded border-white/20 bg-zinc-800" />
                     {c.label}
                   </label>
                 ))}
               </div>
             )}
           </div>
+          <div className="h-4 w-px bg-white/10 mx-1" />
           <button
             type="button"
             onClick={() => { setShowColumnSettings(false); setView(view === "table" ? "kanban" : "table") }}
-            className="flex h-8 items-center gap-1 rounded-md border px-2 text-xs hover:bg-muted"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors"
           >
-            {view === "table" ? <LayoutGrid className="h-3.5 w-3.5" /> : <Table2 className="h-3.5 w-3.5" />}
+            {view === "table" ? <LayoutGrid size={14} /> : <Table2 size={14} />}
             {view === "table" ? "Board" : "Tabla"}
           </button>
-          <Button size="sm" className="h-8" onClick={() => setShowForm(!showForm)}>
-            <Plus className="h-4 w-4" /> Agregar
-          </Button>
+          <button type="button" onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+            <Plus size={16} /> Nueva Idea
+          </button>
         </div>
       </div>
 
       {showForm && (
-        <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div className="rounded-lg border border-white/10 bg-[#0c0c0e] p-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium">Formato</label>
-              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={newType} onChange={(e) => setNewType(e.target.value)}>
+              <label className="text-xs font-medium text-zinc-400">Formato</label>
+              <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50" value={newType} onChange={(e) => setNewType(e.target.value)}>
                 {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
               </select>
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-xs font-medium">Tema</label>
-              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Ej: Nueva imagen voz en off..." />
+              <label className="text-xs font-medium text-zinc-400">Tema</label>
+              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Ej: Nueva imagen voz en off..." />
             </div>
             <div className="space-y-1 sm:col-span-3">
-              <label className="text-xs font-medium">Objetivo</label>
-              <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Detalle del objetivo..." />
+              <label className="text-xs font-medium text-zinc-400">Objetivo</label>
+              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Detalle del objetivo..." />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium">Pilar</label>
-              <Input value={newPilar} onChange={(e) => setNewPilar(e.target.value)} placeholder="Pilar..." list="new-pillar-list" />
+              <label className="text-xs font-medium text-zinc-400">Pilar</label>
+              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newPilar} onChange={(e) => setNewPilar(e.target.value)} placeholder="Pilar..." list="new-pillar-list" />
               <datalist id="new-pillar-list">
                 {pillarOpts.map((p) => <option key={p} value={p} />)}
               </datalist>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium">Prioridad</label>
-              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={newPriority} onChange={(e) => setNewPriority(e.target.value)}>
+              <label className="text-xs font-medium text-zinc-400">Prioridad</label>
+              <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50" value={newPriority} onChange={(e) => setNewPriority(e.target.value)}>
                 {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium">Estado</label>
-              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
+              <label className="text-xs font-medium text-zinc-400">Estado</label>
+              <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50" value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
                 {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium">Entrega</label>
-              <input type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} />
+              <label className="text-xs font-medium text-zinc-400">Entrega</label>
+              <input type="date" className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} />
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-xs font-medium">Referencia</label>
+              <label className="text-xs font-medium text-zinc-400">Referencia</label>
               {newImageDataUrl ? (
                 <div className="flex items-center gap-2">
-                  <img src={newImageDataUrl} alt="" className="h-12 w-12 rounded object-cover bg-muted" />
-                  <Button variant="ghost" size="sm" onClick={() => setNewImageDataUrl(null)}>Quitar</Button>
+                  <img src={newImageDataUrl} alt="" className="h-12 w-12 rounded object-cover bg-zinc-800" />
+                  <button type="button" onClick={() => setNewImageDataUrl(null)} className="text-xs text-zinc-400 hover:text-white">Quitar</button>
                 </div>
               ) : (
-                <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setNewImageDataUrl)} placeholder="Pegar URL o imagen (Ctrl+V)..." />
+                <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setNewImageDataUrl)} placeholder="Pegar URL o imagen (Ctrl+V)..." />
               )}
             </div>
             {storyboards.length > 0 && (
             <div className="space-y-1">
-              <label className="text-xs font-medium">Storyboard</label>
-              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={newStoryboardId} onChange={(e) => setNewStoryboardId(e.target.value)}>
+              <label className="text-xs font-medium text-zinc-400">Storyboard</label>
+              <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50" value={newStoryboardId} onChange={(e) => setNewStoryboardId(e.target.value)}>
                 <option value="">Sin storyboard</option>
                 {storyboards.map((sb) => <option key={sb.id} value={sb.id}>{sb.title}</option>)}
               </select>
@@ -849,82 +850,155 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button size="sm" onClick={addIdea}>Agregar</Button>
+            <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5">Cancelar</button>
+            <button type="button" onClick={addIdea} className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-black hover:bg-zinc-200">Agregar</button>
           </div>
         </div>
       )}
 
       {ideas.length === 0 ? (
-        <p className="py-8 text-center text-muted-foreground">No hay contenido. Agregá la primera fila.</p>
+        <div className="py-12 text-center">
+          <p className="text-zinc-500">No hay contenido. Agregá la primera fila.</p>
+        </div>
       ) : view === "table" ? (
-        renderTable()
+        <div className="border border-white/5 rounded-xl overflow-hidden bg-[#0c0c0e]">
+          {/* Table Header */}
+          <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_100px_100px_48px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
+            <div />
+            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Tema</div>
+            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Estado</div>
+            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Formato</div>
+            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Pilar</div>
+            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Prioridad</div>
+            <div />
+          </div>
+
+          {!mounted ? (
+            <div className="flex flex-col">
+              {filtered.map((idea) => (
+                <div key={idea.id} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group">
+                  <div />
+                  <div className="min-w-0 pr-4">
+                    <h3 className="text-sm font-medium text-zinc-100 truncate">{idea.title}</h3>
+                    <p className="text-xs text-zinc-500 truncate mt-0.5">{idea.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusIcon status={idea.status} />
+                    <span className="text-sm text-zinc-400">{ideaStatusLabels[idea.status]}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-6 h-6 rounded bg-white/5 border border-white/5">
+                      <PlatformIcon platform={idea.platform} />
+                    </div>
+                    <span className="text-sm text-zinc-300">{postTypeLabel(idea.postType)}</span>
+                  </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-800/50 text-zinc-400 text-xs font-medium border border-white/5">
+                      <Hash size={10} className="text-zinc-500" />
+                      {idea.pilar || "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <PriorityIcon priority={idea.priority} />
+                    <span className={`text-sm ${idea.priority === "HIGH" ? "text-zinc-300" : "text-zinc-500"}`}>{priorityLabels[idea.priority]}</span>
+                  </div>
+                  <div />
+                </div>
+              ))}
+            </div>
+          ) : groupBy !== "none" && grouped ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <div className="flex flex-col">
+                {grouped.map(([key, items]) => (
+                  <div key={key}>
+                    <div className="px-4 py-2 bg-white/[0.02] border-b border-white/5">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{key} <span className="font-normal text-[10px]">({items.length})</span></span>
+                    </div>
+                    <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                      {items.map((idea) => (
+                        <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} setPreviewImage={setPreviewImage} search={search} onUpdateTags={updateTagsGlobally} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                      ))}
+                    </SortableContext>
+                  </div>
+                ))}
+              </div>
+            </DndContext>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={filtered.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <div className="flex flex-col">
+                  {filtered.map((idea) => (
+                    <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} setPreviewImage={setPreviewImage} search={search} onUpdateTags={updateTagsGlobally} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
       ) : (
         renderKanban()
       )}
 
       {editingIdea && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/40" onClick={closeEditDialog} />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg border-l bg-card shadow-xl overflow-y-auto">
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <h3 className="text-lg font-semibold">Editar contenido</h3>
-              <button type="button" onClick={closeEditDialog} className="rounded-md p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
+          <div className="fixed inset-0 z-40 bg-black/60" onClick={closeEditDialog} />
+          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg border-l border-white/10 bg-[#0c0c0e] shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <h3 className="text-lg font-semibold text-zinc-100">Editar contenido</h3>
+              <button type="button" onClick={closeEditDialog} className="rounded-md p-1 hover:bg-white/5 text-zinc-400"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-4 p-5">
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Formato</label>
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editType} onChange={(e) => setEditType(e.target.value)}>
+                  <label className="text-xs font-medium text-zinc-400">Formato</label>
+                  <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none" value={editType} onChange={(e) => setEditType(e.target.value)}>
                     {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium">Tema</label>
-                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Ej: Nueva imagen voz en off..." />
+                  <label className="text-xs font-medium text-zinc-400">Tema</label>
+                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
                 </div>
                 <div className="space-y-1 sm:col-span-3">
-                  <label className="text-xs font-medium">Objetivo</label>
-                  <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Detalle del objetivo..." />
+                  <label className="text-xs font-medium text-zinc-400">Objetivo</label>
+                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Pilar</label>
-                  <Input value={editPilar} onChange={(e) => setEditPilar(e.target.value)} placeholder="Pilar..." list="edit-pillar-list" />
-                  <datalist id="edit-pillar-list">
-                    {pillarOpts.map((p) => <option key={p} value={p} />)}
-                  </datalist>
+                  <label className="text-xs font-medium text-zinc-400">Pilar</label>
+                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editPilar} onChange={(e) => setEditPilar(e.target.value)} list="edit-pillar-list" />
+                  <datalist id="edit-pillar-list">{pillarOpts.map((p) => <option key={p} value={p} />)}</datalist>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Prioridad</label>
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
+                  <label className="text-xs font-medium text-zinc-400">Prioridad</label>
+                  <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
                     {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Estado</label>
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                  <label className="text-xs font-medium text-zinc-400">Estado</label>
+                  <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
                     {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Entrega</label>
-                  <input type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
+                  <label className="text-xs font-medium text-zinc-400">Entrega</label>
+                  <input type="date" className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium">Referencia</label>
+                  <label className="text-xs font-medium text-zinc-400">Referencia</label>
                   {editImageDataUrl ? (
                     <div className="flex items-center gap-2">
-                      <img src={editImageDataUrl} alt="" className="h-12 w-12 rounded object-cover bg-muted" />
-                      <Button variant="ghost" size="sm" onClick={() => { setEditImageDataUrl(null); setEditUrl("") }}>Quitar</Button>
+                      <img src={editImageDataUrl} alt="" className="h-12 w-12 rounded object-cover bg-zinc-800" />
+                      <button type="button" onClick={() => { setEditImageDataUrl(null); setEditUrl("") }} className="text-xs text-zinc-400 hover:text-white">Quitar</button>
                     </div>
                   ) : (
-                    <Input value={editUrl} onChange={(e) => setEditUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setEditImageDataUrl)} placeholder="Pegar URL o imagen (Ctrl+V)..." />
+                    <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setEditImageDataUrl)} />
                   )}
                 </div>
                 {storyboards.length > 0 && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">Storyboard</label>
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editStoryboardId} onChange={(e) => setEditStoryboardId(e.target.value)}>
+                  <label className="text-xs font-medium text-zinc-400">Storyboard</label>
+                  <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none" value={editStoryboardId} onChange={(e) => setEditStoryboardId(e.target.value)}>
                     <option value="">Sin storyboard</option>
                     {storyboards.map((sb) => <option key={sb.id} value={sb.id}>{sb.title}</option>)}
                   </select>
@@ -932,18 +1006,22 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                 )}
               </div>
             </div>
-            <div className="sticky bottom-0 border-t bg-card px-5 py-4 flex justify-end gap-2">
-              <Button variant="ghost" onClick={closeEditDialog}>Cancelar</Button>
-              <Button onClick={saveEdit}>Guardar</Button>
+            <div className="sticky bottom-0 border-t border-white/10 bg-[#0c0c0e] px-5 py-4 flex justify-end gap-2">
+              <button type="button" onClick={closeEditDialog} className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5">Cancelar</button>
+              <button type="button" onClick={saveEdit} className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-black hover:bg-zinc-200">Guardar</button>
             </div>
           </div>
         </>
       )}
 
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Play className="h-3 w-3" /> YouTube/Vimeo inline</span>
-        <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" /> TikTok/Instagram/Facebook externo</span>
-        <span className="ml-auto text-[10px] text-muted-foreground">{filtered.length} de {ideas.length} ideas</span>
+      {/* Footer */}
+      <div className="flex items-center justify-between text-xs text-zinc-600">
+        <p>Mostrando {filtered.length} de {ideas.length} ideas.</p>
+        <div className="flex gap-4">
+          <span className="flex items-center gap-1 hover:text-zinc-400 cursor-pointer transition-colors"><Command size={12} /> Gestionar columnas</span>
+          <span className="flex items-center gap-1"><Play className="h-3 w-3" /> YouTube/Vimeo</span>
+          <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" /> TikTok/IG/FB</span>
+        </div>
       </div>
 
       {previewImage && (

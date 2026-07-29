@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Info, Table, Layout, Share2, Trash2 } from "lucide-react"
+import { ArrowLeft, Bell, Share2, MoreHorizontal, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { InfoTab } from "./InfoTab"
 import { ContentIdeasTab } from "./ContentIdeasTab"
@@ -31,18 +31,10 @@ const statusLabels: Record<string, string> = {
   PUBLISHED: "Publicado",
 }
 
-const statusColors: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  IN_PROGRESS: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  REVIEW: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  APPROVED: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  PUBLISHED: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-}
-
 const tabs = [
-  { id: "contenido", label: "Contenido", icon: Table },
-  { id: "info", label: "Info", icon: Info },
-  { id: "storyboard", label: "Storyboard", icon: Layout },
+  { id: "contenido", label: "Contenido" },
+  { id: "info", label: "Información" },
+  { id: "storyboard", label: "Storyboards" },
 ] as const
 
 type TabId = (typeof tabs)[number]["id"]
@@ -145,101 +137,104 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <header className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen bg-[#09090b] text-zinc-300">
+      {/* Sticky Header */}
+      <header className="px-6 py-3 border-b border-white/5 flex items-center justify-between bg-[#09090b] sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/dashboard")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold">{planning.title}</h1>
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-zinc-400 hover:text-white"
+          >
+            <ArrowLeft size={16} />
+          </button>
+
+          <div className="flex items-center text-sm font-medium">
+            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors" onClick={() => router.push("/dashboard")}>Workspace</span>
+            <ChevronRight size={14} className="text-zinc-700 mx-1" />
+            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors">{planning.client?.name ?? "Sin cliente"}</span>
+            <ChevronRight size={14} className="text-zinc-700 mx-1" />
+            <span className="text-zinc-100 flex items-center gap-2">
               {editingPeriod ? (
                 <div className="flex items-center gap-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) savePeriod() }}>
-                  <select
-                    className="h-7 rounded-md border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                    value={periodMonth}
-                    onChange={(e) => setPeriodMonth(e.target.value)}
-                    autoFocus
-                  >
+                  <select className="h-6 rounded border border-white/10 bg-zinc-800 px-1 text-[11px] text-zinc-200 focus:outline-none" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)} autoFocus>
                     <option value="">Mes</option>
                     {Object.entries(months).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
-                  <select
-                    className="h-7 rounded-md border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                    value={periodYear}
-                    onChange={(e) => setPeriodYear(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") savePeriod() }}
-                  >
+                  <select className="h-6 rounded border border-white/10 bg-zinc-800 px-1 text-[11px] text-zinc-200 focus:outline-none" value={periodYear} onChange={(e) => setPeriodYear(e.target.value)}>
                     <option value="">Año</option>
-                    {Array.from({ length: 10 }, (_, i) => {
-                      const y = new Date().getFullYear() - 1 + i
-                      return <option key={y} value={y}>{y}</option>
-                    })}
+                    {Array.from({ length: 10 }, (_, i) => { const y = new Date().getFullYear() - 1 + i; return <option key={y} value={y}>{y}</option> })}
                   </select>
-                  <button type="button" onClick={savePeriod} className="h-7 rounded-md bg-primary px-2 text-[10px] font-medium text-primary-foreground hover:bg-primary/90">OK</button>
+                  <button type="button" onClick={savePeriod} className="h-6 rounded bg-white px-1.5 text-[10px] font-semibold text-black hover:bg-zinc-200">OK</button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={startEditPeriod}
-                  className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                >
-                  {planning.period ? formatPeriod(planning.period) : "Asignar mes"}
-                </button>
+                <>
+                  {planning.period ? formatPeriod(planning.period) : "Sin período"}
+                  <button type="button" onClick={startEditPeriod} className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/10 text-zinc-300 hover:bg-white/20 transition-colors">
+                    {statusLabels[planning.status] ?? planning.status}
+                  </button>
+                </>
               )}
-            </div>
-            {planning.client && (
-              <p className="text-sm text-muted-foreground">Cliente: {planning.client.name}</p>
-            )}
+            </span>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors[planning.status]}`}>
-            {statusLabels[planning.status] ?? planning.status}
-          </span>
         </div>
+
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <Button variant="outline" size="sm" onClick={() => setShowShare(true)}>
-            <Share2 className="h-4 w-4" /> Compartir
+          <div className="w-px h-4 bg-white/10 mx-1" />
+          <Button variant="ghost" size="sm" onClick={() => setShowShare(true)} className="text-zinc-300 hover:text-white hover:bg-white/5 gap-2 px-3">
+            <Share2 size={14} /> Compartir
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleDelete}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          <button type="button" onClick={handleDelete} className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-zinc-400">
+            <MoreHorizontal size={16} />
+          </button>
         </div>
       </header>
 
-      <div className="mb-6 border-b">
-        <nav className="flex gap-0">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            )
-          })}
-        </nav>
-      </div>
+      <main className="max-w-[1400px] mx-auto px-6 py-8">
+        {/* Title Area */}
+        <div className="mb-8 flex items-end justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">
+              {planning.title || "Plan de Contenido"}
+            </h1>
+            <p className="text-sm text-zinc-500">
+              Gestiona y organiza las ideas y publicaciones para {planning.period ? formatPeriod(planning.period) : "este período"}.
+            </p>
+          </div>
+        </div>
 
-      {activeTab === "info" && (
-        <InfoTab planning={planning} clients={clients} onUpdate={updatePlanning} />
-      )}
-      {activeTab === "contenido" && (
-        <ContentIdeasTab planningId={planning.id} ideas={planning.contentIdeas} storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))} />
-      )}
-      {activeTab === "storyboard" && (
-        <StoryboardsTab planningId={planning.id} storyboards={planning.storyboards} />
-      )}
+        {/* Tabs */}
+        <div className="flex items-center gap-1 border-b border-white/5 mb-6">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-sm font-medium capitalize transition-all relative ${
+                activeTab === tab.id
+                  ? "text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02] rounded-t-lg"
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <div className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-white rounded-t-full" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "info" && (
+          <InfoTab planning={planning} clients={clients} onUpdate={updatePlanning} />
+        )}
+        {activeTab === "contenido" && (
+          <ContentIdeasTab planningId={planning.id} ideas={planning.contentIdeas} storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))} />
+        )}
+        {activeTab === "storyboard" && (
+          <StoryboardsTab planningId={planning.id} storyboards={planning.storyboards} />
+        )}
+      </main>
 
       {showShare && (
         <ShareModal
