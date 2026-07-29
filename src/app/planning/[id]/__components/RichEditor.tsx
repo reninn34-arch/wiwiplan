@@ -1,0 +1,65 @@
+"use client"
+
+import { useEditor, EditorContent } from "@tiptap/react"
+import StarterKit from "@tiptap/starter-kit"
+import Placeholder from "@tiptap/extension-placeholder"
+import { Bold, Italic, List, ListOrdered, Heading2, Undo, Redo } from "lucide-react"
+
+interface Props {
+  value: string
+  onChange: (html: string) => void
+  placeholder?: string
+  className?: string
+}
+
+export function RichEditor({ value, onChange, placeholder, className }: Props) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder: placeholder ?? "Escribí algo..." }),
+    ],
+    content: value,
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[100px] px-3 py-2 text-sm",
+      },
+    },
+  })
+
+  if (!editor) return null
+
+  const btn = (label: string, active: boolean, onClick: () => void) => (
+    <button
+      type="button"
+      onMouseDown={(e) => { e.preventDefault(); onClick() }}
+      className={`rounded p-1 text-xs ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+      title={label}
+    >
+      {label === "bold" ? <Bold className="h-3.5 w-3.5" /> :
+       label === "italic" ? <Italic className="h-3.5 w-3.5" /> :
+       label === "bulletList" ? <List className="h-3.5 w-3.5" /> :
+       label === "orderedList" ? <ListOrdered className="h-3.5 w-3.5" /> :
+       label === "heading" ? <Heading2 className="h-3.5 w-3.5" /> :
+       label === "undo" ? <Undo className="h-3.5 w-3.5" /> :
+       <Redo className="h-3.5 w-3.5" />}
+    </button>
+  )
+
+  return (
+    <div className={`rounded-md border border-input bg-background ${className ?? ""}`}>
+      <div className="flex items-center gap-0.5 border-b px-2 py-1">
+        {btn("bold", editor.isActive("bold"), () => editor.chain().focus().toggleBold().run())}
+        {btn("italic", editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run())}
+        <span className="mx-1 h-4 w-px bg-border" />
+        {btn("heading", editor.isActive("heading", { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run())}
+        {btn("bulletList", editor.isActive("bulletList"), () => editor.chain().focus().toggleBulletList().run())}
+        {btn("orderedList", editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run())}
+        <span className="mx-1 h-4 w-px bg-border" />
+        {btn("undo", false, () => editor.chain().focus().undo().run())}
+        {btn("redo", false, () => editor.chain().focus().redo().run())}
+      </div>
+      <EditorContent editor={editor} />
+    </div>
+  )
+}

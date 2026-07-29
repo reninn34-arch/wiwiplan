@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PlanningStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  APPROVED
+  PUBLISHED
+}
+
+enum PostType {
+  CARROUSEL
+  REEL
+  VIDEO
+  IMAGE
+  STORY
+  STATIC
+  OTHER
+}
+
+enum IdeaPlatform {
+  YOUTUBE
+  VIMEO
+  INSTAGRAM
+  TIKTOK
+  LINKEDIN
+  FACEBOOK
+  IMAGE
+  OTHER
+}
+
+enum IdeaStatus {
+  IDEA
+  SELECTED
+  IN_PRODUCTION
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  image     String?
+  createdAt DateTime @default(now())
+
+  clients      Client[]
+  plannings    Planning[]
+  contentIdeas ContentIdea[]
+  storyboards  Storyboard[]
+  tags         Tag[]
+}
+
+model Client {
+  id     String @id @default(cuid())
+  name   String
+  email  String
+  userId String
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plannings Planning[]
+
+  @@index([userId])
+}
+
+model Planning {
+  id              String          @id @default(cuid())
+  title           String          @default("Sin título")
+  description     String          @default("")
+  status          PlanningStatus  @default(DRAFT)
+  targetAudience  String          @default("")
+  goals           String          @default("")
+  notes           String          @default("")
+  clientId        String?
+  userId          String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  client          Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shareLinks      ShareLink[]
+  contentIdeas    ContentIdea[]
+  storyboards     Storyboard[]
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String
+  color String @default("#6366f1")
+  userId String
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentIdeaTags ContentIdeaTag[]
+
+  @@unique([name, userId])
+  @@index([userId])
+}
+
+model ContentIdea {
+  id              String       @id @default(cuid())
+  planningId      String
+  title           String
+  description     String       @default("")
+  pilar           String       @default("")
+  postType        PostType     @default(OTHER)
+  platform        IdeaPlatform @default(OTHER)
+  referenceUrl    String       @default("")
+  referenceEmbed  String       @default("")
+  status          IdeaStatus   @default(IDEA)
+  priority        Priority     @default(MEDIUM)
+  order           Int          @default(0)
+  dueDate         DateTime?
+  createdAt       DateTime     @default(now())
+
+  planning Planning      @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [createdBy], references: [id])
+  createdBy String
+  contentIdeaTags ContentIdeaTag[]
+  comments Comment[]
+  storyboard Storyboard? @relation(fields: [storyboardId], references: [id])
+  storyboardId String?
+
+  @@index([planningId])
+}
+
+model ContentIdeaTag {
+  contentIdeaId String
+  tagId         String
+
+  contentIdea ContentIdea @relation(fields: [contentIdeaId], references: [id], onDelete: Cascade)
+  tag         Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contentIdeaId, tagId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  contentIdeaId String
+  authorName String  @default("Cliente")
+  text      String
+  createdAt DateTime @default(now())
+
+  contentIdea ContentIdea @relation(fields: [contentIdeaId], references: [id], onDelete: Cascade)
+
+  @@index([contentIdeaId])
+}
+
+model Storyboard {
+  id          String   @id @default(cuid())
+  planningId  String
+  title       String   @default("Storyboard")
+  description String   @default("")
+  createdAt   DateTime @default(now())
+
+  planning Planning         @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [createdBy], references: [id])
+  createdBy String
+  panels   StoryboardPanel[]
+  contentIdeas ContentIdea[]
+
+  @@index([planningId])
+}
+
+model StoryboardPanel {
+  id           String   @id @default(cuid())
+  storyboardId String
+  sceneNumber  Int
+  imageUrl     String   @default("")
+  description  String   @default("")
+  duration     String   @default("")
+  notes        String   @default("")
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  storyboard Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
+
+  @@index([storyboardId])
+}
+
+model ShareLink {
+  id          String        @id @default(cuid())
+  token       String        @unique
+  planningId  String
+  expiresAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  planning Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([planningId])
+}
