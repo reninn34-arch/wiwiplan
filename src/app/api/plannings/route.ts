@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
       data: {
         title: body.title ?? "Sin título",
         description: body.description ?? "",
+        period: body.period ?? "",
         targetAudience: body.targetAudience ?? "",
         goals: body.goals ?? "",
         notes: body.notes ?? "",

@@ -2,17 +2,22 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ArrowDown } from "lucide-react"
+import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, Building2 } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-const statusLabels: Record<string, string> = {
-  DRAFT: "Borrador",
-  IN_PROGRESS: "En Progreso",
-  REVIEW: "Revisión",
-  APPROVED: "Aprobado",
-  PUBLISHED: "Publicado",
+const months: Record<string, string> = {
+  "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
+  "05": "Mayo", "06": "Junio", "07": "Julio", "08": "Agosto",
+  "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre",
+}
+
+function formatPeriod(p: string) {
+  if (!p) return ""
+  const parts = p.split("-")
+  if (parts.length === 2) return `${months[parts[1]] ?? parts[1]} ${parts[0]}`
+  return p
 }
 
 const statusColors: Record<string, string> = {
@@ -31,8 +36,10 @@ interface Client {
 interface Planning {
   id: string
   title: string
+  period: string
   status: string
   updatedAt: string
+  createdAt: string
   client: { id: string; name: string } | null
   _count: { contentIdeas: number; storyboards: number }
 }
@@ -44,7 +51,7 @@ interface PendingIdea {
   status: string
   priority: string
   dueDate: string | null
-  planning: { id: string; title: string; status: string; client: { name: string } | null }
+  planning: { id: string; title: string; period: string; status: string; client: { name: string } | null }
   _count: { comments: number }
 }
 
@@ -61,21 +68,47 @@ export function DashboardClient({ plannings: initial, clients, pendingIdeas, use
   const [showNewForm, setShowNewForm] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newClientId, setNewClientId] = useState("")
+  const [newPeriod, setNewPeriod] = useState("")
+  const [expandedClient, setExpandedClient] = useState<string | null>(null)
 
-  const filtered = initial.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase())
-  )
+  const now = new Date()
+  const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
   const createPlanning = async () => {
     const res = await fetch("/api/plannings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newTitle || "Sin título", clientId: newClientId || null }),
+      body: JSON.stringify({ title: newTitle || "Sin título", clientId: newClientId || null, period: newPeriod || defaultPeriod }),
     })
     if (res.ok) {
       const data = await res.json()
       router.push(`/planning/${data.id}`)
     }
+  }
+
+  const clientPlannings = new Map<string, Planning[]>()
+  const uncategorized: Planning[] = []
+
+  for (const p of initial) {
+    if (p.client) {
+      const arr = clientPlannings.get(p.client.id) ?? []
+      arr.push(p)
+      clientPlannings.set(p.client.id, arr)
+    } else {
+      uncategorized.push(p)
+    }
+  }
+
+  const filteredUncategorized = uncategorized.filter((p) =>
+    !search || p.title.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const sortByPeriod = (a: Planning, b: Planning) => b.period.localeCompare(a.period) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+
+  const hasClientMatch = (c: Client) => {
+    if (!search) return true
+    const plans = clientPlannings.get(c.id) ?? []
+    return c.name.toLowerCase().includes(search.toLowerCase()) || plans.some((p) => p.title.toLowerCase().includes(search.toLowerCase()))
   }
 
   return (
@@ -84,12 +117,12 @@ export function DashboardClient({ plannings: initial, clients, pendingIdeas, use
         <div>
           <h1 className="text-3xl font-bold tracking-tight">WiwiPlan</h1>
           <p className="mt-1 text-muted-foreground">
-            {user.name ?? user.email} — {initial.length} planificaciones
+            {user.name ?? user.email} — {clients.length} clientes, {initial.length} meses
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={() => setShowNewForm(!showNewForm)}>
-            <Plus className="h-4 w-4" /> Nueva
+            <Plus className="h-4 w-4" /> Nuevo mes
           </Button>
           <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: "/login" })}>
             <LogOut className="h-4 w-4" />
@@ -99,24 +132,30 @@ export function DashboardClient({ plannings: initial, clients, pendingIdeas, use
 
       {showNewForm && (
         <div className="mb-8 rounded-lg border bg-card p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold">Nueva Planificación</h2>
-          <div className="flex gap-3">
-            <Input
-              placeholder="Título"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="flex-1"
-            />
+          <h2 className="mb-3 text-lg font-semibold">Nuevo mes de contenido</h2>
+          <div className="flex flex-wrap gap-3">
             <select
               className="rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={newClientId}
               onChange={(e) => setNewClientId(e.target.value)}
             >
-              <option value="">Sin cliente</option>
+              <option value="">Seleccionar cliente...</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+            <input
+              type="month"
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={newPeriod || defaultPeriod}
+              onChange={(e) => setNewPeriod(e.target.value)}
+            />
+            <Input
+              placeholder="Título (opcional)"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="flex-1"
+            />
             <Button onClick={createPlanning}>Crear</Button>
           </div>
         </div>
@@ -149,6 +188,7 @@ export function DashboardClient({ plannings: initial, clients, pendingIdeas, use
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {idea.planning.title}
                       {idea.planning.client && <span> — {idea.planning.client.name}</span>}
+                      {idea.planning.period && <span className="ml-1 text-[10px]">({formatPeriod(idea.planning.period)})</span>}
                     </td>
                     <td className="px-3 py-2">
                       <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{idea.status}</span>
@@ -173,51 +213,89 @@ export function DashboardClient({ plannings: initial, clients, pendingIdeas, use
 
       <div className="mb-6">
         <Input
-          placeholder="Buscar planificaciones..."
+          placeholder="Buscar clientes o meses..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground">
-            {search ? "Sin resultados" : "No hay planificaciones todavía. Creá una nueva."}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => router.push(`/planning/${p.id}`)}
-              className="group rounded-lg border bg-card p-4 text-left shadow-sm transition-all hover:shadow-md"
-            >
-              <div className="mb-3 flex items-start justify-between">
-                <h3 className="font-semibold group-hover:text-primary">{p.title}</h3>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusColors[p.status]}`}>
-                  {statusLabels[p.status] ?? p.status}
-                </span>
-              </div>
-              {p.client && (
-                <p className="mb-2 text-sm text-muted-foreground">Cliente: {p.client.name}</p>
+      <div className="space-y-6">
+        {clients.filter(hasClientMatch).map((client) => {
+          const plans = (clientPlannings.get(client.id) ?? []).sort(sortByPeriod)
+          const isExpanded = expandedClient === client.id
+          return (
+            <div key={client.id} className="rounded-lg border bg-card shadow-sm">
+              <button
+                type="button"
+                onClick={() => setExpandedClient(isExpanded ? null : client.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+              >
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <span className="text-lg font-semibold">{client.name}</span>
+                <span className="text-xs text-muted-foreground">{plans.length} meses</span>
+                <ChevronRight className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+              </button>
+              {isExpanded && (
+                <div className="grid gap-3 border-t p-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {plans.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => router.push(`/planning/${p.id}`)}
+                      className="group rounded-lg border bg-card p-4 text-left shadow-sm transition-all hover:shadow-md"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold group-hover:text-primary">
+                          {p.period ? formatPeriod(p.period) : p.title}
+                        </h3>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${statusColors[p.status]}`}>
+                          {p.status}
+                        </span>
+                      </div>
+                      {p.title && p.period && <p className="mb-2 text-xs text-muted-foreground">{p.title}</p>}
+                      <div className="flex gap-3 text-[10px] text-muted-foreground">
+                        <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas</span>
+                        <span className="flex items-center gap-1"><Layout className="h-3 w-3" /> {p._count.storyboards} sb</span>
+                      </div>
+                    </button>
+                  ))}
+                  {plans.length === 0 && <p className="col-span-full py-4 text-center text-xs text-muted-foreground">Sin meses aún</p>}
+                </div>
               )}
-              <div className="flex gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas
-                </span>
-                <span className="flex items-center gap-1">
-                  <Layout className="h-3 w-3" /> {p._count.storyboards} storyboards
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {new Date(p.updatedAt).toLocaleDateString("es-AR")}
-              </p>
-            </button>
-          ))}
-        </div>
-      )}
+            </div>
+          )
+        })}
+
+        {filteredUncategorized.length > 0 && (
+          <div className="rounded-lg border bg-card shadow-sm">
+            <div className="px-4 py-3">
+              <span className="text-lg font-semibold">Sin cliente</span>
+              <span className="ml-2 text-xs text-muted-foreground">{filteredUncategorized.length} planificaciones</span>
+            </div>
+            <div className="grid gap-3 border-t p-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredUncategorized.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => router.push(`/planning/${p.id}`)}
+                  className="group rounded-lg border bg-card p-4 text-left shadow-sm transition-all hover:shadow-md"
+                >
+                  <h3 className="text-sm font-semibold group-hover:text-primary">{p.title}</h3>
+                  <div className="mt-2 flex gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {clients.filter(hasClientMatch).length === 0 && filteredUncategorized.length === 0 && (
+          <div className="rounded-lg border border-dashed p-12 text-center">
+            <p className="text-muted-foreground">{search ? "Sin resultados" : "No hay clientes ni planificaciones. Creá un nuevo mes."}</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

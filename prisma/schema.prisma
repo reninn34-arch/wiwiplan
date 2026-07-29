@@ -81,6 +81,7 @@ model Planning {
   id              String          @id @default(cuid())
   title           String          @default("Sin título")
   description     String          @default("")
+  period          String          @default("")
   status          PlanningStatus  @default(DRAFT)
   targetAudience  String          @default("")
   goals           String          @default("")

@@ -26,7 +26,7 @@ export default async function DashboardPage() {
     where: { user: { id: session.user.id }, status: { not: "DONE" } },
     orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
     include: {
-      planning: { select: { id: true, title: true, status: true, client: { select: { name: true } } } },
+      planning: { select: { id: true, title: true, period: true, status: true, client: { select: { name: true } } } },
       _count: { select: { comments: true } },
     },
   })
