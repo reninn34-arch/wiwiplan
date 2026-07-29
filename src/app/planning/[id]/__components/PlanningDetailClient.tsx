@@ -141,27 +141,25 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold">{planning.title}</h1>
               {editingPeriod ? (
-                <div className="flex items-center gap-1">
-                  <input
-                    type="month"
-                    className="h-7 rounded border bg-background px-2 text-xs focus:outline-none"
-                    value={periodDraft}
-                    onChange={(e) => setPeriodDraft(e.target.value)}
-                    autoFocus
-                    onBlur={savePeriod}
-                    onKeyDown={(e) => { if (e.key === "Enter") savePeriod() }}
-                  />
-                </div>
-              ) : planning.period ? (
-                <button type="button" onClick={() => { setPeriodDraft(planning.period); setEditingPeriod(true) }} className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted/80 transition-colors">
-                  {formatPeriod(planning.period)}
-                </button>
+                <input
+                  type="month"
+                  className="h-7 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={periodDraft}
+                  onChange={(e) => setPeriodDraft(e.target.value)}
+                  autoFocus
+                  onBlur={savePeriod}
+                  onKeyDown={(e) => { if (e.key === "Enter") savePeriod() }}
+                />
               ) : (
-                <button type="button" onClick={() => { setPeriodDraft(""); setEditingPeriod(true) }} className="rounded bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted/80 transition-colors">
-                  + mes
+                <button
+                  type="button"
+                  onClick={() => { setPeriodDraft(planning.period); setEditingPeriod(true) }}
+                  className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  {planning.period ? formatPeriod(planning.period) : "Asignar mes"}
                 </button>
               )}
             </div>
