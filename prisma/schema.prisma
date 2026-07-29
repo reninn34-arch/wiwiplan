@@ -62,6 +62,7 @@ model User {
   contentIdeas ContentIdea[]
   storyboards  Storyboard[]
   tags         Tag[]
+  notifications Notification[]
 }
 
 model Client {
@@ -191,6 +192,21 @@ model StoryboardPanel {
   storyboard Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
 
   @@index([storyboardId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   @default("comment")
+  title     String
+  message   String
+  link      String   @default("")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
 }
 
 model ShareLink {

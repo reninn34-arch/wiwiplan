@@ -14,9 +14,20 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Enlace expirado" }, { status: 410 })
     }
 
-    await prisma.planning.update({
+    const planning = await prisma.planning.update({
       where: { id: shareLink.planningId },
       data: { status: "APPROVED" },
+      select: { userId: true, title: true },
+    })
+
+    await prisma.notification.create({
+      data: {
+        userId: planning.userId,
+        type: "approve",
+        title: "Planificación aprobada",
+        message: `El cliente aprobó "${planning.title}"`,
+        link: `/planning/${shareLink.planningId}`,
+      },
     })
 
     return NextResponse.json({ success: true })
