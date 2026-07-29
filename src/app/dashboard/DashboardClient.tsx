@@ -6,6 +6,7 @@ import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, Chev
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { NotificationBell } from "@/components/NotificationBell"
 
 const months: Record<string, string> = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -155,6 +156,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           <Button onClick={() => setShowClientForm(!showClientForm)}>
             <Plus className="h-4 w-4" /> Nuevo cliente
           </Button>
+          <NotificationBell />
           <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: "/login" })}>
             <LogOut className="h-4 w-4" />
           </Button>

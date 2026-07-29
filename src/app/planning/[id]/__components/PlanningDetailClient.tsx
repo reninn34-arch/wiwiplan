@@ -8,6 +8,7 @@ import { InfoTab } from "./InfoTab"
 import { ContentIdeasTab } from "./ContentIdeasTab"
 import { StoryboardsTab } from "./StoryboardsTab"
 import { ShareModal } from "./ShareModal"
+import { NotificationBell } from "@/components/NotificationBell"
 
 const months: Record<string, string> = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -197,6 +198,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <NotificationBell />
           <Button variant="outline" size="sm" onClick={() => setShowShare(true)}>
             <Share2 className="h-4 w-4" /> Compartir
           </Button>
