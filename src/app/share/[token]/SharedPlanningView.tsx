@@ -160,9 +160,6 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
         <td className="px-3 py-2">
           <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{ideaStatusLabels[idea.status]}</span>
         </td>
-        <td className="px-3 py-2 text-xs text-muted-foreground">
-          {idea.dueDate ? new Date(idea.dueDate).toLocaleDateString("es-AR") : "—"}
-        </td>
         <td className="px-3 py-2 text-center">
           <button type="button" onClick={() => setOpen(!open)} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
             <MessageSquare className="h-3 w-3" />
@@ -172,7 +169,7 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
       </tr>
       {open && (
         <tr>
-          <td colSpan={7} className="bg-muted/20 px-6 py-3">
+          <td colSpan={6} className="bg-muted/20 px-6 py-3">
             <div className="space-y-2">
               {comments.length === 0 && <p className="text-xs text-muted-foreground">Sin comentarios.</p>}
               {comments.map((c) => (
@@ -275,7 +272,6 @@ export function SharedPlanningView({ planning }: Props) {
                     <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Referencia</th>
                     <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Pilar</th>
                     <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Estado</th>
-                    <th className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide text-muted-foreground">Entrega</th>
                     <th className="w-14 px-3 py-2 text-center font-medium text-xs uppercase tracking-wide text-muted-foreground"><MessageSquare className="h-3 w-3" /></th>
                   </tr>
                 </thead>
