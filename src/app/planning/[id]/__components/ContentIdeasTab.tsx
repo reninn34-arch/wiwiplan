@@ -17,6 +17,7 @@ import {
   SortableContext, verticalListSortingStrategy, useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { toast } from "sonner"
 
 const postTypeOpts = ["CARROUSEL", "REEL", "VIDEO", "IMAGE", "STORY", "STATIC", "OTHER"]
 const statusOpts = ["IDEA", "SELECTED", "IN_PRODUCTION", "DONE"]
@@ -562,15 +563,22 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
     const oldIndex = ideas.findIndex((i) => i.id === active.id)
     const newIndex = ideas.findIndex((i) => i.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
+
+    const prev = [...ideas]
     const reordered = [...ideas]
     const [moved] = reordered.splice(oldIndex, 1)
     reordered.splice(newIndex, 0, moved)
     setIdeas(reordered)
-    await fetch(`/api/plannings/${planningId}/ideas/reorder`, {
+
+    const res = await fetch(`/api/plannings/${planningId}/ideas/reorder`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ideaIds: reordered.map((i) => i.id) }),
     })
+    if (!res.ok) {
+      setIdeas(prev)
+      toast.error("Error al reordenar")
+    }
   }
 
   const SortIcon = ({ k }: { k: SortKey }) => {

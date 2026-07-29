@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Plus, ImagePlus, Trash2, GripVertical, Clock, ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
 
 interface Panel {
   id: string
@@ -64,29 +65,43 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
   const updatePanel = async (panelId: string, updates: Record<string, unknown>) => {
     const sb = storyboards.find((s) => s.panels.some((p) => p.id === panelId))
     if (!sb) return
-    await fetch(`/api/plannings/${planningId}/storyboard/${panelId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    })
-    setStoryboards((prev) =>
-      prev.map((s) =>
+
+    const prev = [...storyboards]
+    setStoryboards((p) =>
+      p.map((s) =>
         s.id === sb.id
           ? { ...s, panels: s.panels.map((p) => (p.id === panelId ? { ...p, ...updates } : p)) }
           : s
       )
     )
+
+    const res = await fetch(`/api/plannings/${planningId}/storyboard/${panelId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    })
+    if (!res.ok) {
+      setStoryboards(prev)
+      toast.error("Error al guardar el panel")
+    }
   }
 
   const deletePanel = async (panelId: string) => {
     const sb = storyboards.find((s) => s.panels.some((p) => p.id === panelId))
     if (!sb) return
-    await fetch(`/api/plannings/${planningId}/storyboard/${panelId}`, { method: "DELETE" })
-    setStoryboards((prev) =>
-      prev.map((s) =>
+
+    const prev = [...storyboards]
+    setStoryboards((p) =>
+      p.map((s) =>
         s.id === sb.id ? { ...s, panels: s.panels.filter((p) => p.id !== panelId) } : s
       )
     )
+
+    const res = await fetch(`/api/plannings/${planningId}/storyboard/${panelId}`, { method: "DELETE" })
+    if (!res.ok) {
+      setStoryboards(prev)
+      toast.error("Error al eliminar el panel")
+    }
   }
 
   const movePanel = async (panelId: string, direction: "up" | "down") => {
@@ -98,14 +113,21 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
     const newIdx = direction === "up" ? idx - 1 : idx + 1
     if (newIdx < 0 || newIdx >= panels.length) return
     ;[panels[idx], panels[newIdx]] = [panels[newIdx], panels[idx]]
-    setStoryboards((prev) =>
-      prev.map((s) => (s.id === sb.id ? { ...s, panels } : s))
+
+    const prev = [...storyboards]
+    setStoryboards((p) =>
+      p.map((s) => (s.id === sb.id ? { ...s, panels } : s))
     )
-    await fetch(`/api/plannings/${planningId}/storyboard/reorder`, {
+
+    const res = await fetch(`/api/plannings/${planningId}/storyboard/reorder`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ panelIds: panels.map((p) => p.id) }),
     })
+    if (!res.ok) {
+      setStoryboards(prev)
+      toast.error("Error al reordenar paneles")
+    }
   }
 
   const activeStoryboard = storyboards.find((s) => s.id === activeSb)
