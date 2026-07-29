@@ -29,6 +29,10 @@ const statusColors: Record<string, string> = {
   PUBLISHED: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
 }
 
+const ideaStatusLabels: Record<string, string> = {
+  IDEA: "Idea", SELECTED: "Seleccionada", IN_PRODUCTION: "En Producción", DONE: "Lista",
+}
+
 interface Client {
   id: string
   name: string
@@ -213,7 +217,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                       {idea.planning.period && <span> — {formatPeriod(idea.planning.period)}</span>}
                     </td>
                     <td className="px-3 py-2">
-                      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{idea.status}</span>
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{ideaStatusLabels[idea.status] ?? idea.status}</span>
                     </td>
                     <td className="px-3 py-2">
                       <span className={`text-xs font-semibold ${idea.priority === "HIGH" ? "text-red-600" : idea.priority === "MEDIUM" ? "text-amber-600" : "text-green-600"}`}>{idea.priority}</span>
@@ -277,7 +281,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                             {p.period ? formatPeriod(p.period) : p.title}
                           </h3>
                           <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${statusColors[p.status]}`}>
-                            {p.status}
+                            {p.status === "DRAFT" ? "Borrador" : p.status === "IN_PROGRESS" ? "En Progreso" : p.status === "REVIEW" ? "Revisión" : p.status === "APPROVED" ? "Aprobado" : p.status === "PUBLISHED" ? "Publicado" : p.status}
                           </span>
                         </div>
                         {p.title && p.period && <p className="mb-2 text-xs text-muted-foreground">{p.title}</p>}

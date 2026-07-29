@@ -22,6 +22,13 @@ import { toast } from "sonner"
 const postTypeOpts = ["CARROUSEL", "REEL", "VIDEO", "IMAGE", "STORY", "STATIC", "OTHER"]
 const statusOpts = ["IDEA", "SELECTED", "IN_PRODUCTION", "DONE"]
 const priorityOpts = ["HIGH", "MEDIUM", "LOW"]
+
+const ideaStatusLabels: Record<string, string> = {
+  IDEA: "Idea", SELECTED: "Seleccionada", IN_PRODUCTION: "En Producción", DONE: "Lista",
+}
+const priorityLabels: Record<string, string> = {
+  HIGH: "Alta", MEDIUM: "Media", LOW: "Baja",
+}
 const pillarOpts = ["Educación", "Entretenimiento", "Inspiración", "Promoción", "Conversación", "Utilidad", "Detrás de escena", "Noticia", "Otro"]
 const platformOpts = ["YOUTUBE", "VIMEO", "INSTAGRAM", "TIKTOK", "LINKEDIN", "FACEBOOK", "IMAGE", "OTHER"]
 
@@ -257,7 +264,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
             value={idea.status}
             onChange={(e) => updateIdea(idea.id, { status: e.target.value })}
           >
-            {statusOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+            {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
           </select>
         </td>
       )}
@@ -268,7 +275,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
             value={idea.priority}
             onChange={(e) => updateIdea(idea.id, { priority: e.target.value })}
           >
-            {priorityOpts.map((p) => <option key={p} value={p}>{p}</option>)}
+            {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
           </select>
         </td>
       )}
@@ -664,7 +671,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
         const items = filtered.filter((i) => i.status === status)
         return (
           <div key={status} className="rounded-lg border bg-muted/20 p-3">
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide">{status} ({items.length})</h4>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide">{ideaStatusLabels[status]} ({items.length})</h4>
             <div className="space-y-2">
               {items.map((idea) => (
                 <div key={idea.id} className="rounded-lg border bg-card p-3 shadow-sm">
@@ -682,7 +689,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                   </div>
                   <div className="mt-2 flex gap-1">
                     {statusOpts.filter((s) => s !== status).map((s) => (
-                      <button key={s} type="button" onClick={() => updateIdea(idea.id, { status: s })} className="rounded bg-muted px-1.5 py-0.5 text-[9px] hover:bg-muted/80">{s}</button>
+                      <button key={s} type="button" onClick={() => updateIdea(idea.id, { status: s })} className="rounded bg-muted px-1.5 py-0.5 text-[9px] hover:bg-muted/80">{ideaStatusLabels[s]}</button>
                     ))}
                   </div>
                 </div>
@@ -711,11 +718,11 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
           </div>
           <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
             <option value="ALL">Prioridad</option>
-            {priorityOpts.map((p) => <option key={p} value={p}>{p}</option>)}
+            {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
           </select>
           <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="ALL">Estado</option>
-            {statusOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+            {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
           </select>
           <select className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
             <option value="ALL">Formato</option>
@@ -789,13 +796,13 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
             <div className="space-y-1">
               <label className="text-xs font-medium">Prioridad</label>
               <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={newPriority} onChange={(e) => setNewPriority(e.target.value)}>
-                {priorityOpts.map((p) => <option key={p} value={p}>{p}</option>)}
+                {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium">Estado</label>
               <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-                {statusOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+                {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
               </select>
             </div>
             <div className="space-y-1">
@@ -867,13 +874,13 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
               <div className="space-y-1">
                 <label className="text-xs font-medium">Prioridad</label>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
-                  {priorityOpts.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium">Estado</label>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
-                  {statusOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
