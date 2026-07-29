@@ -108,7 +108,8 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
   const router = useRouter()
   const [planning, setPlanning] = useState(initial)
   const [editingPeriod, setEditingPeriod] = useState(false)
-  const [periodDraft, setPeriodDraft] = useState(initial.period)
+  const [periodMonth, setPeriodMonth] = useState("")
+  const [periodYear, setPeriodYear] = useState("")
   const [activeTab, setActiveTab] = useState<TabId>("contenido")
   const [showShare, setShowShare] = useState(false)
 
@@ -124,13 +125,22 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
 
   const savePeriod = async () => {
     setEditingPeriod(false)
-    if (periodDraft === planning.period) return
+    if (!periodMonth || !periodYear) return
+    const newPeriod = `${periodYear}-${periodMonth}`
+    if (newPeriod === planning.period) return
     await fetch(`/api/plannings/${planning.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ period: periodDraft }),
+      body: JSON.stringify({ period: newPeriod }),
     })
-    setPlanning((prev) => ({ ...prev, period: periodDraft }))
+    setPlanning((prev) => ({ ...prev, period: newPeriod }))
+  }
+
+  const startEditPeriod = () => {
+    const parts = planning.period ? planning.period.split("-") : []
+    setPeriodMonth(parts[1] ?? "")
+    setPeriodYear(parts[0] ?? "")
+    setEditingPeriod(true)
   }
 
   return (
@@ -144,19 +154,34 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold">{planning.title}</h1>
               {editingPeriod ? (
-                <input
-                  type="month"
-                  className="h-7 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={periodDraft}
-                  onChange={(e) => setPeriodDraft(e.target.value)}
-                  autoFocus
-                  onBlur={savePeriod}
-                  onKeyDown={(e) => { if (e.key === "Enter") savePeriod() }}
-                />
+                <div className="flex items-center gap-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) savePeriod() }}>
+                  <select
+                    className="h-7 rounded-md border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={periodMonth}
+                    onChange={(e) => setPeriodMonth(e.target.value)}
+                    autoFocus
+                  >
+                    <option value="">Mes</option>
+                    {Object.entries(months).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                  <select
+                    className="h-7 rounded-md border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={periodYear}
+                    onChange={(e) => setPeriodYear(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") savePeriod() }}
+                  >
+                    <option value="">Año</option>
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const y = new Date().getFullYear() - 1 + i
+                      return <option key={y} value={y}>{y}</option>
+                    })}
+                  </select>
+                  <button type="button" onClick={savePeriod} className="h-7 rounded-md bg-primary px-2 text-[10px] font-medium text-primary-foreground hover:bg-primary/90">OK</button>
+                </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => { setPeriodDraft(planning.period); setEditingPeriod(true) }}
+                  onClick={startEditPeriod}
                   className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 >
                   {planning.period ? formatPeriod(planning.period) : "Asignar mes"}
