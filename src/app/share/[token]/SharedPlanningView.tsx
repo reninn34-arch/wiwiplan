@@ -74,6 +74,7 @@ interface Planning {
   title: string
   description: string
   status: string
+  period: string
   targetAudience: string
   goals: string
   notes: string
@@ -190,6 +191,18 @@ export function SharedPlanningView({ planning }: Props) {
   const [isApproving, setIsApproving] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
 
+  const formatPeriod = (p: string) => {
+    if (!p) return ""
+    const months: Record<string, string> = {
+      "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
+      "05": "Mayo", "06": "Junio", "07": "Julio", "08": "Agosto",
+      "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre",
+    }
+    const parts = p.split("-")
+    if (parts.length === 2) return `${months[parts[1]] ?? parts[1]} ${parts[0]}`
+    return p
+  }
+
   const handleApprove = async () => {
     setIsApproving(true)
     try {
@@ -212,6 +225,7 @@ export function SharedPlanningView({ planning }: Props) {
               {planning.client && (
                 <p className="mt-1 text-zinc-500">
                   Planificación para: <span className="font-medium text-zinc-300">{planning.client.name}</span>
+                  {planning.period && <span className="text-zinc-600"> — {formatPeriod(planning.period)}</span>}
                 </p>
               )}
             </div>

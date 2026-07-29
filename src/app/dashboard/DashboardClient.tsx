@@ -249,6 +249,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
         {clients.filter(hasClientMatch).map((client) => {
           const plans = (clientPlannings.get(client.id) ?? []).sort(sortByPeriod)
           const isExpanded = expandedClient === client.id
+          const latestPeriod = plans.length > 0 ? formatPeriod(plans[0].period) : null
           return (
             <div key={client.id} className="rounded-lg border border-white/5 bg-[#0c0c0e]">
               <button
@@ -258,7 +259,8 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               >
                 <Building2 className="h-5 w-5 text-zinc-500" />
                 <span className="text-lg font-semibold text-zinc-200">{client.name}</span>
-                <span className="text-xs text-zinc-500">{plans.length} meses</span>
+                {latestPeriod && <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-zinc-400">{latestPeriod}</span>}
+                <span className="text-xs text-zinc-500">{plans.length} {plans.length === 1 ? "mes" : "meses"}</span>
                 <ChevronRight className={`ml-auto h-4 w-4 text-zinc-500 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
               </button>
               {isExpanded && (
