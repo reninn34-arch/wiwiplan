@@ -27,6 +27,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 }
 
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  try {
+    const body = await request.json()
+    const { storyboardId, title } = body
+
+    if (!storyboardId || title === undefined) {
+      return NextResponse.json({ error: "storyboardId y title requeridos" }, { status: 400 })
+    }
+
+    await prisma.storyboard.updateMany({
+      where: { id: storyboardId, planningId: (await params).id },
+      data: { title },
+    })
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: "Error al actualizar storyboard" }, { status: 500 })
+  }
+}
+
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user?.id) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ClipboardEvent } from "react"
+import { useState, useRef, type ClipboardEvent } from "react"
 import { Plus, ImagePlus, Trash2, GripVertical, Clock, ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -152,6 +152,22 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
     }
   }
 
+  const titleDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  const updateStoryboardTitle = (sbId: string, title: string) => {
+    setStoryboards((prev) => prev.map((s) => (s.id === sbId ? { ...s, title } : s)))
+    if (titleDebounce.current[sbId]) clearTimeout(titleDebounce.current[sbId])
+    titleDebounce.current[sbId] = setTimeout(async () => {
+      delete titleDebounce.current[sbId]
+      const res = await fetch(`/api/plannings/${planningId}/storyboard`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyboardId: sbId, title }),
+      })
+      if (!res.ok) toast.error("Error al guardar el título")
+    }, 400)
+  }
+
   const activeStoryboard = storyboards.find((s) => s.id === activeSb)
 
   return (
@@ -182,11 +198,7 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
             <Input
               className="max-w-xs text-lg font-semibold"
               value={activeStoryboard.title}
-              onChange={(e) => {
-                setStoryboards((prev) =>
-                  prev.map((s) => (s.id === activeSb ? { ...s, title: e.target.value } : s))
-                )
-              }}
+              onChange={(e) => activeSb && updateStoryboardTitle(activeSb, e.target.value)}
             />
             <Button size="sm" variant="outline" onClick={() => activeSb && addPanel(activeSb)}>
               <Plus className="h-4 w-4" /> Agregar Escena
