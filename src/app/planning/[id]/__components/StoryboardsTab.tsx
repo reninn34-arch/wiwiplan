@@ -1,10 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ClipboardEvent } from "react"
 import { Plus, ImagePlus, Trash2, GripVertical, Clock, ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+
+function handleImagePaste(e: ClipboardEvent, onDataUrl: (url: string) => void) {
+  const file = e.clipboardData.files?.[0]
+  if (file && file.type.startsWith("image/")) {
+    e.preventDefault()
+    const reader = new FileReader()
+    reader.onload = () => { if (typeof reader.result === "string") onDataUrl(reader.result) }
+    reader.readAsDataURL(file)
+    return
+  }
+  for (const item of e.clipboardData.items) {
+    if (item.type.startsWith("image/")) {
+      e.preventDefault()
+      const file2 = item.getAsFile()
+      if (!file2) return
+      const reader = new FileReader()
+      reader.onload = () => { if (typeof reader.result === "string") onDataUrl(reader.result) }
+      reader.readAsDataURL(file2)
+      return
+    }
+  }
+}
 
 interface Panel {
   id: string
@@ -178,7 +200,7 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {activeStoryboard.panels.map((panel, idx) => (
-                <div key={panel.id} className="rounded-lg border bg-card">
+                <div key={panel.id} className="rounded-lg border bg-card" onPaste={(e) => handleImagePaste(e, (url) => updatePanel(panel.id, { imageUrl: url }))}>
                   <div className="flex items-center gap-1 border-b bg-muted/50 px-3 py-2">
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs font-medium">Escena {idx + 1}</span>
