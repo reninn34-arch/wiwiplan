@@ -88,7 +88,6 @@ interface Props {
 
 function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPreviewImage: (url: string) => void }) {
   const [open, setOpen] = useState(false)
-  const [showStoryboard, setShowStoryboard] = useState(false)
   const [text, setText] = useState("")
   const [sending, setSending] = useState(false)
   const [comments, setComments] = useState(idea.comments)
@@ -131,27 +130,13 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
               <ExternalLink className="h-3 w-3" /> {platformLabel(idea.platform)}
             </a>
           ) : idea.storyboard ? (
-            <div className="space-y-1">
-              <button type="button" onClick={() => setShowStoryboard(!showStoryboard)} className="inline-flex items-center gap-1 text-xs rounded bg-muted px-2 py-0.5 hover:bg-muted/80">
-                <Layout className="h-3 w-3" /> {idea.storyboard.title}
-              </button>
-              {showStoryboard && idea.storyboard.panels.length > 0 && (
-                <div className="mt-1 space-y-1 border-l-2 pl-2">
-                  {idea.storyboard.panels.map((p) => (
-                    <div key={p.id} className="flex items-start gap-2">
-                      {p.imageUrl && !p.imageUrl.startsWith("blob:") && (
-                        <img src={p.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover bg-muted cursor-pointer hover:opacity-80" onClick={() => onPreviewImage(p.imageUrl)} />
-                      )}
-                      <div className="min-w-0 text-[10px] text-muted-foreground">
-                        <p className="font-medium">#{p.sceneNumber}</p>
-                        {p.description && <p className="line-clamp-2">{p.description}</p>}
-                        {p.duration && <p className="text-[9px]">⏱ {p.duration}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => document.getElementById(`sb-${idea.storyboard!.id}`)?.scrollIntoView({ behavior: "smooth" })}
+              className="inline-flex items-center gap-1 text-xs rounded bg-muted px-2 py-0.5 hover:bg-muted/80"
+            >
+              <Layout className="h-3 w-3" /> {idea.storyboard.title}
+            </button>
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
           )}
@@ -293,7 +278,7 @@ export function SharedPlanningView({ planning }: Props) {
         )}
 
         {planning.storyboards.map((sb) => (
-          <section key={sb.id} className="mb-8">
+          <section key={sb.id} id={`sb-${sb.id}`} className="mb-8 scroll-mt-8">
             <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
               <Layout className="h-5 w-5" /> {sb.title}
             </h2>
@@ -313,7 +298,7 @@ export function SharedPlanningView({ planning }: Props) {
                     </div>
                     <div className="flex aspect-video items-center justify-center bg-muted/30">
                       {panel.imageUrl && !panel.imageUrl.startsWith("blob:") ? (
-                        <img src={panel.imageUrl} alt={`Escena ${idx + 1}`} className="h-full w-full object-cover" />
+                        <img src={panel.imageUrl} alt={`Escena ${idx + 1}`} className="h-full w-full object-cover cursor-pointer" onClick={() => setPreviewImage(panel.imageUrl)} />
                       ) : (
                         <ImagePlus className="h-8 w-8 text-muted-foreground" />
                       )}
