@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, type ClipboardEvent } from "react"
+import { useState, useMemo, useEffect, useRef, type ClipboardEvent } from "react"
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Columns3, Table2, MessageSquare, Send,
   ArrowUpDown, ArrowUp, ArrowDown, Settings, LayoutGrid,
@@ -478,13 +478,31 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
     setNewTitle(""); setNewDescription(""); setNewPilar(""); setNewPriority("MEDIUM"); setNewStatus("IDEA"); setNewDueDate(""); setNewStoryboardId(""); setNewUrl(""); setNewImageDataUrl(null); setShowForm(false)
   }
 
-  const updateIdea = async (ideaId: string, data: Record<string, unknown>) => {
-    await fetch(`/api/plannings/${planningId}/ideas/${ideaId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-    setIdeas((prev) => prev.map((i) => (i.id === ideaId ? { ...i, ...data } : i)))
+  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const pendingRef = useRef<Record<string, Record<string, unknown>>>({})
+  const snapshotRef = useRef<Record<string, Idea[]>>({})
+
+  const updateIdea = (ideaId: string, data: Record<string, unknown>) => {
+    if (!snapshotRef.current[ideaId]) snapshotRef.current[ideaId] = [...ideas]
+    setIdeas((p) => p.map((i) => (i.id === ideaId ? { ...i, ...data } : i)))
+    pendingRef.current[ideaId] = { ...pendingRef.current[ideaId], ...data }
+    if (debounceRef.current[ideaId]) clearTimeout(debounceRef.current[ideaId])
+    debounceRef.current[ideaId] = setTimeout(async () => {
+      const snapshot = snapshotRef.current[ideaId]
+      const body = pendingRef.current[ideaId]
+      delete snapshotRef.current[ideaId]
+      delete pendingRef.current[ideaId]
+      delete debounceRef.current[ideaId]
+      const res = await fetch(`/api/plannings/${planningId}/ideas/${ideaId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        setIdeas(snapshot)
+        toast.error("Error al guardar")
+      }
+    }, 400)
   }
 
   const deleteIdea = async (ideaId: string) => {
@@ -846,74 +864,80 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
       )}
 
       {editingIdea && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4" onClick={closeEditDialog}>
-          <div className="mt-8 w-full max-w-2xl rounded-lg border bg-card p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <h3 className="mb-4 text-lg font-semibold">Editar contenido</h3>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Formato</label>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editType} onChange={(e) => setEditType(e.target.value)}>
-                  {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <label className="text-xs font-medium">Tema</label>
-                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Ej: Nueva imagen voz en off..." />
-              </div>
-              <div className="space-y-1 sm:col-span-3">
-                <label className="text-xs font-medium">Objetivo</label>
-                <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Detalle del objetivo..." />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Pilar</label>
-                <Input value={editPilar} onChange={(e) => setEditPilar(e.target.value)} placeholder="Pilar..." list="edit-pillar-list" />
-                <datalist id="edit-pillar-list">
-                  {pillarOpts.map((p) => <option key={p} value={p} />)}
-                </datalist>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Prioridad</label>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
-                  {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Estado</label>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
-                  {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Entrega</label>
-                <input type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <label className="text-xs font-medium">Referencia</label>
-                {editImageDataUrl ? (
-                  <div className="flex items-center gap-2">
-                    <img src={editImageDataUrl} alt="" className="h-12 w-12 rounded object-cover bg-muted" />
-                    <Button variant="ghost" size="sm" onClick={() => { setEditImageDataUrl(null); setEditUrl("") }}>Quitar</Button>
-                  </div>
-                ) : (
-                  <Input value={editUrl} onChange={(e) => setEditUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setEditImageDataUrl)} placeholder="Pegar URL o imagen (Ctrl+V)..." />
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={closeEditDialog} />
+          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg border-l bg-card shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <h3 className="text-lg font-semibold">Editar contenido</h3>
+              <button type="button" onClick={closeEditDialog} className="rounded-md p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Formato</label>
+                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editType} onChange={(e) => setEditType(e.target.value)}>
+                    {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-medium">Tema</label>
+                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Ej: Nueva imagen voz en off..." />
+                </div>
+                <div className="space-y-1 sm:col-span-3">
+                  <label className="text-xs font-medium">Objetivo</label>
+                  <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Detalle del objetivo..." />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Pilar</label>
+                  <Input value={editPilar} onChange={(e) => setEditPilar(e.target.value)} placeholder="Pilar..." list="edit-pillar-list" />
+                  <datalist id="edit-pillar-list">
+                    {pillarOpts.map((p) => <option key={p} value={p} />)}
+                  </datalist>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Prioridad</label>
+                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
+                    {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Estado</label>
+                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                    {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Entrega</label>
+                  <input type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-medium">Referencia</label>
+                  {editImageDataUrl ? (
+                    <div className="flex items-center gap-2">
+                      <img src={editImageDataUrl} alt="" className="h-12 w-12 rounded object-cover bg-muted" />
+                      <Button variant="ghost" size="sm" onClick={() => { setEditImageDataUrl(null); setEditUrl("") }}>Quitar</Button>
+                    </div>
+                  ) : (
+                    <Input value={editUrl} onChange={(e) => setEditUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setEditImageDataUrl)} placeholder="Pegar URL o imagen (Ctrl+V)..." />
+                  )}
+                </div>
+                {storyboards.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium">Storyboard</label>
+                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editStoryboardId} onChange={(e) => setEditStoryboardId(e.target.value)}>
+                    <option value="">Sin storyboard</option>
+                    {storyboards.map((sb) => <option key={sb.id} value={sb.id}>{sb.title}</option>)}
+                  </select>
+                </div>
                 )}
               </div>
-              {storyboards.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Storyboard</label>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editStoryboardId} onChange={(e) => setEditStoryboardId(e.target.value)}>
-                  <option value="">Sin storyboard</option>
-                  {storyboards.map((sb) => <option key={sb.id} value={sb.id}>{sb.title}</option>)}
-                </select>
-              </div>
-              )}
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={closeEditDialog}>Cancelar</Button>
-              <Button size="sm" onClick={saveEdit}>Guardar</Button>
+            <div className="sticky bottom-0 border-t bg-card px-5 py-4 flex justify-end gap-2">
+              <Button variant="ghost" onClick={closeEditDialog}>Cancelar</Button>
+              <Button onClick={saveEdit}>Guardar</Button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
