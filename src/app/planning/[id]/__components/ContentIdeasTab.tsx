@@ -233,7 +233,17 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
       </div>
 
       <div className="min-w-0">
-        {idea.referenceEmbed ? (
+        {idea.referenceUrl && (
+          <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate max-w-full group/link" title={idea.referenceUrl}>
+            {idea.referenceEmbed && idea.platform === "IMAGE" ? (
+              <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+            ) : (
+              <ExternalLink size={10} className="shrink-0" />
+            )}
+            {idea.referenceEmbed ? platformLabel(idea.platform) : idea.referenceUrl.length > 20 ? idea.referenceUrl.slice(0, 20) + "…" : idea.referenceUrl}
+          </a>
+        )}
+        {!idea.referenceUrl && idea.referenceEmbed && (
           <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 truncate">
             {idea.platform === "IMAGE" ? (
               <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
@@ -242,16 +252,13 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
             )}
             {platformLabel(idea.platform)}
           </span>
-        ) : idea.referenceUrl ? (
-          <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate">
-            <ExternalLink size={10} className="shrink-0" />
-            {idea.referenceUrl.length > 20 ? idea.referenceUrl.slice(0, 20) + "…" : idea.referenceUrl}
-          </a>
-        ) : idea.storyboardId ? (
+        )}
+        {!idea.referenceUrl && !idea.referenceEmbed && idea.storyboardId ? (
           <span className="inline-flex items-center gap-1 text-[10px] text-zinc-600">
             <Layout size={10} /> Storyboard
           </span>
-        ) : (
+        ) : null}
+        {!idea.referenceUrl && !idea.referenceEmbed && !idea.storyboardId && (
           <span className="text-[10px] text-zinc-700">—</span>
         )}
       </div>
@@ -634,22 +641,26 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                   </div>
                   {idea.description && <p className="mt-0.5 text-[10px] text-zinc-500 line-clamp-2">{idea.description}</p>}
                   <div className="mt-1 flex items-center gap-1 text-[9px] text-zinc-600">
-                    {idea.referenceEmbed ? (
-                      <>
+                    {idea.referenceUrl ? (
+                      <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-white truncate" title={idea.referenceUrl}>
+                        {idea.referenceEmbed && idea.platform === "IMAGE" ? (
+                          <img src={idea.referenceEmbed} alt="" className="w-4 h-4 rounded object-cover" />
+                        ) : (
+                          <ExternalLink size={9} className="shrink-0" />
+                        )}
+                        <span className="truncate max-w-[100px]">{idea.referenceEmbed ? platformLabel(idea.platform) : idea.referenceUrl}</span>
+                      </a>
+                    ) : idea.referenceEmbed ? (
+                      <span className="inline-flex items-center gap-1">
                         {idea.platform === "IMAGE" ? (
                           <img src={idea.referenceEmbed} alt="" className="w-4 h-4 rounded object-cover" />
                         ) : (
                           <ExternalLink size={9} />
                         )}
                         <span>{platformLabel(idea.platform)}</span>
-                      </>
-                    ) : idea.referenceUrl ? (
-                      <>
-                        <ExternalLink size={9} />
-                        <span className="truncate max-w-[100px]">{idea.referenceUrl}</span>
-                      </>
+                      </span>
                     ) : idea.storyboardId ? (
-                      <><Layout size={9} /> Storyboard</>
+                      <span className="inline-flex items-center gap-1"><Layout size={9} /> Storyboard</span>
                     ) : null}
                   </div>
                   {idea.dueDate && <p className="mt-1 text-[10px] text-zinc-600">📅 {formatDate(idea.dueDate)}</p>}
@@ -861,7 +872,17 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                     <span className="text-sm text-zinc-300">{postTypeLabel(idea.postType)}</span>
                   </div>
                   <div className="min-w-0">
-                    {idea.referenceEmbed ? (
+                    {idea.referenceUrl && (
+                      <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate max-w-full" title={idea.referenceUrl}>
+                        {idea.referenceEmbed && idea.platform === "IMAGE" ? (
+                          <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                        ) : (
+                          <ExternalLink size={10} className="shrink-0" />
+                        )}
+                        {idea.referenceEmbed ? platformLabel(idea.platform) : idea.referenceUrl.length > 20 ? idea.referenceUrl.slice(0, 20) + "…" : idea.referenceUrl}
+                      </a>
+                    )}
+                    {!idea.referenceUrl && idea.referenceEmbed && (
                       <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 truncate">
                         {idea.platform === "IMAGE" ? (
                           <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
@@ -870,16 +891,13 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                         )}
                         {platformLabel(idea.platform)}
                       </span>
-                    ) : idea.referenceUrl ? (
-                      <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate">
-                        <ExternalLink size={10} className="shrink-0" />
-                        {idea.referenceUrl.length > 20 ? idea.referenceUrl.slice(0, 20) + "…" : idea.referenceUrl}
-                      </a>
-                    ) : idea.storyboardId ? (
+                    )}
+                    {!idea.referenceUrl && !idea.referenceEmbed && idea.storyboardId && (
                       <span className="inline-flex items-center gap-1 text-[10px] text-zinc-600">
                         <Layout size={10} /> Storyboard
                       </span>
-                    ) : (
+                    )}
+                    {!idea.referenceUrl && !idea.referenceEmbed && !idea.storyboardId && (
                       <span className="text-[10px] text-zinc-700">—</span>
                     )}
                   </div>
