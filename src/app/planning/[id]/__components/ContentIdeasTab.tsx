@@ -348,19 +348,21 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
   const [newDueDate, setNewDueDate] = useState("")
   const [newUrl, setNewUrl] = useState("")
   const [newImageDataUrl, setNewImageDataUrl] = useState<string | null>(null)
-  const [newStoryboardId, setNewStoryboardId] = useState("")
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [editingIdea, setEditingIdea] = useState<Idea | null>(null)
-  const [editTitle, setEditTitle] = useState("")
-  const [editDescription, setEditDescription] = useState("")
-  const [editType, setEditType] = useState("REEL")
-  const [editPilar, setEditPilar] = useState("")
-  const [editPriority, setEditPriority] = useState("MEDIUM")
-  const [editStatus, setEditStatus] = useState("IDEA")
-  const [editDueDate, setEditDueDate] = useState("")
-  const [editUrl, setEditUrl] = useState("")
-  const [editImageDataUrl, setEditImageDataUrl] = useState<string | null>(null)
-  const [editStoryboardId, setEditStoryboardId] = useState("")
+const [newPlatform, setNewPlatform] = useState("OTHER")
+const [newStoryboardId, setNewStoryboardId] = useState("")
+const [previewImage, setPreviewImage] = useState<string | null>(null)
+const [editingIdea, setEditingIdea] = useState<Idea | null>(null)
+const [editTitle, setEditTitle] = useState("")
+const [editDescription, setEditDescription] = useState("")
+const [editType, setEditType] = useState("REEL")
+const [editPilar, setEditPilar] = useState("")
+const [editPriority, setEditPriority] = useState("MEDIUM")
+const [editStatus, setEditStatus] = useState("IDEA")
+const [editDueDate, setEditDueDate] = useState("")
+const [editUrl, setEditUrl] = useState("")
+const [editImageDataUrl, setEditImageDataUrl] = useState<string | null>(null)
+const [editPlatform, setEditPlatform] = useState("OTHER")
+const [editStoryboardId, setEditStoryboardId] = useState("")
   const [search, setSearch] = useState("")
   const [filterPriority, setFilterPriority] = useState("ALL")
   const [filterStatus, setFilterStatus] = useState("ALL")
@@ -475,7 +477,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
     const res = await fetch(`/api/plannings/${planningId}/ideas`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, platform: embed?.platform ?? "OTHER", referenceUrl: newUrl, referenceEmbed: embed?.embedUrl ?? "" }),
+      body: JSON.stringify({ ...body, platform: embed?.platform ?? newPlatform, referenceUrl: newUrl, referenceEmbed: embed?.embedUrl ?? "" }),
     })
     if (res.ok) {
       const idea = await res.json()
@@ -485,7 +487,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
   }
 
   const resetForm = () => {
-    setNewTitle(""); setNewDescription(""); setNewPilar(""); setNewPriority("MEDIUM"); setNewStatus("IDEA"); setNewDueDate(""); setNewStoryboardId(""); setNewUrl(""); setNewImageDataUrl(null); setShowForm(false)
+    setNewTitle(""); setNewDescription(""); setNewPilar(""); setNewPriority("MEDIUM"); setNewStatus("IDEA"); setNewDueDate(""); setNewStoryboardId(""); setNewUrl(""); setNewImageDataUrl(null); setNewPlatform("OTHER"); setShowForm(false)
   }
 
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -530,6 +532,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
     setEditDueDate(idea.dueDate ? idea.dueDate.slice(0, 10) : "")
     setEditUrl(idea.referenceUrl)
     setEditImageDataUrl(idea.referenceEmbed?.startsWith("data:") ? idea.referenceEmbed : null)
+    setEditPlatform(idea.platform)
     setEditStoryboardId(idea.storyboardId ?? "")
     setEditingIdea(idea)
   }
@@ -564,12 +567,14 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
         const embed = detectEmbed(editUrl)
         body.referenceUrl = editUrl
         body.referenceEmbed = embed?.embedUrl ?? ""
-        body.platform = embed?.platform ?? "OTHER"
+        body.platform = embed?.platform ?? editPlatform
       } else {
         body.referenceUrl = ""
         body.referenceEmbed = ""
-        body.platform = "OTHER"
+        body.platform = editPlatform
       }
+    } else {
+      body.platform = editPlatform
     }
     const res = await fetch(`/api/plannings/${planningId}/ideas/${editingIdea.id}`, {
       method: "PUT",
@@ -802,6 +807,12 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
               </select>
             </div>
             <div className="space-y-1">
+              <label className="text-xs font-medium text-zinc-400">Plataforma</label>
+              <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50" value={newPlatform} onChange={(e) => setNewPlatform(e.target.value)}>
+                {platformOpts.map((p) => <option key={p} value={p}>{platformLabel(p)}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
               <label className="text-xs font-medium text-zinc-400">Entrega</label>
               <input type="date" className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} />
             </div>
@@ -988,6 +999,12 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                   <label className="text-xs font-medium text-zinc-400">Estado</label>
                   <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
                     {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-zinc-400">Plataforma</label>
+                  <select className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none" value={editPlatform} onChange={(e) => setEditPlatform(e.target.value)}>
+                    {platformOpts.map((p) => <option key={p} value={p}>{platformLabel(p)}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
