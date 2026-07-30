@@ -254,9 +254,10 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
           </span>
         )}
         {!idea.referenceUrl && !idea.referenceEmbed && idea.storyboardId ? (
-          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-600">
-            <Layout size={10} /> Storyboard
-          </span>
+          <button type="button" onClick={() => onEdit(idea)} className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate">
+            <Layout size={10} className="shrink-0" />
+            {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}
+          </button>
         ) : null}
         {!idea.referenceUrl && !idea.referenceEmbed && !idea.storyboardId && (
           <span className="text-[10px] text-zinc-700">—</span>
@@ -665,7 +666,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                         <span>{platformLabel(idea.platform)}</span>
                       </span>
                     ) : idea.storyboardId ? (
-                      <span className="inline-flex items-center gap-1"><Layout size={9} /> Storyboard</span>
+                      <span className="inline-flex items-center gap-1"><Layout size={9} /> {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}</span>
                     ) : null}
                   </div>
                   {idea.dueDate && <p className="mt-1 text-[10px] text-zinc-600">📅 {formatDate(idea.dueDate)}</p>}
@@ -905,7 +906,8 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                     )}
                     {!idea.referenceUrl && !idea.referenceEmbed && idea.storyboardId && (
                       <span className="inline-flex items-center gap-1 text-[10px] text-zinc-600">
-                        <Layout size={10} /> Storyboard
+                        <Layout size={10} />
+                        {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}
                       </span>
                     )}
                     {!idea.referenceUrl && !idea.referenceEmbed && !idea.storyboardId && (
