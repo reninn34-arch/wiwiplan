@@ -586,7 +586,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
   }
 
   const renderKanban = () => (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {statusOpts.map((status) => {
         const items = filtered.filter((i) => i.status === status)
         return (
@@ -637,7 +637,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
 
         <div className="flex items-center gap-2 flex-1">
           {/* Command-style Search */}
-          <div className="relative group w-72">
+          <div className="relative group w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
             <input
               type="text"
@@ -784,7 +784,8 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
           <p className="text-zinc-500">No hay contenido. Agregá la primera fila.</p>
         </div>
       ) : view === "table" ? (
-        <div className="border border-white/5 rounded-xl overflow-hidden bg-[#0c0c0e]">
+        <div className="overflow-x-auto">
+        <div className="min-w-[750px] border border-white/5 rounded-xl overflow-hidden bg-[#0c0c0e]">
           {/* Table Header */}
           <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_100px_100px_48px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
             <div />
@@ -857,6 +858,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
               </SortableContext>
             </DndContext>
           )}
+        </div>
         </div>
       ) : (
         renderKanban()

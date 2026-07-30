@@ -149,7 +149,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <header className="mb-8 flex items-center justify-between">
+      <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-200">WiwiPlan</h1>
           <p className="mt-1 text-zinc-500">

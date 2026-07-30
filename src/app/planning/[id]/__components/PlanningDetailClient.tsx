@@ -139,22 +139,22 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-300">
       {/* Sticky Header */}
-      <header className="px-6 py-3 border-b border-white/5 flex items-center justify-between bg-[#09090b] sticky top-0 z-20">
-        <div className="flex items-center gap-3">
+      <header className="px-4 sm:px-6 py-3 border-b border-white/5 flex items-center justify-between bg-[#09090b] sticky top-0 z-20 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-zinc-400 hover:text-white"
+            className="w-8 h-8 shrink-0 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-zinc-400 hover:text-white"
           >
             <ArrowLeft size={16} />
           </button>
 
-          <div className="flex items-center text-sm font-medium">
-            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors" onClick={() => router.push("/dashboard")}>Workspace</span>
-            <ChevronRight size={14} className="text-zinc-700 mx-1" />
-            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors">{planning.client?.name ?? "Sin cliente"}</span>
-            <ChevronRight size={14} className="text-zinc-700 mx-1" />
-            <span className="text-zinc-100 flex items-center gap-2">
+          <div className="flex items-center text-sm font-medium min-w-0">
+            <span className="hidden sm:inline text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors truncate" onClick={() => router.push("/dashboard")}>Workspace</span>
+            <ChevronRight size={14} className="hidden sm:block text-zinc-700 mx-1 shrink-0" />
+            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors truncate max-w-[120px] sm:max-w-[200px]">{planning.client?.name ?? "Sin cliente"}</span>
+            <ChevronRight size={14} className="text-zinc-700 mx-1 shrink-0" />
+            <span className="text-zinc-100 flex items-center gap-2 min-w-0">
               {editingPeriod ? (
                 <div className="flex items-center gap-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) savePeriod() }}>
                   <select className="h-6 rounded border border-white/10 bg-zinc-800 px-1 text-[11px] text-zinc-200 focus:outline-none" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)} autoFocus>
@@ -191,7 +191,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-6 py-8">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Title Area */}
         <div className="mb-8 flex items-end justify-between">
           <div>

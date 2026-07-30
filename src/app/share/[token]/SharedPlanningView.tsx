@@ -217,19 +217,19 @@ export function SharedPlanningView({ planning }: Props) {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 py-8">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
         <header className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-zinc-200">{planning.title}</h1>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-3xl font-bold text-zinc-200 truncate">{planning.title}</h1>
               {planning.client && (
-                <p className="mt-1 text-zinc-500">
+                <p className="mt-1 text-sm sm:text-base text-zinc-500">
                   Planificación para: <span className="font-medium text-zinc-300">{planning.client.name}</span>
                   {planning.period && <span className="text-zinc-600"> — {formatPeriod(planning.period)}</span>}
                 </p>
               )}
             </div>
-            <span className={`rounded-full px-3 py-1 text-sm font-medium ${statusColors[status]}`}>
+            <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${statusColors[status]}`}>
               {statusLabels[status] ?? status}
             </span>
           </div>
