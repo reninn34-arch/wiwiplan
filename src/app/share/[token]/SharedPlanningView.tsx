@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle, Lightbulb, Layout, Clock, ImagePlus, ExternalLink, MessageSquare, Send } from "lucide-react"
+import { CheckCircle, Lightbulb, Layout, Clock, ImagePlus, ExternalLink, MessageSquare, Send, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { platformLabel, postTypeLabel } from "@/lib/embeds"
 
@@ -85,6 +85,105 @@ interface Planning {
 
 interface Props {
   planning: Planning
+}
+
+function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPreviewImage: (url: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState("")
+  const [sending, setSending] = useState(false)
+  const [comments, setComments] = useState(idea.comments)
+
+  const addComment = async () => {
+    const msg = text.trim()
+    if (!msg || sending) return
+    setSending(true)
+    setText("")
+    const res = await fetch(`/api/ideas/${idea.id}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: msg, authorName: "Cliente" }),
+    })
+    if (res.ok) {
+      const comment = await res.json()
+      setComments((prev) => [...prev, comment])
+    }
+    setSending(false)
+  }
+
+  return (
+    <div className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden">
+      <div className="p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium text-zinc-200">{idea.title}</p>
+          <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400">{ideaStatusLabels[idea.status]}</span>
+        </div>
+
+        {idea.description && <p className="text-xs text-zinc-500">{idea.description}</p>}
+
+        <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
+          {idea.pilar && (
+            <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
+              <Hash size={10} /> {idea.pilar}
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
+            {postTypeLabel(idea.postType)}
+          </span>
+        </div>
+
+        <div className="text-xs">
+          {idea.referenceEmbed && (idea.platform === "YOUTUBE" || idea.platform === "VIMEO") ? (
+            <div className="aspect-video rounded overflow-hidden">
+              <iframe src={idea.referenceEmbed} className="h-full w-full" allowFullScreen title={idea.title} />
+            </div>
+          ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
+            <img src={idea.referenceEmbed} alt={idea.title} className="h-16 w-16 rounded object-cover bg-white/[0.03] cursor-pointer hover:opacity-80" onClick={() => onPreviewImage(idea.referenceEmbed)} />
+          ) : idea.referenceUrl ? (
+            <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-white underline">
+              <ExternalLink className="h-3 w-3" /> {platformLabel(idea.platform)}
+            </a>
+          ) : idea.storyboard ? (
+            <button type="button" onClick={() => document.getElementById(`sb-${idea.storyboard!.id}`)?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-0.5 text-zinc-400 hover:bg-white/10">
+              <Layout className="h-3 w-3" /> {idea.storyboard.title}
+            </button>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+          <button type="button" onClick={() => setOpen(!open)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white">
+            <MessageSquare className="h-3 w-3" />
+            {comments.length} {comments.length === 1 ? "comentario" : "comentarios"}
+          </button>
+        </div>
+
+        {open && (
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            {comments.length === 0 && <p className="text-xs text-zinc-500">Sin comentarios.</p>}
+            {comments.map((c) => (
+              <div key={c.id} className="rounded border border-white/5 px-3 py-2">
+                <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
+                <p className="text-sm text-zinc-200">{c.text}</p>
+                <p className="text-[10px] text-zinc-500">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <input
+                className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
+                placeholder="Escribí un comentario..."
+                disabled={sending}
+              />
+              <button type="button" onClick={addComment} disabled={sending} className="rounded-md bg-white px-2 py-1.5 text-xs text-black disabled:opacity-50">
+                <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPreviewImage: (url: string) => void }) {
@@ -262,7 +361,16 @@ export function SharedPlanningView({ planning }: Props) {
             <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-200">
               <Lightbulb className="h-5 w-5" /> Ideas de Contenido
             </h2>
-            <div className="overflow-x-auto rounded-lg border border-white/5">
+
+            {/* Mobile cards */}
+            <div className="space-y-3 sm:hidden">
+              {planning.contentIdeas.map((idea) => (
+                <ClientCommentCard key={idea.id} idea={idea} onPreviewImage={setPreviewImage} />
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto rounded-lg border border-white/5">
               <table className="w-full text-sm">
                 <thead className="bg-white/[0.03]">
                   <tr className="border-b border-white/5">
