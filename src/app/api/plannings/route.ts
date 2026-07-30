@@ -40,7 +40,7 @@ export async function GET() {
       where: { userId: session.user.id },
       orderBy: { updatedAt: "desc" },
       include: {
-        client: { select: { id: true, name: true } },
+        client: { select: { id: true, name: true, logo: true } },
         _count: { select: { contentIdeas: true, storyboards: true } },
       },
     })

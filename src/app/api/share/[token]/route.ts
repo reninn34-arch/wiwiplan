@@ -10,7 +10,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       include: {
         planning: {
           include: {
-            client: { select: { name: true } },
+            client: { select: { name: true, logo: true } },
             contentIdeas: {
               orderBy: { order: "asc" },
               include: {

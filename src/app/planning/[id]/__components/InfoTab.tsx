@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Save, Plus, Trash2, Users } from "lucide-react"
+import { useState, useRef } from "react"
+import { Save, Plus, Trash2, Users, Camera } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RichEditor } from "./RichEditor"
@@ -10,6 +10,7 @@ interface Client {
   id: string
   name: string
   email?: string
+  logo?: string | null
 }
 
 interface InfoTabProps {
@@ -40,6 +41,10 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
   const [showNewClient, setShowNewClient] = useState(false)
   const [newClientName, setNewClientName] = useState("")
   const [newClientEmail, setNewClientEmail] = useState("")
+  const [newClientLogo, setNewClientLogo] = useState<string | null>(null)
+  const [uploadingClientId, setUploadingClientId] = useState<string | null>(null)
+  const logoRef = useRef<HTMLInputElement>(null)
+  const logoEditRef = useRef<Record<string, HTMLInputElement>>({})
 
   const handleSave = async () => {
     setSaving(true)
@@ -59,14 +64,25 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newClientName, email: newClientEmail }),
+      body: JSON.stringify({ name: newClientName, email: newClientEmail, logo: newClientLogo }),
     })
     if (res.ok) {
       const client = await res.json()
       setClients((prev) => [...prev, client])
       setClientId(client.id)
-      setNewClientName(""); setNewClientEmail(""); setShowNewClient(false)
+      setNewClientName(""); setNewClientEmail(""); setNewClientLogo(null); setShowNewClient(false)
     }
+  }
+
+  const updateClientLogo = async (clientId: string, logo: string) => {
+    const client = clients.find((c) => c.id === clientId)
+    if (!client) return
+    setClients((prev) => prev.map((c) => c.id === clientId ? { ...c, logo } : c))
+    await fetch(`/api/clients/${clientId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: client.name, email: client.email, logo }),
+    })
   }
 
   const deleteClient = async (id: string) => {
@@ -130,7 +146,13 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
         </div>
 
         {showNewClient && (
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button type="button" onClick={() => logoRef.current?.click()} className="relative w-10 h-10 shrink-0 rounded-full border border-dashed border-white/10 flex items-center justify-center hover:bg-white/5 overflow-hidden">
+                {newClientLogo ? <img src={newClientLogo} alt="" className="w-full h-full object-cover" /> : <Camera size={14} className="text-zinc-500" />}
+              </button>
+              <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => { if (typeof r.result === "string") setNewClientLogo(r.result) }; r.readAsDataURL(f) }}} />
+            </div>
             <Input
               placeholder="Nombre del cliente"
               value={newClientName}
@@ -167,9 +189,13 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
           <div className="space-y-1">
             {clients.map((c) => (
               <div key={c.id} className="flex items-center gap-2 rounded-md border border-white/5 px-3 py-2 text-sm">
-                <div className="flex-1">
-                  <span className="font-medium text-zinc-200">{c.name}</span>
-                  {c.email && <span className="ml-2 text-zinc-500">{c.email}</span>}
+                <button type="button" onClick={() => document.getElementById(`logo-input-${c.id}`)?.click()} className="relative w-8 h-8 shrink-0 rounded-full overflow-hidden bg-white/5 hover:bg-white/10 flex items-center justify-center">
+                  {c.logo ? <img src={c.logo} alt="" className="w-full h-full object-cover" /> : <Camera size={12} className="text-zinc-500" />}
+                </button>
+                <input id={`logo-input-${c.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => { if (typeof r.result === "string") updateClientLogo(c.id, r.result) }; r.readAsDataURL(f) }}} />
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-zinc-200 truncate">{c.name}</span>
+                  {c.email && <span className="ml-2 text-zinc-500 text-xs">{c.email}</span>}
                 </div>
                 <button type="button" onClick={() => deleteClient(c.id)}>
                   <Trash2 className="h-3 w-3 text-red-400" />

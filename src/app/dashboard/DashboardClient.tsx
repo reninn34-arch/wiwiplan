@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, Building2 } from "lucide-react"
+import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, Building2, Camera } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,6 +36,8 @@ const ideaStatusLabels: Record<string, string> = {
 interface Client {
   id: string
   name: string
+  email?: string
+  logo?: string | null
 }
 
 interface Planning {
@@ -73,8 +75,10 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const [showClientForm, setShowClientForm] = useState(false)
   const [newClientName, setNewClientName] = useState("")
   const [newClientEmail, setNewClientEmail] = useState("")
+  const [newClientLogo, setNewClientLogo] = useState<string | null>(null)
   const [clients, setClients] = useState(initialClients)
   const [expandedClient, setExpandedClient] = useState<string | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const now = new Date()
   const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
@@ -84,13 +88,14 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newClientName, email: newClientEmail || newClientName.toLowerCase().replace(/\s+/g, ".") + "@temp.com" }),
+      body: JSON.stringify({ name: newClientName, email: newClientEmail || newClientName.toLowerCase().replace(/\s+/g, ".") + "@temp.com", logo: newClientLogo }),
     })
     if (res.ok) {
       const client = await res.json()
       setClients((prev) => [...prev, client].sort((a, b) => a.name.localeCompare(b.name)))
       setNewClientName("")
       setNewClientEmail("")
+      setNewClientLogo(null)
       setShowClientForm(false)
       setExpandedClient(client.id)
     }
@@ -171,6 +176,16 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
         <div className="mb-8 rounded-lg border border-white/5 bg-[#0c0c0e] p-4">
           <h2 className="mb-3 text-lg font-semibold text-zinc-200">Nuevo cliente</h2>
           <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button type="button" onClick={() => logoInputRef.current?.click()} className="relative w-12 h-12 shrink-0 rounded-full border border-dashed border-white/10 flex items-center justify-center hover:bg-white/5 overflow-hidden">
+                {newClientLogo ? (
+                  <img src={newClientLogo} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <Camera size={16} className="text-zinc-500" />
+                )}
+              </button>
+              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => { if (typeof r.result === "string") setNewClientLogo(r.result) }; r.readAsDataURL(f) } }} />
+            </div>
             <Input
               placeholder="Nombre del cliente"
               value={newClientName}
@@ -258,6 +273,13 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
               >
                 <Building2 className="h-5 w-5 text-zinc-500" />
+                {client.logo ? (
+                  <img src={client.logo} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+                    <Building2 size={14} className="text-zinc-500" />
+                  </div>
+                )}
                 <span className="text-lg font-semibold text-zinc-200">{client.name}</span>
                 {latestPeriod && <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-zinc-400">{latestPeriod}</span>}
                 <span className="text-xs text-zinc-500">{plans.length} {plans.length === 1 ? "mes" : "meses"}</span>

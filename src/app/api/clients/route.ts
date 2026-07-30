@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: body.name,
         email: body.email ?? "",
+        logo: body.logo ?? null,
         userId: session.user.id,
       },
     })

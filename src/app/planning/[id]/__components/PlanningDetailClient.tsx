@@ -51,7 +51,7 @@ interface PlanningData {
   clientId: string | null
   createdAt: string
   updatedAt: string
-  client: { id: string; name: string; email: string } | null
+  client: { id: string; name: string; email: string; logo?: string | null } | null
   contentIdeas: Array<{
     id: string
     title: string
@@ -152,7 +152,12 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           <div className="flex items-center text-sm font-medium min-w-0">
             <span className="hidden sm:inline text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors truncate" onClick={() => router.push("/dashboard")}>Workspace</span>
             <ChevronRight size={14} className="hidden sm:block text-zinc-700 mx-1 shrink-0" />
-            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors truncate max-w-[120px] sm:max-w-[200px]">{planning.client?.name ?? "Sin cliente"}</span>
+            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors truncate max-w-[120px] sm:max-w-[200px] flex items-center gap-1.5" onClick={() => router.push("/dashboard")}>
+              {planning.client?.logo ? (
+                <img src={planning.client.logo} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+              ) : null}
+              {planning.client?.name ?? "Sin cliente"}
+            </span>
             <ChevronRight size={14} className="text-zinc-700 mx-1 shrink-0" />
             <span className="text-zinc-100 flex items-center gap-2 min-w-0">
               {editingPeriod ? (

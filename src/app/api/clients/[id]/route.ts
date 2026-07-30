@@ -13,7 +13,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     await prisma.client.updateMany({
       where: { id, userId: session.user.id },
-      data: { name: body.name, email: body.email ?? "" },
+      data: { name: body.name, email: body.email ?? "", logo: body.logo ?? null },
     })
     return NextResponse.json({ success: true })
   } catch {

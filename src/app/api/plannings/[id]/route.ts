@@ -13,7 +13,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const planning = await prisma.planning.findFirst({
       where: { id, userId: session.user.id },
       include: {
-        client: { select: { id: true, name: true, email: true } },
+        client: { select: { id: true, name: true, email: true, logo: true } },
         contentIdeas: { orderBy: { order: "asc" } },
         storyboards: {
           orderBy: { createdAt: "desc" },

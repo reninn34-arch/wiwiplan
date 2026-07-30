@@ -78,7 +78,7 @@ interface Planning {
   targetAudience: string
   goals: string
   notes: string
-  client: { id: string; name: string } | null
+  client: { id: string; name: string; logo?: string | null } | null
   contentIdeas: ContentIdea[]
   storyboards: Storyboard[]
 }
@@ -323,6 +323,7 @@ export function SharedPlanningView({ planning }: Props) {
               <h1 className="text-xl sm:text-3xl font-bold text-zinc-200 truncate">{planning.title}</h1>
               {planning.client && (
                 <p className="mt-1 text-sm sm:text-base text-zinc-500">
+                  {planning.client.logo && <img src={planning.client.logo} alt="" className="w-5 h-5 rounded-full inline-block mr-1.5 align-middle" />}
                   Planificación para: <span className="font-medium text-zinc-300">{planning.client.name}</span>
                   {planning.period && <span className="text-zinc-600"> — {formatPeriod(planning.period)}</span>}
                 </p>

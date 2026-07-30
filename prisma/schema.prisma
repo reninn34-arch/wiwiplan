@@ -69,6 +69,7 @@ model Client {
   id     String @id @default(cuid())
   name   String
   email  String
+  logo   String?
   userId String
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
