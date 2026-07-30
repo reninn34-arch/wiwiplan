@@ -1,7 +1,7 @@
 export function detectEmbed(url: string): { embedUrl: string; platform: string } | null {
   if (!url) return null
 
-  const cleanUrl = url.split("?")[0].split("&")[0]
+  const cleanUrl = url.trim()
 
   const youtube = cleanUrl.match(
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/
@@ -23,7 +23,7 @@ export function detectEmbed(url: string): { embedUrl: string; platform: string }
   const facebook = cleanUrl.match(/facebook\.com\/(?:watch\/?\?v=|[\w.]+\/videos\/)(\d+)/)
   if (facebook) return { embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}`, platform: "FACEBOOK" }
 
-  const isImage = /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)(\?.*)?$/i.test(cleanUrl)
+  const isImage = /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)(\?.*)?$/i.test(url)
   if (isImage) return { embedUrl: url, platform: "IMAGE" }
 
   const isPinterest = url.match(/pinterest\.com\/pin\//)

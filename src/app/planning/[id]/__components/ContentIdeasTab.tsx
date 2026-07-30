@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, type ClipboardEvent } from "react
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Columns3, Table2, MessageSquare, Send,
   ArrowUp, LayoutGrid, Bell, CheckCircle2, Circle,
-  MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight,
+  MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight, Layout,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -177,7 +177,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
 
   return (
     <>
-    <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
+    <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
       <div className="flex items-center justify-center text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
         <GripVertical size={14} />
       </div>
@@ -230,6 +230,30 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
         >
           {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
         </select>
+      </div>
+
+      <div className="min-w-0">
+        {idea.referenceEmbed ? (
+          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 truncate">
+            {idea.platform === "IMAGE" ? (
+              <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+            ) : (
+              <ExternalLink size={10} className="shrink-0" />
+            )}
+            {platformLabel(idea.platform)}
+          </span>
+        ) : idea.referenceUrl ? (
+          <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate">
+            <ExternalLink size={10} className="shrink-0" />
+            {idea.referenceUrl.length > 20 ? idea.referenceUrl.slice(0, 20) + "…" : idea.referenceUrl}
+          </a>
+        ) : idea.storyboardId ? (
+          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-600">
+            <Layout size={10} /> Storyboard
+          </span>
+        ) : (
+          <span className="text-[10px] text-zinc-700">—</span>
+        )}
       </div>
 
       <div>
@@ -609,6 +633,25 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                     <p className="cursor-pointer text-xs font-medium text-zinc-200 hover:text-white" onClick={() => openEditDialog(idea)}>{idea.title}</p>
                   </div>
                   {idea.description && <p className="mt-0.5 text-[10px] text-zinc-500 line-clamp-2">{idea.description}</p>}
+                  <div className="mt-1 flex items-center gap-1 text-[9px] text-zinc-600">
+                    {idea.referenceEmbed ? (
+                      <>
+                        {idea.platform === "IMAGE" ? (
+                          <img src={idea.referenceEmbed} alt="" className="w-4 h-4 rounded object-cover" />
+                        ) : (
+                          <ExternalLink size={9} />
+                        )}
+                        <span>{platformLabel(idea.platform)}</span>
+                      </>
+                    ) : idea.referenceUrl ? (
+                      <>
+                        <ExternalLink size={9} />
+                        <span className="truncate max-w-[100px]">{idea.referenceUrl}</span>
+                      </>
+                    ) : idea.storyboardId ? (
+                      <><Layout size={9} /> Storyboard</>
+                    ) : null}
+                  </div>
                   {idea.dueDate && <p className="mt-1 text-[10px] text-zinc-600">📅 {formatDate(idea.dueDate)}</p>}
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {idea.contentIdeaTags?.map((ct) => (
@@ -787,11 +830,12 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
         <div className="overflow-x-auto">
         <div className="min-w-[750px] border border-white/5 rounded-xl overflow-hidden bg-[#0c0c0e]">
           {/* Table Header */}
-          <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_100px_100px_48px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
+          <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
             <div />
             <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Tema</div>
             <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Estado</div>
             <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Formato</div>
+            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Referencia</div>
             <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Pilar</div>
             <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Prioridad</div>
             <div />
@@ -800,7 +844,7 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
           {!mounted ? (
             <div className="flex flex-col">
               {filtered.map((idea) => (
-                <div key={idea.id} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group">
+                <div key={idea.id} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group">
                   <div />
                   <div className="min-w-0 pr-4">
                     <h3 className="text-sm font-medium text-zinc-100 truncate">{idea.title}</h3>
@@ -815,6 +859,29 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Pro
                       <PlatformIcon platform={idea.platform} />
                     </div>
                     <span className="text-sm text-zinc-300">{postTypeLabel(idea.postType)}</span>
+                  </div>
+                  <div className="min-w-0">
+                    {idea.referenceEmbed ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 truncate">
+                        {idea.platform === "IMAGE" ? (
+                          <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+                        ) : (
+                          <ExternalLink size={10} className="shrink-0" />
+                        )}
+                        {platformLabel(idea.platform)}
+                      </span>
+                    ) : idea.referenceUrl ? (
+                      <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate">
+                        <ExternalLink size={10} className="shrink-0" />
+                        {idea.referenceUrl.length > 20 ? idea.referenceUrl.slice(0, 20) + "…" : idea.referenceUrl}
+                      </a>
+                    ) : idea.storyboardId ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-zinc-600">
+                        <Layout size={10} /> Storyboard
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-zinc-700">—</span>
+                    )}
                   </div>
                   <div>
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-800/50 text-zinc-400 text-xs font-medium border border-white/5">
