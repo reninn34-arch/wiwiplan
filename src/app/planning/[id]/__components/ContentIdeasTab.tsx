@@ -178,7 +178,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
   return (
     <>
     <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
-      <div className="flex items-center justify-center text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
+      <div className="flex items-center justify-center text-zinc-600 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
         <GripVertical size={14} />
       </div>
 
@@ -695,7 +695,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
       {/* Toolbar */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
 
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-2 flex-1 flex-wrap">
           {/* Command-style Search */}
           <div className="relative group w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
@@ -1044,12 +1044,12 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-zinc-600">
+      <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-zinc-600">
         <p>Mostrando {filtered.length} de {ideas.length} ideas.</p>
-        <div className="flex gap-4">
+        <div className="flex gap-3 sm:gap-4">
           <span className="flex items-center gap-1 hover:text-zinc-400 cursor-pointer transition-colors"><Command size={12} /> Gestionar columnas</span>
-          <span className="flex items-center gap-1"><Play className="h-3 w-3" /> YouTube/Vimeo</span>
-          <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" /> TikTok/IG/FB</span>
+          <span className="hidden sm:flex items-center gap-1"><Play className="h-3 w-3" /> YouTube/Vimeo</span>
+          <span className="hidden sm:flex items-center gap-1"><ExternalLink className="h-3 w-3" /> TikTok/IG/FB</span>
         </div>
       </div>
 

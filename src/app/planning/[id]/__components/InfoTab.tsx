@@ -195,7 +195,7 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
                 <input id={`logo-input-${c.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => { if (typeof r.result === "string") updateClientLogo(c.id, r.result) }; r.readAsDataURL(f) }}} />
                 <div className="flex-1 min-w-0">
                   <span className="font-medium text-zinc-200 truncate">{c.name}</span>
-                  {c.email && <span className="ml-2 text-zinc-500 text-xs">{c.email}</span>}
+                  {c.email && <span className="ml-2 text-zinc-500 text-xs truncate">{c.email}</span>}
                 </div>
                 <button type="button" onClick={() => deleteClient(c.id)}>
                   <Trash2 className="h-3 w-3 text-red-400" />

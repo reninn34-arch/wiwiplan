@@ -190,7 +190,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Title Area */}
-        <div className="mb-8 flex items-end justify-between">
+        <div className="mb-8 flex items-end justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">
               {planning.title || "Plan de Contenido"}
@@ -202,13 +202,13 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b border-white/5 mb-6">
+        <div className="flex items-center gap-1 border-b border-white/5 mb-6 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium capitalize transition-all relative ${
+              className={`px-3 sm:px-4 py-2.5 text-sm font-medium capitalize whitespace-nowrap transition-all relative ${
                 activeTab === tab.id
                   ? "text-zinc-100"
                   : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02] rounded-t-lg"
