@@ -27,7 +27,7 @@ export default async function PlanningDetailPage({ params }: Props) {
       },
       storyboards: {
         orderBy: { createdAt: "desc" },
-        include: { panels: { orderBy: { order: "asc" } } },
+        select: { id: true, title: true, createdAt: true },
       },
       shareLinks: { orderBy: { createdAt: "desc" } },
     },

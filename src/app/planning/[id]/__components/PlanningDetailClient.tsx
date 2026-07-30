@@ -6,9 +6,11 @@ import { ArrowLeft, Bell, Share2, MoreHorizontal, ChevronRight } from "lucide-re
 import { Button } from "@/components/ui/button"
 import { InfoTab } from "./InfoTab"
 import { ContentIdeasTab } from "./ContentIdeasTab"
-import { StoryboardsTab } from "./StoryboardsTab"
+import dynamic from "next/dynamic"
 import { ShareModal } from "./ShareModal"
 import { NotificationBell } from "@/components/NotificationBell"
+
+const StoryboardsTab = dynamic(() => import("./StoryboardsTab").then((m) => ({ default: m.StoryboardsTab })), { ssr: false })
 
 const months: Record<string, string> = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -73,16 +75,6 @@ interface PlanningData {
   storyboards: Array<{
     id: string
     title: string
-    description: string
-    panels: Array<{
-      id: string
-      sceneNumber: number
-      imageUrl: string
-      description: string
-      duration: string
-      notes: string
-      order: number
-    }>
   }>
   shareLinks: Array<{
     id: string
@@ -237,7 +229,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           <ContentIdeasTab planningId={planning.id} ideas={planning.contentIdeas} storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))} />
         )}
         {activeTab === "storyboard" && (
-          <StoryboardsTab planningId={planning.id} storyboards={planning.storyboards} />
+          <StoryboardsTab planningId={planning.id} />
         )}
       </main>
 

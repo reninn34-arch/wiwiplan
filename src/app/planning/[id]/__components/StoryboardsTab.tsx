@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, type ClipboardEvent } from "react"
+import { useState, useRef, useEffect, type ClipboardEvent } from "react"
 import { Plus, ImagePlus, Trash2, GripVertical, Clock, ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,12 +47,22 @@ interface Storyboard {
 
 interface Props {
   planningId: string
-  storyboards: Storyboard[]
 }
 
-export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
-  const [storyboards, setStoryboards] = useState(initial)
-  const [activeSb, setActiveSb] = useState<string | null>(initial[0]?.id ?? null)
+export function StoryboardsTab({ planningId }: Props) {
+  const [storyboards, setStoryboards] = useState<Storyboard[]>([])
+  const [activeSb, setActiveSb] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`/api/plannings/${planningId}/storyboard`)
+      .then((r) => r.json())
+      .then((data) => {
+        setStoryboards(data)
+        if (data.length > 0) setActiveSb(data[0].id)
+      })
+      .finally(() => setLoading(false))
+  }, [planningId])
 
   const createStoryboard = async () => {
     const res = await fetch(`/api/plannings/${planningId}/storyboard`, {
@@ -169,6 +179,8 @@ export function StoryboardsTab({ planningId, storyboards: initial }: Props) {
   }
 
   const activeStoryboard = storyboards.find((s) => s.id === activeSb)
+
+  if (loading) return <div className="h-32" />
 
   return (
     <div className="space-y-4">
