@@ -850,7 +850,84 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
           <p className="text-zinc-500">No hay contenido. Agregá la primera fila.</p>
         </div>
       ) : view === "table" ? (
-        <div className="overflow-x-auto">
+        <>
+        {/* Mobile cards */}
+        <div className="space-y-3 sm:hidden">
+          {filtered.map((idea) => (
+            <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden">
+              <div className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <button type="button" className="text-sm font-medium text-zinc-200 text-left hover:text-white truncate" onClick={() => openEditDialog(idea)}>{idea.title}</button>
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400">
+                    <StatusIcon status={idea.status} />
+                    {ideaStatusLabels[idea.status]}
+                  </span>
+                </div>
+
+                {idea.description && <p className="text-xs text-zinc-500">{idea.description}</p>}
+
+                <div className="flex flex-wrap gap-1.5 text-xs text-zinc-400">
+                  <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
+                    <PlatformIcon platform={idea.platform} />
+                    {postTypeLabel(idea.postType)}
+                  </span>
+                  {idea.pilar && (
+                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
+                      <Hash size={10} /> {idea.pilar}
+                    </span>
+                  )}
+                  <span className={`inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-500"}`}>
+                    <PriorityIcon priority={idea.priority} />
+                    {priorityLabels[idea.priority]}
+                  </span>
+                  {idea.dueDate && (
+                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-zinc-500">
+                      📅 {new Date(idea.dueDate).toLocaleDateString("es-AR")}
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs">
+                  {idea.referenceUrl ? (
+                    <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-white/70 hover:text-white">
+                      <ExternalLink size={10} />
+                      {idea.referenceEmbed ? platformLabel(idea.platform) : idea.referenceUrl.length > 30 ? idea.referenceUrl.slice(0, 30) + "…" : idea.referenceUrl}
+                    </a>
+                  ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
+                    <img src={idea.referenceEmbed} alt="" className="h-12 w-12 rounded object-cover bg-white/[0.03]" />
+                  ) : idea.storyboardId ? (
+                    <span className="inline-flex items-center gap-1 text-zinc-500">
+                      <Layout size={10} /> {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}
+                    </span>
+                  ) : null}
+                </div>
+
+                {idea.contentIdeaTags && idea.contentIdeaTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {idea.contentIdeaTags.map((ct) => (
+                      <span key={ct.tag.id} className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: ct.tag.color }}>{ct.tag.name}</span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                  <button type="button" onClick={() => openEditDialog(idea)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white">
+                    <ExternalLink size={12} /> Editar
+                  </button>
+                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    {idea.comments?.length > 0 && (
+                      <span className="inline-flex items-center gap-1"><MessageSquare size={12} /> {idea.comments.length}</span>
+                    )}
+                    <button type="button" onClick={() => deleteIdea(idea.id)} className="text-red-400 hover:text-red-300"><Trash2 size={12} /></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
         <div className="min-w-[750px] border border-white/5 rounded-xl overflow-hidden bg-[#0c0c0e]">
           {/* Table Header */}
           <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
@@ -958,6 +1035,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
           )}
         </div>
         </div>
+        </>
       ) : (
         renderKanban()
       )}

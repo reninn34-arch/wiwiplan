@@ -32,6 +32,9 @@ const statusColors: Record<string, string> = {
 const ideaStatusLabels: Record<string, string> = {
   IDEA: "Idea", SELECTED: "Seleccionada", IN_PRODUCTION: "En Producción", DONE: "Lista",
 }
+const priorityLabels: Record<string, string> = {
+  HIGH: "Alta", MEDIUM: "Media", LOW: "Baja",
+}
 
 interface Client {
   id: string
@@ -208,7 +211,38 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-200">
             <ArrowUp className="h-4 w-4 text-rose-400" /> Pendientes ({pendingIdeas.length})
           </h2>
-          <div className="overflow-x-auto rounded-lg border border-white/5">
+
+          {/* Mobile cards */}
+          <div className="space-y-3 sm:hidden">
+            {pendingIdeas.map((idea) => (
+              <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden cursor-pointer" onClick={() => router.push(`/planning/${idea.planning.id}`)}>
+                <div className="p-3 space-y-2">
+                  <p className="text-sm font-medium text-zinc-200">{idea.title}</p>
+                  {idea.description && <p className="text-xs text-zinc-500 line-clamp-2">{idea.description}</p>}
+                  <div className="flex flex-wrap gap-1.5 text-xs text-zinc-400">
+                    <span className="rounded bg-white/5 px-1.5 py-0.5">
+                      {idea.planning.client?.name}{idea.planning.period && <> — {formatPeriod(idea.planning.period)}</>}
+                    </span>
+                    <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-400">{ideaStatusLabels[idea.status] ?? idea.status}</span>
+                    <span className={`rounded bg-white/5 px-1.5 py-0.5 ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-500"}`}>
+                      {priorityLabels[idea.priority] ?? idea.priority}
+                    </span>
+                    {idea.dueDate && (
+                      <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-500">
+                        📅 {new Date(idea.dueDate).toLocaleDateString("es-AR")}
+                      </span>
+                    )}
+                  </div>
+                  {idea._count.comments > 0 && (
+                    <p className="text-xs text-zinc-500"><MessageSquare className="h-3 w-3 inline-block" /> {idea._count.comments} comentarios</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto rounded-lg border border-white/5">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.03]">
                 <tr className="border-b border-white/5">
@@ -270,7 +304,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               <button
                 type="button"
                 onClick={() => setExpandedClient(isExpanded ? null : client.id)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors flex-wrap"
               >
                 <Building2 className="h-5 w-5 text-zinc-500" />
                 {client.logo ? (
@@ -280,7 +314,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                     <Building2 size={14} className="text-zinc-500" />
                   </div>
                 )}
-                <span className="text-lg font-semibold text-zinc-200 truncate">{client.name}</span>
+                <span className="text-base sm:text-lg font-semibold text-zinc-200 truncate">{client.name}</span>
                 {latestPeriod && <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-zinc-400">{latestPeriod}</span>}
                 <span className="text-xs text-zinc-500">{plans.length} {plans.length === 1 ? "mes" : "meses"}</span>
                 <ChevronRight className={`ml-auto h-4 w-4 text-zinc-500 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
