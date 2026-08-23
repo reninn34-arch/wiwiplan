@@ -132,9 +132,9 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const [expandedClient, setExpandedClient] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   // Filtro activado desde el resumen de negocio.
-  const [summaryFilter, setSummaryFilter] = useState<"ALL" | "DEBT" | "REVIEW" | "APPROVED">("ALL")
+  const [summaryFilter, setSummaryFilter] = useState<"ALL" | "DEBT" | "REVIEW" | "APPROVED" | "PUBLISHED">("ALL")
   const [clientChip, setClientChip] = useState("ALL")
-  // Pendientes arranca abierto y recuerda si lo colapsaste.
+  // Pendientes arranca plegado: si lo abrís, queda abierto en las próximas visitas.
   const [pendOpen, setPendOpen] = useState<boolean | null>(null)
   const [showAllPendientes, setShowAllPendientes] = useState(false)
   const [showMonthDialog, setShowMonthDialog] = useState(false)
@@ -143,7 +143,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPendOpen(localStorage.getItem("wiwiplan-pendientes") !== "0")
+      setPendOpen(localStorage.getItem("wiwiplan-pendientes") === "1")
     }, 0)
     return () => clearTimeout(timer)
   }, [])
@@ -235,6 +235,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const totalDebt = initial.reduce((sum, p) => sum + debtOf(p), 0)
   const reviewCount = initial.filter((p) => p.status === "REVIEW").length
   const approvedCount = initial.filter((p) => p.status === "APPROVED").length
+  const publishedCount = initial.filter((p) => p.status === "PUBLISHED").length
 
   // --- Pool de "En curso": cambia según el filtro que activaste en el resumen ---
   let basePlans: Planning[]
@@ -256,6 +257,10 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     } else if (summaryFilter === "APPROVED") {
       basePlans = basePlans.filter((p) => p.status === "APPROVED")
       sectionLabel = "Aprobados"
+    } else if (summaryFilter === "PUBLISHED") {
+      // Los publicados viven en el archivo: al filtrarlos salen igual en la grilla.
+      basePlans = initial.filter((p) => p.status === "PUBLISHED")
+      sectionLabel = "Publicados"
     }
   }
   basePlans.sort(sortByPeriod)
@@ -263,7 +268,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const chipClients = clients.filter((c) => basePlans.some((p) => p.client?.id === c.id))
   const visibleActive = clientChip === "ALL" ? basePlans : basePlans.filter((p) => p.client?.id === clientChip)
 
-  const toggleSummary = (filter: "DEBT" | "REVIEW" | "APPROVED") => {
+  const toggleSummary = (filter: "DEBT" | "REVIEW" | "APPROVED" | "PUBLISHED") => {
     setSummaryFilter((prev) => (prev === filter ? "ALL" : filter))
     setClientChip("ALL")
   }
@@ -352,7 +357,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
       )}
 
       {/* Resumen de negocio: un vistazo a la plata y al pipeline */}
-      <section className="mb-8 grid grid-cols-3 gap-3">
+      <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           type="button"
           className={metricCardClass(summaryFilter === "DEBT")}
@@ -381,6 +386,16 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           <p className="text-[11px] uppercase tracking-wide text-zinc-500">Aprobados</p>
           <p className={`mt-1 text-xl font-bold tabular-nums ${approvedCount > 0 ? "text-green-300" : "text-zinc-100"}`}>
             {approvedCount}
+          </p>
+        </button>
+        <button
+          type="button"
+          className={metricCardClass(summaryFilter === "PUBLISHED")}
+          onClick={() => toggleSummary("PUBLISHED")}
+        >
+          <p className="text-[11px] uppercase tracking-wide text-zinc-500">Publicados</p>
+          <p className={`mt-1 text-xl font-bold tabular-nums ${publishedCount > 0 ? "text-purple-300" : "text-zinc-100"}`}>
+            {publishedCount}
           </p>
         </button>
       </section>
@@ -437,9 +452,9 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           <button type="button" onClick={togglePend} className="mb-3 flex w-full items-center gap-2 text-left text-lg font-semibold text-zinc-200 hover:text-white">
             <ArrowUp className="h-4 w-4 shrink-0 text-rose-400" />
             <span>Pendientes ({pendingIdeas.length})</span>
-            <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-zinc-500 transition-transform ${pendOpen ?? true ? "" : "-rotate-90"}`} />
+            <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-zinc-500 transition-transform ${pendOpen ?? false ? "" : "-rotate-90"}`} />
           </button>
-          {(pendOpen ?? true) && (
+          {(pendOpen ?? false) && (
           <>
           {/* Mobile cards */}
           <div className="space-y-3 sm:hidden">
