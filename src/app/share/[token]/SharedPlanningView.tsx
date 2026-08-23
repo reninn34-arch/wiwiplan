@@ -295,6 +295,8 @@ export function SharedPlanningView({ planning }: Props) {
   const [status, setStatus] = useState(planning.status)
   const [isApproving, setIsApproving] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  // Publicado ya pasó por aprobado: el botón no reaparece ni permite volver atrás.
+  const isApproved = status === "APPROVED" || status === "PUBLISHED"
 
   const paymentSummary = summarizePayments(planning.priceCents, planning.payments)
   const showPayments = planning.priceCents > 0 || planning.payments.length > 0
@@ -317,7 +319,12 @@ export function SharedPlanningView({ planning }: Props) {
       const res = await fetch(`/api/share/${window.location.pathname.split("/").pop()}/approve`, {
         method: "POST",
       })
-      if (res.ok) setStatus("APPROVED")
+      if (res.ok) {
+        // El servidor manda el estado final: si el plan ya estaba publicado,
+        // se queda publicado en vez de retroceder a aprobado.
+        const data = await res.json().catch(() => null)
+        setStatus(data?.status ?? "APPROVED")
+      }
     } finally {
       setIsApproving(false)
     }
@@ -477,7 +484,7 @@ export function SharedPlanningView({ planning }: Props) {
           </section>
         ))}
 
-        {status !== "APPROVED" && (
+        {!isApproved && (
           <div className="flex justify-center py-8">
             <Button size="lg" onClick={handleApprove} disabled={isApproving} className="w-full gap-2 bg-white text-black hover:bg-zinc-200 sm:w-auto">
               <CheckCircle className="h-5 w-5" />
@@ -486,11 +493,11 @@ export function SharedPlanningView({ planning }: Props) {
           </div>
         )}
 
-        {status === "APPROVED" && (
+        {isApproved && (
           <div className="py-8 text-center">
             <div className="inline-flex items-center gap-2 rounded-lg bg-green-500/10 px-6 py-3 font-medium text-green-400">
               <CheckCircle className="h-5 w-5" />
-              <span>Planificación aprobada</span>
+              <span>{status === "PUBLISHED" ? "Planificación aprobada y publicada" : "Planificación aprobada"}</span>
             </div>
           </div>
         )}
