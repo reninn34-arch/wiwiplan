@@ -26,8 +26,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "No encontrada" }, { status: 404 })
     }
 
-    const shareLink = await prisma.shareLink.create({
-      data: { token: nanoid(32), planningId: id, expiresAt },
+    // Generar de nuevo reemplaza el enlace anterior: queda uno solo vigente y
+    // los tokens viejos dejan de funcionar en el momento.
+    const shareLink = await prisma.$transaction(async (tx) => {
+      await tx.shareLink.deleteMany({ where: { planningId: id } })
+      return tx.shareLink.create({
+        data: { token: nanoid(32), planningId: id, expiresAt },
+      })
     })
 
     return NextResponse.json(shareLink, { status: 201 })

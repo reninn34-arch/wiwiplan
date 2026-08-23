@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { X, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 
 interface ShareLink {
   id: string
@@ -15,10 +14,11 @@ interface ShareLink {
 interface Props {
   planningId: string
   shareLinks: ShareLink[]
+  onCreated?: (link: ShareLink) => void
   onClose: () => void
 }
 
-export function ShareModal({ planningId, shareLinks: initial, onClose }: Props) {
+export function ShareModal({ planningId, shareLinks: initial, onCreated, onClose }: Props) {
   const [links, setLinks] = useState(initial)
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -29,7 +29,9 @@ export function ShareModal({ planningId, shareLinks: initial, onClose }: Props) 
     })
     if (res.ok) {
       const link = await res.json()
-      setLinks((prev) => [link, ...prev])
+      // El servidor borra los enlaces anteriores: queda solo el nuevo.
+      setLinks([link])
+      onCreated?.(link)
     }
   }
 
@@ -65,11 +67,15 @@ export function ShareModal({ planningId, shareLinks: initial, onClose }: Props) 
           <div className="space-y-2">
             {links.map((link) => (
               <div key={link.id} className="flex items-center gap-2 rounded-md border border-white/5 bg-[#0c0c0e] p-2">
-                <Input
-                  readOnly
-                  value={shareUrl(link.token)}
-                  className="flex-1 text-xs"
-                />
+                <a
+                  href={shareUrl(link.token)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Abrir vista compartida"
+                  className="flex h-9 min-w-0 flex-1 items-center rounded-md border border-input bg-transparent px-3 text-sm shadow-sm transition-colors hover:border-zinc-500"
+                >
+                  <span className="truncate text-xs text-zinc-300">{shareUrl(link.token)}</span>
+                </a>
                 <Button
                   size="sm"
                   variant="ghost"

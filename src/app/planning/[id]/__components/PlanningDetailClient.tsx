@@ -417,6 +417,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
         <ShareModal
           planningId={planning.id}
           shareLinks={planning.shareLinks}
+          onCreated={(link) => updatePlanning({ shareLinks: [link] })}
           onClose={() => setShowShare(false)}
         />
       )}
