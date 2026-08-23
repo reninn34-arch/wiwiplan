@@ -62,7 +62,7 @@ export default function RegisterPage() {
           <Button type="submit" className="w-full">Registrarse</Button>
         </form>
         <p className="text-center text-sm text-muted-foreground">
-          ¿Ya tenés cuenta? <a href="/login" className="text-primary underline">Iniciá sesión</a>
+          ¿Ya tienes cuenta? <a href="/login" className="text-primary underline">Iniciá sesión</a>
         </p>
       </div>
     </div>

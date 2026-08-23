@@ -147,7 +147,7 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-zinc-400">Objetivos</label>
-        <RichEditor value={goals} onChange={setGoals} placeholder="¿Qué querés lograr con este contenido?" />
+        <RichEditor value={goals} onChange={setGoals} placeholder="¿Qué quieres lograr con este contenido?" />
       </div>
 
       <div className="space-y-2">

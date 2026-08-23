@@ -139,7 +139,7 @@ export function SettingsClient() {
               </span>
             </div>
             <p className="mb-4 text-xs leading-relaxed text-zinc-400">
-              Sirve cualquier cuenta SMTP. Tocá tu proveedor y se llena el servidor y el puerto:
+              Sirve cualquier cuenta SMTP. Toca tu proveedor y se llena el servidor y el puerto:
             </p>
             <div className="mb-4 flex flex-wrap gap-2">
               {SMTP_PRESETS.map((preset) => (
@@ -259,7 +259,7 @@ export function SettingsClient() {
               (la normal no sirve). Usuario: tu email completo.
               <br />
               <span className="font-medium text-zinc-300">Outlook / Microsoft 365:</span> servidor
-              smtp.office365.com, puerto 587, usuario tu email completo. Si tenés verificación en dos
+              smtp.office365.com, puerto 587, usuario tu email completo. Si tienes verificación en dos
               pasos, también contraseña de aplicación. En cuentas de empresa el administrador puede
               tener el SMTP desactivado.
             </p>
@@ -272,7 +272,7 @@ export function SettingsClient() {
           <section className="rounded-xl border border-white/5 bg-[#0c0c0e] p-5">
             <h2 className="mb-1 text-sm font-semibold tracking-tight text-zinc-100">Probar el envío</h2>
             <p className="mb-3 text-xs text-zinc-400">
-              Mandate un email de prueba para confirmar que el servidor y el remitente funcionan antes
+              Envíate un email de prueba para confirmar que el servidor y el remitente funcionan antes
               de emitir recibos reales.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">

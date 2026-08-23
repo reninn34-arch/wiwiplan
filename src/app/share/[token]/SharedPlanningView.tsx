@@ -185,7 +185,7 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
               <div key={c.id} className="rounded border border-white/5 px-3 py-2">
                 <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
                 <p className="text-sm text-zinc-200">{c.text}</p>
-                <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+                <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-EC")}</p>
               </div>
             ))}
             <div className="flex gap-2">
@@ -194,7 +194,7 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
-                placeholder="Escribí un comentario..."
+                placeholder="Escribe un comentario..."
                 disabled={sending}
               />
               <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-black disabled:opacity-50 sm:h-9 sm:w-9">
@@ -297,7 +297,7 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
                 <div key={c.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] px-3 py-2">
                   <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
                   <p className="text-sm text-zinc-200">{c.text}</p>
-                  <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+                  <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-EC")}</p>
                 </div>
               ))}
               <div className="flex gap-2">
@@ -306,7 +306,7 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
-                  placeholder="Escribí un comentario..."
+                  placeholder="Escribe un comentario..."
                   disabled={sending}
                 />
                 <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-black disabled:opacity-50 sm:h-9 sm:w-9">

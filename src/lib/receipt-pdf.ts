@@ -68,7 +68,7 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   }
   drawRight(page, `Nº ${data.receiptNumber}`, bold, 10.5, PAGE_WIDTH - MARGIN, y)
   y -= 12
-  const issuedLabel = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long", year: "numeric" }).format(new Date())
+  const issuedLabel = new Intl.DateTimeFormat("es-EC", { day: "numeric", month: "long", year: "numeric" }).format(new Date())
   drawRight(page, issuedLabel, regular, 9, PAGE_WIDTH - MARGIN, y, MUTED)
 
   // Regla gruesa bajo el encabezado
@@ -209,7 +209,7 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   })
   y -= 16
   const footer =
-    "Este documento confirma la recepción del pago detallado arriba. El saldo indicado corresponde al período mencionado a la fecha de emisión. Ante cualquier consulta, respondé este mensaje."
+    "Este documento confirma la recepción del pago detallado arriba. El saldo indicado corresponde al período mencionado a la fecha de emisión. Ante cualquier consulta, responde este mensaje."
   for (const line of wrap(footer, regular, 8, contentWidth)) {
     page.drawText(line, { x: MARGIN, y, size: 8, font: regular, color: FAINT })
     y -= 11

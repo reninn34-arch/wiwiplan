@@ -41,7 +41,7 @@ export function receiptNumberFromId(id: string): string {
   return `R-${clean.slice(-6).padStart(6, "0")}`
 }
 
-const ISSUE_DATE_FORMATTER = new Intl.DateTimeFormat("es-AR", {
+const ISSUE_DATE_FORMATTER = new Intl.DateTimeFormat("es-EC", {
   day: "numeric",
   month: "long",
   year: "numeric",
@@ -190,7 +190,7 @@ export function buildReceiptHtml(data: ReceiptData): string {
       <div style="border-top:1px solid ${HAIR};"></div>
       <p style="margin:16px 0 0;font-size:11.5px;line-height:1.65;color:#8f8f8c;">
         Este documento confirma la recepción del pago detallado arriba. El saldo indicado corresponde
-        al período mencionado a la fecha de emisión. Ante cualquier consulta, respondé este mensaje.
+        al período mencionado a la fecha de emisión. Ante cualquier consulta, responde este mensaje.
       </p>
       <p style="margin:10px 0 0;font-size:11.5px;color:#8f8f8c;">Gracias por tu confianza, ${esc(data.clientName)}.</p>
     </td>

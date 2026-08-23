@@ -44,7 +44,7 @@ function reminderHtml(params: {
       <tr>
         <td style="padding:8px 0;border-bottom:1px solid #e4e4e0;font-size:13px;color:#141414;">
           ${esc(i.label || "Cuota")}
-          <span style="display:block;font-size:11px;color:#8f8f8c;margin-top:2px;">Vencida el ${esc(i.dueDate.toLocaleDateString("es-AR", { day: "numeric", month: "long" }))}</span>
+          <span style="display:block;font-size:11px;color:#8f8f8c;margin-top:2px;">Vencida el ${esc(i.dueDate.toLocaleDateString("es-EC", { day: "numeric", month: "long" }))}</span>
         </td>
         <td align="right" style="padding:8px 0;border-bottom:1px solid #e4e4e0;font-size:13px;font-weight:600;color:#141414;">${esc(formatMoney(i.amountCents))}</td>
       </tr>`,
@@ -106,7 +106,7 @@ function reminderHtml(params: {
     <td style="padding:26px 36px 32px;">
       <div style="border-top:1px solid #e4e4e0;"></div>
       <p style="margin:14px 0 0;font-size:11.5px;line-height:1.65;color:#8f8f8c;">
-        Si ya realizaste el pago, ignorá este mensaje o respondé con el comprobante para actualizarlo.
+        Si ya realizaste el pago, ignora este mensaje o responde con el comprobante para actualizarlo.
         Este es un recordatorio automático del sistema de planificación.
       </p>
     </td>

@@ -31,7 +31,7 @@ interface Panel {
   hasImage: boolean
   /** Vista previa local mientras la imagen viaja al servidor. */
   localPreview?: string
-  /** Cambia al reemplazar la imagen, para saltear el caché del navegador. */
+  /** Cambia al reemplazar la imagen, para evitar el caché del navegador. */
   imageVersion?: number
 }
 
@@ -270,7 +270,7 @@ export function StoryboardsTab({ planningId }: Props) {
     return (
       <div className="rounded-xl border border-white/5 bg-[#0c0c0e] py-12 text-center">
         <p className="text-sm text-zinc-200">No pudimos cargar los storyboards</p>
-        <p className="mt-1 text-xs text-zinc-400">Revisá la conexión y volvé a intentar.</p>
+        <p className="mt-1 text-xs text-zinc-400">Revisa la conexión y vuelve a intentar.</p>
         <Button className="mt-4" size="sm" variant="outline" onClick={() => location.reload()}>
           Reintentar
         </Button>
@@ -327,7 +327,7 @@ export function StoryboardsTab({ planningId }: Props) {
             <div className="rounded-xl border border-white/5 bg-[#0c0c0e] py-12 text-center">
               <p className="text-sm text-zinc-200">Este storyboard todavía no tiene escenas</p>
               <p className="mx-auto mt-1 max-w-sm text-xs text-zinc-400">
-                Cada escena lleva una imagen, una descripción y su duración. Podés pegar una captura
+                Cada escena lleva una imagen, una descripción y su duración. Puedes pegar una captura
                 directamente sobre la tarjeta.
               </p>
               <Button className="mt-4" size="sm" onClick={() => activeSb && addPanel(activeSb)}>

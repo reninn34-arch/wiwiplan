@@ -27,7 +27,7 @@ export function parseAmountToCents(raw: string): number | null {
   if (lastDot === -1 && lastComma === -1) {
     normalized = cleaned
   } else if (lastComma > lastDot) {
-    // formato es-AR: 1.200,50
+    // formato es-EC: 1.200,50
     normalized = cleaned.replace(/\./g, "").replace(",", ".")
   } else {
     // formato en-US: 1,200.50
@@ -100,7 +100,7 @@ export const paymentMethodLabels: Record<string, string> = {
 
 export const paymentMethods = ["TRANSFER", "CASH", "CARD", "PAYPAL", "CRYPTO", "OTHER"] as const
 
-const dateFormatter = new Intl.DateTimeFormat("es-AR", {
+const dateFormatter = new Intl.DateTimeFormat("es-EC", {
   day: "numeric",
   month: "short",
   year: "numeric",

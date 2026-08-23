@@ -129,7 +129,7 @@ export function PaymentsTab({
   const sendReceipt = async () => {
     if (!receiptFor) return
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiptTo.trim())) {
-      toast.error("Escribí un email de destino válido")
+      toast.error("Escribe un email de destino válido")
       return
     }
     setSendingReceipt(true)
@@ -210,7 +210,7 @@ export function PaymentsTab({
   const savePrice = async () => {
     const cents = parseAmountToCents(priceDraft)
     if (cents === null || cents < 0) {
-      toast.error("Escribí un precio válido, por ejemplo 1200")
+      toast.error("Escribe un precio válido, por ejemplo 1200")
       return
     }
     setSavingPrice(true)
@@ -274,7 +274,7 @@ export function PaymentsTab({
           : `${formatMoney(cents)} cobrado.`,
     )
 
-    // El recibo se ofrece apenas registrado: lo revisás antes de mandar nada.
+    // El recibo se ofrece apenas registrado: lo revisas antes de mandar nada.
     openReceipt(created)
   }
 
@@ -369,7 +369,7 @@ export function PaymentsTab({
           <div className="flex flex-col items-start gap-3 py-2">
             <div>
               <h2 className="text-sm font-semibold tracking-tight text-zinc-100">
-                Poné el precio de este plan
+                Pon el precio de este plan
               </h2>
               <p className="mt-1 max-w-md text-sm text-zinc-400">
                 Con el precio cargado registrás cada cobro, ves el saldo al instante y el cliente
@@ -461,7 +461,7 @@ export function PaymentsTab({
 
         {sortedInstallments.length === 0 ? (
           <p className="px-4 py-6 text-xs text-zinc-500 sm:px-5">
-            Sin fechas cargadas. Agregá las cuotas acordadas (ej.: semana por semana) para que el
+            Sin fechas cargadas. Agrega las cuotas acordadas (ej.: semana por semana) para que el
             cliente reciba recordatorios automáticos.
           </p>
         ) : (
@@ -607,7 +607,7 @@ export function PaymentsTab({
                 >
                   {formatMoney(summary.dueCents)}
                 </button>
-                . Tocalo para completar el monto.
+                . Tócalo para completar el monto.
               </p>
             )}
           </div>
@@ -617,7 +617,7 @@ export function PaymentsTab({
           <div className="px-4 py-10 text-center sm:px-5">
             <p className="text-sm text-zinc-300">Todavía no registraste ningún cobro</p>
             <p className="mx-auto mt-1 max-w-sm text-xs text-zinc-400">
-              Cargá cada pago que vayas recibiendo, de una vez o en cuotas. El cliente ve el avance
+              Carga cada pago que vayas recibiendo, de una vez o en cuotas. El cliente ve el avance
               en el enlace compartido.
             </p>
           </div>

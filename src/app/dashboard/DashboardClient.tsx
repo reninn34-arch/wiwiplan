@@ -377,7 +377,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
         </div>
       )}
 
-      {/* Resumen de negocio: un vistazo a la plata y al pipeline */}
+      {/* Resumen de negocio: un vistazo al dinero y al pipeline */}
       <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           type="button"
@@ -461,8 +461,8 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           <p className="rounded-lg border border-dashed border-white/10 p-6 text-center text-xs text-zinc-400">
             {summaryFilter === "ALL"
               ? clients.length === 0
-                ? "Creá un cliente para empezar."
-                : "Nada en curso. Creá un mes nuevo para arrancar."
+                ? "Crea un cliente para empezar."
+                : "Nada en curso. Crea un mes nuevo para arrancar."
               : "Sin meses que cumplan ese filtro."}
           </p>
         )}
@@ -494,7 +494,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                     </span>
                     {idea.dueDate && (
                       <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-400">
-                        📅 {new Date(idea.dueDate).toLocaleDateString("es-AR")}
+                        📅 {new Date(idea.dueDate).toLocaleDateString("es-EC")}
                       </span>
                     )}
                   </div>
@@ -537,7 +537,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                       <span className={`text-xs font-semibold ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-400"}`}>{idea.priority === "HIGH" ? "Alta" : idea.priority === "MEDIUM" ? "Media" : "Baja"}</span>
                     </td>
                     <td className="px-3 py-2 text-xs text-zinc-400">
-                      {idea.dueDate ? new Date(idea.dueDate).toLocaleDateString("es-AR") : "—"}
+                      {idea.dueDate ? new Date(idea.dueDate).toLocaleDateString("es-EC") : "—"}
                     </td>
                     <td className="px-3 py-2 text-center text-xs text-zinc-400">
                       {idea._count.comments > 0 && <MessageSquare className="h-3 w-3 inline-block" />}
@@ -621,7 +621,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                     {plans.map((p) => (
                       <MonthCard key={p.id} p={p} />
                     ))}
-                    {plans.length === 0 && <p className="col-span-full py-6 text-center text-xs text-zinc-400">Sin meses todavía. Agregá el primer mes.</p>}
+                    {plans.length === 0 && <p className="col-span-full py-6 text-center text-xs text-zinc-400">Sin meses todavía. Agrega el primer mes.</p>}
                   </div>
                 </div>
               )}
@@ -655,7 +655,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
 
         {clients.filter(hasClientMatch).length === 0 && filteredUncategorized.length === 0 && (
           <div className="rounded-lg border border-dashed border-white/10 p-12 text-center">
-            <p className="text-zinc-400">{search ? "Sin resultados" : "Creá un cliente para empezar."}</p>
+            <p className="text-zinc-400">{search ? "Sin resultados" : "Crea un cliente para empezar."}</p>
           </div>
         )}
       </div>
@@ -664,7 +664,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4" onClick={() => setShowMonthDialog(false)}>
           <div className="w-full max-w-sm rounded-lg border border-white/5 bg-[#0c0c0e] p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-1 text-lg font-semibold text-zinc-200">Nuevo mes</h2>
-            <p className="mb-4 text-xs text-zinc-400">Elegí el cliente y el período a planificar.</p>
+            <p className="mb-4 text-xs text-zinc-400">Elige el cliente y el período a planificar.</p>
             <div className="space-y-3">
               <select
                 value={monthClientId}

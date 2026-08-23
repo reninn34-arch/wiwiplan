@@ -91,7 +91,7 @@ function PlatformIcon({ platform }: { platform: string }) {
 
 function formatDate(d: string | null) {
   if (!d) return ""
-  return new Date(d).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+  return new Date(d).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit" })
 }
 
 /** Etiqueta legible del encabezado de grupo (los datos guardan IDEA, HIGH, etc.). */
@@ -130,7 +130,7 @@ function StatusMenu({ status, onChange, className }: {
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
-          aria-label={`Estado: ${ideaStatusLabels[status] ?? status}. Tocá para cambiar`}
+          aria-label={`Estado: ${ideaStatusLabels[status] ?? status}. Toca para cambiar`}
           className={`inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-lg px-2 text-xs font-medium ring-1 ring-inset transition-colors hover:brightness-125 ${statusChipStyles[status] ?? statusChipStyles.IDEA} ${className ?? ""}`}
         >
           <StatusIcon status={status} />
@@ -162,7 +162,7 @@ function PriorityMenu({ priority, onChange, className }: {
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
-          aria-label={`Prioridad: ${priorityLabels[priority] ?? priority}. Tocá para cambiar`}
+          aria-label={`Prioridad: ${priorityLabels[priority] ?? priority}. Toca para cambiar`}
           className={`inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-lg px-2 text-xs font-medium ring-1 ring-inset transition-colors hover:brightness-125 ${priorityChipStyles[priority] ?? priorityChipStyles.LOW} ${className ?? ""}`}
         >
           <PriorityIcon priority={priority} />
@@ -415,7 +415,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, sto
             <div key={c.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] px-3 py-2">
               <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
               <p className="text-sm text-zinc-400">{c.text}</p>
-              <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+              <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-EC")}</p>
             </div>
           ))}
         </div>
@@ -1020,7 +1020,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
 
       {ideas.length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-zinc-400">No hay contenido. Agregá la primera fila.</p>
+          <p className="text-zinc-400">No hay contenido. Agrega la primera fila.</p>
         </div>
       ) : view === "table" ? (
         <>
@@ -1059,7 +1059,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   )}
                   {idea.dueDate && (
                     <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-1 text-zinc-400">
-                      📅 {new Date(idea.dueDate).toLocaleDateString("es-AR")}
+                      📅 {new Date(idea.dueDate).toLocaleDateString("es-EC")}
                     </span>
                   )}
                 </div>
@@ -1304,10 +1304,10 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                 >
                   <div>
                     <p className="text-xs text-zinc-400">
-                      {uploadingImages > 0 ? `Subiendo… (${uploadingImages})` : "Arrastrá imágenes acá o hacé clic para elegir"}
+                      {uploadingImages > 0 ? `Subiendo… (${uploadingImages})` : "Arrastra imágenes acá o haz clic para elegir"}
                     </p>
                     {!galleryDragOver && uploadingImages === 0 && (
-                      <p className="mt-0.5 text-[10px] text-zinc-500">Podés soltar varias a la vez</p>
+                      <p className="mt-0.5 text-[10px] text-zinc-500">Puedes soltar varias a la vez</p>
                     )}
                   </div>
                 </div>

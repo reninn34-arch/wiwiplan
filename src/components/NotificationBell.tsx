@@ -107,7 +107,7 @@ export function NotificationBell() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-zinc-200">{n.title}</p>
                     <p className="text-zinc-400 line-clamp-2">{n.message}</p>
-                    <p className="mt-0.5 text-[10px] text-zinc-400">{new Date(n.createdAt).toLocaleString("es-AR")}</p>
+                    <p className="mt-0.5 text-[10px] text-zinc-400">{new Date(n.createdAt).toLocaleString("es-EC")}</p>
                   </div>
                   <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-zinc-500" />
                 </Link>

@@ -26,7 +26,7 @@ export function RichEditor({ value, onChange, placeholder, className }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: placeholder ?? "Escribí algo..." }),
+      Placeholder.configure({ placeholder: placeholder ?? "Escribe algo..." }),
     ],
     content: value,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),

@@ -57,7 +57,7 @@ export default function LoginPage() {
           <Button type="submit" className="w-full">Ingresar</Button>
         </form>
         <p className="text-center text-sm text-muted-foreground">
-          ¿No tenés cuenta? <a href="/register" className="text-primary underline">Registrate</a>
+          ¿No tienes cuenta? <a href="/register" className="text-primary underline">Registrate</a>
         </p>
       </div>
     </div>

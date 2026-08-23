@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest) {
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(from)
       ) {
         return NextResponse.json(
-          { error: "Usá un email válido o formato Nombre <email@dominio.com>" },
+          { error: "Usa un email válido o formato Nombre <email@dominio.com>" },
           { status: 400 },
         )
       }
