@@ -147,10 +147,23 @@ model ContentIdea {
   createdBy String
   contentIdeaTags ContentIdeaTag[]
   comments Comment[]
+  images ContentIdeaImage[]
   storyboard Storyboard? @relation(fields: [storyboardId], references: [id])
   storyboardId String?
 
   @@index([planningId])
+}
+
+model ContentIdeaImage {
+  id        String   @id @default(cuid())
+  ideaId    String
+  dataUrl   String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  idea ContentIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId])
 }
 
 model ContentIdeaTag {

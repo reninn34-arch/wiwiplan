@@ -106,6 +106,7 @@ interface PlanningData {
     storyboard: { id: string; title: string } | null
     contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
     comments: Array<{ id: string; authorName: string; text: string; createdAt: string }>
+    images: Array<{ id: string; order: number }>
   }>
   storyboards: Array<{
     id: string

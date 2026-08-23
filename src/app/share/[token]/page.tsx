@@ -22,6 +22,7 @@ export default async function SharePage({ params }: Props) {
             include: {
               contentIdeaTags: { include: { tag: true } },
               comments: { orderBy: { createdAt: "asc" } },
+              images: { orderBy: { order: "asc" }, select: { id: true, order: true } },
               storyboard: {
                 include: { panels: { orderBy: { order: "asc" }, select: panelSelect } },
               },

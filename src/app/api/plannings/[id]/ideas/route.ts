@@ -71,7 +71,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const ideas = await prisma.contentIdea.findMany({
       where: { planningId: id },
       orderBy: { order: "asc" },
-      include: { contentIdeaTags: { include: { tag: true } } },
+      include: {
+        contentIdeaTags: { include: { tag: true } },
+        images: { orderBy: { order: "asc" }, select: { id: true, order: true } },
+      },
     })
     return NextResponse.json(ideas)
   } catch (error) {

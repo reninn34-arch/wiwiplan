@@ -24,3 +24,7 @@ export function panelImageUrl(panelId: string): string {
 export function clientLogoUrl(clientId: string): string {
   return `/api/clients/${clientId}/logo`
 }
+
+export function ideaImageUrl(imageId: string): string {
+  return `/api/idea-images/${imageId}`
+}

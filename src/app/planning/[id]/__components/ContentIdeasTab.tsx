@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect, useSyncExternalStore
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Table2, MessageSquare,
   ArrowUp, LayoutGrid, CheckCircle2, Circle, ChevronDown, MoreHorizontal, Pencil,
-  MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight, Layout,
+  MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight, Layout, Images,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { detectEmbed, platformLabel, postTypeLabel } from "@/lib/embeds"
 import { compressImage } from "@/lib/compress-image"
+import { ideaImageUrl } from "@/lib/media"
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -254,6 +255,8 @@ interface Idea {
   storyboard: { id: string; title: string } | null
   contentIdeaTags: { tag: TagItem }[]
   comments: { id: string; authorName: string; text: string; createdAt: string }[]
+  /** Meta de la galería: los bytes se sirven por URL (/api/idea-images/[id]). */
+  images: Array<{ id: string; order: number }>
 }
 
 interface Props {
@@ -313,6 +316,11 @@ function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, sto
           />
         ) : (
           <p className="text-xs text-zinc-400 truncate mt-0.5">{idea.description}</p>
+        )}
+        {(idea.images?.length ?? 0) > 0 && (
+          <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <Images size={10} /> {idea.images.length}
+          </span>
         )}
       </div>
 
@@ -449,6 +457,10 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards, focus
 const [newPlatform, setNewPlatform] = useState("OTHER")
 const [newStoryboardId, setNewStoryboardId] = useState("")
 const [previewImage, setPreviewImage] = useState<string | null>(null)
+// Galería de imágenes adjuntas: soltar varias a la vez, verlas y quitarlas.
+const [uploadingImages, setUploadingImages] = useState(0)
+const [galleryDragOver, setGalleryDragOver] = useState(false)
+const galleryInputRef = useRef<HTMLInputElement>(null)
 const [editingIdea, setEditingIdea] = useState<Idea | null>(null)
 const [editTitle, setEditTitle] = useState("")
 const [editDescription, setEditDescription] = useState("")
@@ -611,6 +623,59 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
     setIdeas((prev) => prev.filter((i) => i.id !== ideaId))
   }
 
+  /** La galería vive en la lista global y en la copia abierta en el editor. */
+  const patchIdeaImages = (
+    ideaId: string,
+    updater: (imgs: Array<{ id: string; order: number }>) => Array<{ id: string; order: number }>,
+  ) => {
+    setIdeas((prev) => prev.map((i) => (i.id === ideaId ? { ...i, images: updater(i.images ?? []) } : i)))
+    setEditingIdea((cur) => (cur && cur.id === ideaId ? { ...cur, images: updater(cur.images ?? []) } : cur))
+  }
+
+  const addIdeaImages = async (files: FileList | File[]) => {
+    const targetId = editingIdea?.id
+    if (!targetId) return
+    const list = Array.from(files).filter((f) => f.type.startsWith("image/"))
+    if (list.length === 0) return
+    setUploadingImages((n) => n + list.length)
+    try {
+      for (const file of list) {
+        try {
+          const dataUrl = await compressImage(file)
+          const res = await fetch(`/api/plannings/${planningId}/ideas/${targetId}/images`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: dataUrl }),
+          })
+          if (!res.ok) {
+            const err = await res.json().catch(() => null)
+            toast.error(err?.error ?? "No se pudo subir una imagen")
+            continue
+          }
+          const image = await res.json()
+          patchIdeaImages(targetId, (imgs) => [...imgs, image])
+        } catch {
+          toast.error("No se pudo leer una de las imágenes")
+        }
+      }
+    } finally {
+      setUploadingImages((n) => Math.max(0, n - list.length))
+    }
+  }
+
+  const removeIdeaImage = async (imageId: string) => {
+    const targetId = editingIdea?.id
+    if (!targetId) return
+    patchIdeaImages(targetId, (imgs) => imgs.filter((img) => img.id !== imageId))
+    const res = await fetch(`/api/plannings/${planningId}/ideas/${targetId}/images/${imageId}`, {
+      method: "DELETE",
+    })
+    if (!res.ok) {
+      toast.error("No se pudo quitar la imagen")
+      patchIdeaImages(targetId, (imgs) => [...imgs, { id: imageId, order: imgs.length }])
+    }
+  }
+
   const setIdeaStatus = useCallback(async (ideaId: string, status: string, prevStatus: string) => {
     setIdeas((p) => p.map((i) => (i.id === ideaId ? { ...i, status } : i)))
     const res = await fetch(`/api/plannings/${planningId}/ideas/${ideaId}`, {
@@ -758,6 +823,11 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                     ) : null}
                   </div>
                   {idea.dueDate && <p className="mt-1 text-[10px] text-zinc-400">📅 {formatDate(idea.dueDate)}</p>}
+                  {(idea.images?.length ?? 0) > 0 && (
+                    <span className="mt-1 inline-flex items-center gap-1 text-[9px] text-zinc-400">
+                      <Images size={9} /> {idea.images.length} img
+                    </span>
+                  )}
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {idea.contentIdeaTags?.map((ct) => (
                       <span key={ct.tag.id} className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: ct.tag.color }}>{ct.tag.name}</span>
@@ -980,6 +1050,11 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   {idea.pilar && (
                     <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-1">
                       <Hash size={10} /> {idea.pilar}
+                    </span>
+                  )}
+                  {(idea.images?.length ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-1">
+                      <Images size={10} /> {idea.images.length}
                     </span>
                   )}
                   {idea.dueDate && (
@@ -1209,6 +1284,68 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                     {storyboards.map((sb) => <option key={sb.id} value={sb.id}>{sb.title}</option>)}
                   </select>
                 </div>
+                )}
+              </div>
+
+              {/* Galería: soltar varias imágenes a la vez, verlas y quitarlas una por una */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-400">Imágenes</label>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => galleryInputRef.current?.click()}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") galleryInputRef.current?.click() }}
+                  onDragOver={(e) => { e.preventDefault(); setGalleryDragOver(true) }}
+                  onDragLeave={() => setGalleryDragOver(false)}
+                  onDrop={(e) => { e.preventDefault(); setGalleryDragOver(false); addIdeaImages(e.dataTransfer.files) }}
+                  className={`flex min-h-16 cursor-pointer items-center justify-center rounded-lg border border-dashed px-4 py-4 text-center transition-colors ${
+                    galleryDragOver ? "border-white/40 bg-white/[0.06]" : "border-white/10 hover:border-white/20"
+                  }`}
+                >
+                  <div>
+                    <p className="text-xs text-zinc-400">
+                      {uploadingImages > 0 ? `Subiendo… (${uploadingImages})` : "Arrastrá imágenes acá o hacé clic para elegir"}
+                    </p>
+                    {!galleryDragOver && uploadingImages === 0 && (
+                      <p className="mt-0.5 text-[10px] text-zinc-500">Podés soltar varias a la vez</p>
+                    )}
+                  </div>
+                </div>
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  aria-label="Agregar imágenes"
+                  onChange={(e) => {
+                    const files = e.target.files
+                    e.target.value = ""
+                    if (files && editingIdea) addIdeaImages(files)
+                  }}
+                />
+                {(editingIdea?.images?.length ?? 0) > 0 && (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {(editingIdea?.images ?? []).map((img) => (
+                      <div key={img.id} className="group relative overflow-hidden rounded-lg border border-white/10 bg-zinc-900">
+                        <img
+                          src={ideaImageUrl(img.id)}
+                          alt=""
+                          loading="lazy"
+                          className="h-20 w-full cursor-pointer object-cover transition-opacity hover:opacity-80"
+                          onClick={() => setPreviewImage(ideaImageUrl(img.id))}
+                        />
+                        <button
+                          type="button"
+                          aria-label="Quitar imagen"
+                          onClick={() => removeIdeaImage(img.id)}
+                          className="absolute right-1 top-1 rounded-md bg-black/70 p-1 text-zinc-100 transition-colors hover:bg-black hover:text-white sm:opacity-0 sm:group-hover:opacity-100"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

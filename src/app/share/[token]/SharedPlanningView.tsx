@@ -11,7 +11,7 @@ import {
 } from "@/components/payments/PaymentStatus"
 import { summarizePayments } from "@/lib/payments"
 import { ClientLogo } from "@/components/ClientLogo"
-import { panelImageUrl } from "@/lib/media"
+import { panelImageUrl, ideaImageUrl } from "@/lib/media"
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Borrador", IN_PROGRESS: "En Progreso", REVIEW: "Revisión",
@@ -71,6 +71,7 @@ interface ContentIdea {
   storyboard: { id: string; title: string; panels: Panel[] } | null
   contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
   comments: Comment[]
+  images: Array<{ id: string }>
 }
 
 interface Planning {
@@ -154,6 +155,21 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
             </button>
           ) : null}
         </div>
+
+        {(idea.images?.length ?? 0) > 0 && (
+          <div className={`grid gap-1.5 ${idea.images.length > 1 ? "grid-cols-3" : ""}`}>
+            {idea.images.map((img) => (
+              <img
+                key={img.id}
+                src={ideaImageUrl(img.id)}
+                alt=""
+                loading="lazy"
+                className="h-24 w-full cursor-pointer rounded-lg object-cover bg-white/[0.03] hover:opacity-90"
+                onClick={() => onPreviewImage(ideaImageUrl(img.id))}
+              />
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-1 border-t border-white/5">
           <button type="button" onClick={() => setOpen(!open)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white">
@@ -245,6 +261,20 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
             </button>
           ) : (
             <span className="text-xs text-zinc-400">—</span>
+          )}
+          {(idea.images?.length ?? 0) > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {idea.images.map((img) => (
+                <img
+                  key={img.id}
+                  src={ideaImageUrl(img.id)}
+                  alt=""
+                  loading="lazy"
+                  className="h-10 w-10 cursor-pointer rounded object-cover bg-white/[0.03] hover:opacity-80"
+                  onClick={() => onPreviewImage(ideaImageUrl(img.id))}
+                />
+              ))}
+            </div>
           )}
         </td>
         <td className="px-3 py-2 text-xs text-zinc-400">{idea.pilar || <span className="text-zinc-400">—</span>}</td>
