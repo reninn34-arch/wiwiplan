@@ -287,7 +287,7 @@ export function StoryboardsTab({ planningId }: Props) {
             type="button"
             onClick={() => setActiveSb(sb.id)}
             aria-current={sb.id === activeSb}
-            className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 ${
+            className={`min-h-9 shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 ${
               sb.id === activeSb
                 ? "bg-white text-black"
                 : "bg-white/5 text-zinc-300 hover:bg-white/10"
@@ -363,7 +363,7 @@ export function StoryboardsTab({ planningId }: Props) {
                           onClick={() => movePanel(panel.id, "up")}
                           disabled={idx === 0}
                           aria-label={`Mover la escena ${idx + 1} hacia arriba`}
-                          className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 disabled:pointer-events-none disabled:opacity-30"
+                          className="flex h-6 w-6 max-sm:h-9 max-sm:w-9 items-center justify-center rounded transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 disabled:pointer-events-none disabled:opacity-30"
                         >
                           <ChevronUp className="h-3.5 w-3.5" />
                         </button>
@@ -372,7 +372,7 @@ export function StoryboardsTab({ planningId }: Props) {
                           onClick={() => movePanel(panel.id, "down")}
                           disabled={idx === activeStoryboard.panels.length - 1}
                           aria-label={`Mover la escena ${idx + 1} hacia abajo`}
-                          className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 disabled:pointer-events-none disabled:opacity-30"
+                          className="flex h-6 w-6 max-sm:h-9 max-sm:w-9 items-center justify-center rounded transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 disabled:pointer-events-none disabled:opacity-30"
                         >
                           <ChevronDown className="h-3.5 w-3.5" />
                         </button>
@@ -389,7 +389,7 @@ export function StoryboardsTab({ planningId }: Props) {
                         type="button"
                         onClick={() => deletePanel(panel.id)}
                         aria-label={`Eliminar la escena ${idx + 1}`}
-                        className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+                        className="flex h-6 w-6 max-sm:h-9 max-sm:w-9 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

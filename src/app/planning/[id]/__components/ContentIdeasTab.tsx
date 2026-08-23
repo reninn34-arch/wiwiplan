@@ -3,9 +3,18 @@
 import { useState, useMemo, useRef, useCallback, useSyncExternalStore, type ClipboardEvent } from "react"
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Table2, MessageSquare,
-  ArrowUp, LayoutGrid, CheckCircle2, Circle,
+  ArrowUp, LayoutGrid, CheckCircle2, Circle, ChevronDown, MoreHorizontal, Pencil,
   MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight, Layout,
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { detectEmbed, platformLabel, postTypeLabel } from "@/lib/embeds"
 import { compressImage } from "@/lib/compress-image"
 import {
@@ -30,6 +39,15 @@ const priorityLabels: Record<string, string> = {
 }
 const pillarOpts = ["Educación", "Entretenimiento", "Inspiración", "Promoción", "Conversación", "Utilidad", "Detrás de escena", "Noticia", "Otro"]
 const platformOpts = ["YOUTUBE", "VIMEO", "INSTAGRAM", "TIKTOK", "LINKEDIN", "FACEBOOK", "IMAGE", "OTHER"]
+
+// Los <select> necesitan fondo sólido: con bg-transparent el desplegable nativo
+// se pinta blanco y el texto claro queda ilegible.
+const filterSelectClass =
+  "h-9 shrink-0 rounded-lg border border-dashed border-white/10 bg-[#18181b] px-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+const toolSelectClass =
+  "h-9 shrink-0 rounded-lg border border-white/10 bg-[#18181b] px-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+const toolButtonClass =
+  "inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-[#18181b] px-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
 
 const COLUMNS = [
   { key: "postType", label: "Formato", w: "w-[90px]", always: true } as const,
@@ -70,18 +88,129 @@ function PlatformIcon({ platform }: { platform: string }) {
   return <Globe size={14} className="text-zinc-500" />
 }
 
-function priorityColor(p: string) {
-  switch (p) {
-    case "HIGH": return "text-red-600 dark:text-red-400"
-    case "MEDIUM": return "text-amber-600 dark:text-amber-400"
-    case "LOW": return "text-green-600 dark:text-green-400"
-    default: return "text-muted-foreground"
-  }
-}
-
 function formatDate(d: string | null) {
   if (!d) return ""
   return new Date(d).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+}
+
+/** Etiqueta legible del encabezado de grupo (los datos guardan IDEA, HIGH, etc.). */
+function groupLabel(groupBy: string, key: string) {
+  if (groupBy === "status") return ideaStatusLabels[key] ?? key
+  if (groupBy === "priority") return priorityLabels[key] ?? key
+  if (groupBy === "postType") return postTypeLabel(key)
+  return key
+}
+
+const statusChipStyles: Record<string, string> = {
+  IDEA: "bg-white/5 text-zinc-300 ring-white/10",
+  SELECTED: "bg-amber-500/10 text-amber-300 ring-amber-400/25",
+  IN_PRODUCTION: "bg-blue-500/10 text-blue-300 ring-blue-400/25",
+  DONE: "bg-emerald-500/10 text-emerald-300 ring-emerald-400/25",
+}
+
+const priorityChipStyles: Record<string, string> = {
+  HIGH: "bg-rose-500/10 text-rose-300 ring-rose-400/25",
+  MEDIUM: "bg-amber-500/10 text-amber-300 ring-amber-400/25",
+  LOW: "bg-white/5 text-zinc-300 ring-white/10",
+}
+
+/**
+ * Chip de estado con menú. Reemplaza a los <select> transparentes (ilegibles al
+ * desplegarse) y a los mini-botones del kanban, que eran imposibles de tocar en móvil.
+ */
+function StatusMenu({ status, onChange, className }: {
+  status: string
+  onChange: (status: string) => void
+  className?: string
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Estado: ${ideaStatusLabels[status] ?? status}. Tocá para cambiar`}
+          className={`inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-lg px-2 text-xs font-medium ring-1 ring-inset transition-colors hover:brightness-125 ${statusChipStyles[status] ?? statusChipStyles.IDEA} ${className ?? ""}`}
+        >
+          <StatusIcon status={status} />
+          <span className="truncate">{ideaStatusLabels[status] ?? status}</span>
+          <ChevronDown size={12} className="shrink-0 opacity-60" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Estado</DropdownMenuLabel>
+        {statusOpts.map((s) => (
+          <DropdownMenuCheckItem key={s} selected={s === status} onSelect={() => onChange(s)}>
+            <StatusIcon status={s} />
+            {ideaStatusLabels[s]}
+          </DropdownMenuCheckItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function PriorityMenu({ priority, onChange, className }: {
+  priority: string
+  onChange: (priority: string) => void
+  className?: string
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Prioridad: ${priorityLabels[priority] ?? priority}. Tocá para cambiar`}
+          className={`inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-lg px-2 text-xs font-medium ring-1 ring-inset transition-colors hover:brightness-125 ${priorityChipStyles[priority] ?? priorityChipStyles.LOW} ${className ?? ""}`}
+        >
+          <PriorityIcon priority={priority} />
+          <span className="truncate">{priorityLabels[priority] ?? priority}</span>
+          <ChevronDown size={12} className="shrink-0 opacity-60" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Prioridad</DropdownMenuLabel>
+        {priorityOpts.map((p) => (
+          <DropdownMenuCheckItem key={p} selected={p === priority} onSelect={() => onChange(p)}>
+            <PriorityIcon priority={p} />
+            {priorityLabels[p]}
+          </DropdownMenuCheckItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** Menú de tres puntos de cada idea: editar y eliminar. */
+function IdeaActionsMenu({ onEdit, onDelete, className }: {
+  onEdit: () => void
+  onDelete: () => void
+  className?: string
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Más acciones"
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-white data-[state=open]:bg-white/10 data-[state=open]:text-white ${className ?? ""}`}
+        >
+          <MoreHorizontal size={16} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onSelect={onEdit}>
+          <Pencil size={15} /> Editar
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem destructive onSelect={onDelete}>
+          <Trash2 size={15} /> Eliminar idea
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 function handleImagePaste(e: ClipboardEvent<HTMLInputElement>, onDataUrl: (url: string) => void) {
@@ -133,10 +262,11 @@ interface Props {
   storyboards: Array<{ id: string; title: string }>
 }
 
-function SortableRow({ idea, updateIdea, deleteIdea, search, storyboards, onEdit, cols }: {
+function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, storyboards, onEdit, cols }: {
   idea: Idea
   updateIdea: (id: string, data: Record<string, unknown>) => void
   deleteIdea: (id: string) => void
+  onStatusChange: (id: string, status: string, prevStatus: string) => void
   search: string
   storyboards: Array<{ id: string; title: string }>
   onEdit: (idea: Idea) => void
@@ -158,7 +288,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, search, storyboards, onEdit
 
   return (
     <>
-    <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
+    <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_56px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
       <div className="flex items-center justify-center text-zinc-400 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
         <GripVertical size={14} />
       </div>
@@ -183,21 +313,8 @@ function SortableRow({ idea, updateIdea, deleteIdea, search, storyboards, onEdit
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        {cols.has("status") ? (
-          <select
-            className="rounded border-0 bg-transparent text-[11px] font-medium text-zinc-400 focus:outline-none"
-            value={idea.status}
-            onChange={(e) => updateIdea(idea.id, { status: e.target.value })}
-          >
-            {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
-          </select>
-        ) : (
-          <>
-            <StatusIcon status={idea.status} />
-            <span className="text-sm text-zinc-400">{ideaStatusLabels[idea.status]}</span>
-          </>
-        )}
+      <div className="flex min-w-0 items-center gap-2">
+        <StatusMenu status={idea.status} onChange={(s) => onStatusChange(idea.id, s, idea.status)} />
       </div>
 
       <div className="flex items-center gap-2">
@@ -265,36 +382,18 @@ function SortableRow({ idea, updateIdea, deleteIdea, search, storyboards, onEdit
         </datalist>
       </div>
 
-      <div className="flex items-center gap-1.5">
-        {cols.has("priority") ? (
-          <select
-            className={`rounded border-0 bg-transparent text-[10px] font-semibold focus:outline-none ${priorityColor(idea.priority)}`}
-            value={idea.priority}
-            onChange={(e) => updateIdea(idea.id, { priority: e.target.value })}
-          >
-            {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
-          </select>
-        ) : (
-          <>
-            <PriorityIcon priority={idea.priority} />
-            <span className={`text-sm ${idea.priority === "HIGH" ? "text-zinc-300" : "text-zinc-400"}`}>{priorityLabels[idea.priority]}</span>
-          </>
-        )}
+      <div className="flex min-w-0 items-center gap-1.5">
+        <PriorityMenu priority={idea.priority} onChange={(p) => updateIdea(idea.id, { priority: p })} />
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-1">
         {idea.comments?.length > 0 && (
           <button type="button" onClick={() => setShowComments((p) => !p)} className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-300" title="Comentarios del cliente">
             <MessageSquare size={12} />
             {idea.comments.length}
           </button>
         )}
-        <button type="button" onClick={() => onEdit(idea)} className="p-1.5 rounded hover:bg-white/10 text-zinc-400 hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-all">
-          <ExternalLink size={14} />
-        </button>
-        <button type="button" onClick={() => deleteIdea(idea.id)} className="p-1.5 rounded hover:bg-white/10 text-zinc-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-          <Trash2 size={14} />
-        </button>
+        <IdeaActionsMenu onEdit={() => onEdit(idea)} onDelete={() => deleteIdea(idea.id)} />
       </div>
     </div>
     {showComments && (
@@ -608,19 +707,16 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
             <div className="space-y-2">
               {items.map((idea) => (
                 <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] p-3">
-                  <div className="mb-1 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <div className="flex items-center justify-center w-5 h-5 rounded bg-white/5 border border-white/5">
                         <PlatformIcon platform={idea.platform} />
                       </div>
-                      <span className="text-[10px] font-medium text-zinc-400">{postTypeLabel(idea.postType)}</span>
+                      <span className="truncate text-[10px] font-medium text-zinc-400">{postTypeLabel(idea.postType)}</span>
                     </div>
-                    <button type="button" onClick={() => deleteIdea(idea.id)} className="text-zinc-400 hover:text-red-400"><Trash2 size={12} /></button>
+                    <IdeaActionsMenu onEdit={() => openEditDialog(idea)} onDelete={() => deleteIdea(idea.id)} className="h-8 w-8" />
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <StatusIcon status={idea.status} />
-                    <p className="cursor-pointer text-xs font-medium text-zinc-200 hover:text-white" onClick={() => openEditDialog(idea)}>{idea.title}</p>
-                  </div>
+                  <button type="button" className="mt-1 w-full text-left text-sm font-medium text-zinc-200 hover:text-white" onClick={() => openEditDialog(idea)}>{idea.title}</button>
                   {idea.description && <p className="mt-0.5 text-[10px] text-zinc-400 line-clamp-2">{idea.description}</p>}
                   <div className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400">
                     {idea.referenceUrl ? (
@@ -651,10 +747,9 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                       <span key={ct.tag.id} className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: ct.tag.color }}>{ct.tag.name}</span>
                     ))}
                   </div>
-                  <div className="mt-2 flex gap-1">
-                    {statusOpts.filter((s) => s !== status).map((s) => (
-                      <button key={s} type="button" onClick={() => setIdeaStatus(idea.id, s, idea.status)} className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-zinc-400 hover:bg-white/10 hover:text-zinc-200">{ideaStatusLabels[s]}</button>
-                    ))}
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <StatusMenu status={idea.status} onChange={(s) => setIdeaStatus(idea.id, s, idea.status)} />
+                    <PriorityMenu priority={idea.priority} onChange={(p) => updateIdea(idea.id, { priority: p })} />
                   </div>
                 </div>
               ))}
@@ -668,63 +763,82 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
 
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
-
-        <div className="flex items-center gap-2 flex-1 flex-wrap">
-          {/* Command-style Search */}
-          <div className="relative group w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
+      {/* Toolbar: en móvil la búsqueda y la acción principal van arriba,
+          y los filtros quedan en una fila que se desliza en horizontal. */}
+      <div className="mb-5 space-y-2.5 sm:mb-6">
+        <div className="flex items-center gap-2">
+          <div className="group relative min-w-0 flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors group-focus-within:text-indigo-400" size={16} />
             <input
               type="text"
               placeholder="Buscar ideas..."
-              className="w-full bg-[#18181b] border border-white/10 rounded-lg pl-9 pr-12 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-zinc-400 text-zinc-200"
+              className="h-10 w-full rounded-lg border border-white/10 bg-[#18181b] pl-9 pr-9 text-base text-zinc-200 transition-all placeholder:text-zinc-400 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 sm:h-9 sm:text-sm sm:pr-12"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] text-zinc-400 font-medium">
-              <Command size={10} /> K
-            </div>
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-zinc-400 hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            ) : (
+              <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 sm:flex">
+                <Command size={10} /> K
+              </div>
+            )}
           </div>
 
-          <div className="h-4 w-px bg-white/10 mx-2" />
+          <button
+            type="button"
+            onClick={() => setShowForm(!showForm)}
+            className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-white px-3 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 sm:h-9 sm:px-4"
+          >
+            <Plus size={16} />
+            <span className="whitespace-nowrap">Nueva idea</span>
+          </button>
+        </div>
 
-          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+        <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
+          <select className={filterSelectClass} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filtrar por estado">
             <option value="ALL">Estado</option>
             {statusOpts.map((s) => <option key={s} value={s}>{ideaStatusLabels[s]}</option>)}
           </select>
-          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+          <select className={filterSelectClass} value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} aria-label="Filtrar por prioridad">
             <option value="ALL">Prioridad</option>
             {priorityOpts.map((p) => <option key={p} value={p}>{priorityLabels[p]}</option>)}
           </select>
-          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+          <select className={filterSelectClass} value={filterType} onChange={(e) => setFilterType(e.target.value)} aria-label="Filtrar por formato">
             <option value="ALL">Formato</option>
             {postTypeOpts.map((t) => <option key={t} value={t}>{postTypeLabel(t)}</option>)}
           </select>
-          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-transparent hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors border border-dashed border-white/10 hover:border-white/20 focus:outline-none" value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}>
+          <select className={filterSelectClass} value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} aria-label="Filtrar por plataforma">
             <option value="ALL">Plataforma</option>
             {platformOpts.map((p) => <option key={p} value={p}>{platformLabel(p)}</option>)}
           </select>
-        </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-2">
-          <select className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors focus:outline-none" value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
+          <div className="mx-1 hidden h-5 w-px shrink-0 bg-white/10 sm:block" />
+
+          <select className={toolSelectClass} value={groupBy} onChange={(e) => setGroupBy(e.target.value)} aria-label="Agrupar por">
             <option value="none">Sin agrupar</option>
             <option value="status">Estado</option>
             <option value="priority">Prioridad</option>
             <option value="pilar">Pilar</option>
             <option value="postType">Formato</option>
           </select>
-          <div className="relative">
-            <button type="button" onClick={() => setShowColumnSettings(!showColumnSettings)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors">
+
+          <div className="relative hidden sm:block">
+            <button type="button" onClick={() => setShowColumnSettings(!showColumnSettings)} className={toolButtonClass}>
               <SlidersHorizontal size={14} /> Ver
             </button>
             {showColumnSettings && (
               <div className="absolute right-0 top-full z-40 mt-1 w-44 rounded-lg border border-white/10 bg-[#18181b] p-2 shadow-lg">
                 <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Columnas</p>
                 {COLUMNS.map((c) => (
-                  <label key={c.key} className="flex items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-white/5 cursor-pointer text-zinc-400">
+                  <label key={c.key} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-xs text-zinc-300 hover:bg-white/5">
                     <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} className="rounded border-white/20 bg-zinc-800" />
                     {c.label}
                   </label>
@@ -732,17 +846,14 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
               </div>
             )}
           </div>
-          <div className="h-4 w-px bg-white/10 mx-1" />
+
           <button
             type="button"
             onClick={() => { setShowColumnSettings(false); setView(view === "table" ? "kanban" : "table") }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-zinc-400 transition-colors"
+            className={toolButtonClass}
           >
             {view === "table" ? <LayoutGrid size={14} /> : <Table2 size={14} />}
             {view === "table" ? "Board" : "Tabla"}
-          </button>
-          <button type="button" onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-            <Plus size={16} /> Nueva Idea
           </button>
         </div>
       </div>
@@ -815,8 +926,8 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5">Cancelar</button>
-            <button type="button" onClick={addIdea} className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-black hover:bg-zinc-200">Agregar</button>
+            <button type="button" onClick={() => setShowForm(false)} className="min-h-10 rounded-lg px-4 text-sm text-zinc-300 hover:bg-white/5 hover:text-white">Cancelar</button>
+            <button type="button" onClick={addIdea} className="min-h-10 rounded-lg bg-white px-5 text-sm font-semibold text-black hover:bg-zinc-200">Agregar</button>
           </div>
         </div>
       )}
@@ -831,33 +942,32 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
         <div className="space-y-3 sm:hidden">
           {filtered.map((idea) => (
             <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden">
-              <div className="p-3 space-y-2">
+              <div className="space-y-2.5 p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <button type="button" className="text-sm font-medium text-zinc-200 text-left hover:text-white truncate" onClick={() => openEditDialog(idea)}>{idea.title}</button>
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400">
-                    <StatusIcon status={idea.status} />
-                    {ideaStatusLabels[idea.status]}
-                  </span>
+                  <button type="button" className="min-h-9 flex-1 text-left text-sm font-medium text-zinc-100 hover:text-white" onClick={() => openEditDialog(idea)}>{idea.title}</button>
+                  <IdeaActionsMenu onEdit={() => openEditDialog(idea)} onDelete={() => deleteIdea(idea.id)} />
                 </div>
 
                 {idea.description && <p className="text-xs text-zinc-400">{idea.description}</p>}
 
+                {/* Estado y prioridad son editables acá: en el celular no hay tabla donde tocarlos */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <StatusMenu status={idea.status} onChange={(s) => setIdeaStatus(idea.id, s, idea.status)} />
+                  <PriorityMenu priority={idea.priority} onChange={(p) => updateIdea(idea.id, { priority: p })} />
+                </div>
+
                 <div className="flex flex-wrap gap-1.5 text-xs text-zinc-400">
-                  <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
+                  <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-1">
                     <PlatformIcon platform={idea.platform} />
                     {postTypeLabel(idea.postType)}
                   </span>
                   {idea.pilar && (
-                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
+                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-1">
                       <Hash size={10} /> {idea.pilar}
                     </span>
                   )}
-                  <span className={`inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-400"}`}>
-                    <PriorityIcon priority={idea.priority} />
-                    {priorityLabels[idea.priority]}
-                  </span>
                   {idea.dueDate && (
-                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-zinc-400">
+                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-1 text-zinc-400">
                       📅 {new Date(idea.dueDate).toLocaleDateString("es-AR")}
                     </span>
                   )}
@@ -886,16 +996,13 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                  <button type="button" onClick={() => openEditDialog(idea)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white">
-                    <ExternalLink size={12} /> Editar
+                <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                  <button type="button" onClick={() => openEditDialog(idea)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-zinc-300 hover:bg-white/5 hover:text-white">
+                    <Pencil size={12} /> Editar
                   </button>
-                  <div className="flex items-center gap-2 text-xs text-zinc-400">
-                    {idea.comments?.length > 0 && (
-                      <span className="inline-flex items-center gap-1"><MessageSquare size={12} /> {idea.comments.length}</span>
-                    )}
-                    <button type="button" onClick={() => deleteIdea(idea.id)} className="text-red-400 hover:text-red-300"><Trash2 size={12} /></button>
-                  </div>
+                  {idea.comments?.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-xs text-zinc-400"><MessageSquare size={12} /> {idea.comments.length}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -906,7 +1013,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
         <div className="hidden sm:block overflow-x-auto">
         <div className="min-w-[750px] border border-white/5 rounded-xl overflow-hidden bg-[#0c0c0e]">
           {/* Table Header */}
-          <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
+          <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_56px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
             <div />
             <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Tema</div>
             <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Estado</div>
@@ -920,7 +1027,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
           {!mounted ? (
             <div className="flex flex-col">
               {filtered.map((idea) => (
-                <div key={idea.id} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group">
+                <div key={idea.id} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_56px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group">
                   <div />
                   <div className="min-w-0 pr-4">
                     <h3 className="text-sm font-medium text-zinc-100 truncate">{idea.title}</h3>
@@ -987,11 +1094,11 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                 {grouped.map(([key, items]) => (
                   <div key={key}>
                     <div className="px-4 py-2 bg-white/[0.02] border-b border-white/5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{key} <span className="font-normal text-[10px]">({items.length})</span></span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{groupLabel(groupBy, key)} <span className="font-normal text-[10px]">({items.length})</span></span>
                     </div>
                     <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                       {items.map((idea) => (
-                        <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                        <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} onStatusChange={setIdeaStatus} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
                       ))}
                     </SortableContext>
                   </div>
@@ -1003,7 +1110,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
               <SortableContext items={filtered.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col">
                   {filtered.map((idea) => (
-                    <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                    <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} onStatusChange={setIdeaStatus} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
                   ))}
                 </div>
               </SortableContext>
@@ -1019,12 +1126,12 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
       {editingIdea && (
         <>
           <div className="fixed inset-0 z-40 bg-black/60" onClick={closeEditDialog} />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg border-l border-white/10 bg-[#0c0c0e] shadow-xl overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-white/10 bg-[#0c0c0e] shadow-xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-5 sm:pt-4">
               <h3 className="text-lg font-semibold text-zinc-100">Editar contenido</h3>
               <button type="button" onClick={closeEditDialog} className="rounded-md p-1 hover:bg-white/5 text-zinc-400"><X className="h-5 w-5" /></button>
             </div>
-            <div className="space-y-4 p-5">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-zinc-400">Formato</label>
@@ -1089,9 +1196,9 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                 )}
               </div>
             </div>
-            <div className="sticky bottom-0 border-t border-white/10 bg-[#0c0c0e] px-5 py-4 flex justify-end gap-2">
-              <button type="button" onClick={closeEditDialog} className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5">Cancelar</button>
-              <button type="button" onClick={saveEdit} className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-black hover:bg-zinc-200">Guardar</button>
+            <div className="flex shrink-0 justify-end gap-2 border-t border-white/10 bg-[#0c0c0e] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-5">
+              <button type="button" onClick={closeEditDialog} className="min-h-10 rounded-lg px-4 text-sm text-zinc-300 hover:bg-white/5 hover:text-white">Cancelar</button>
+              <button type="button" onClick={saveEdit} className="min-h-10 rounded-lg bg-white px-5 text-sm font-semibold text-black hover:bg-zinc-200">Guardar</button>
             </div>
           </div>
         </>
@@ -1101,7 +1208,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
       <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-zinc-400">
         <p>Mostrando {filtered.length} de {ideas.length} ideas.</p>
         <div className="flex gap-3 sm:gap-4">
-          <span className="flex items-center gap-1 hover:text-zinc-400 cursor-pointer transition-colors"><Command size={12} /> Gestionar columnas</span>
+          <button type="button" onClick={() => setShowColumnSettings(true)} className="hidden items-center gap-1 transition-colors hover:text-zinc-200 sm:flex"><SlidersHorizontal size={12} /> Gestionar columnas</button>
           <span className="hidden sm:flex items-center gap-1"><Play className="h-3 w-3" /> YouTube/Vimeo</span>
           <span className="hidden sm:flex items-center gap-1"><ExternalLink className="h-3 w-3" /> TikTok/IG/FB</span>
         </div>

@@ -174,14 +174,14 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
             ))}
             <div className="flex gap-2">
               <input
-                className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50"
+                className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50 sm:h-9"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
                 placeholder="Escribí un comentario..."
                 disabled={sending}
               />
-              <button type="button" onClick={addComment} disabled={sending} className="rounded-md bg-white px-2 py-1.5 text-xs text-black disabled:opacity-50">
+              <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-black disabled:opacity-50 sm:h-9 sm:w-9">
                 <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
               </button>
             </div>
@@ -272,14 +272,14 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
               ))}
               <div className="flex gap-2">
                 <input
-                  className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50"
+                  className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50 sm:h-9"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
                   placeholder="Escribí un comentario..."
                   disabled={sending}
                 />
-                <button type="button" onClick={addComment} disabled={sending} className="rounded-md bg-white px-2 py-1.5 text-xs text-black disabled:opacity-50">
+                <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-black disabled:opacity-50 sm:h-9 sm:w-9">
                   <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
                 </button>
               </div>
@@ -325,7 +325,7 @@ export function SharedPlanningView({ planning }: Props) {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mx-auto max-w-4xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-6 sm:py-8">
         <header className="mb-8">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -479,7 +479,7 @@ export function SharedPlanningView({ planning }: Props) {
 
         {status !== "APPROVED" && (
           <div className="flex justify-center py-8">
-            <Button size="lg" onClick={handleApprove} disabled={isApproving} className="gap-2 bg-white text-black hover:bg-zinc-200">
+            <Button size="lg" onClick={handleApprove} disabled={isApproving} className="w-full gap-2 bg-white text-black hover:bg-zinc-200 sm:w-auto">
               <CheckCircle className="h-5 w-5" />
               {isApproving ? "Aprobando..." : "Aprobar Planificación"}
             </Button>

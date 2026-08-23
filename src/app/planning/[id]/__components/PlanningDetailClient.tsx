@@ -2,8 +2,17 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Share2, MoreHorizontal, ChevronRight } from "lucide-react"
+import { ArrowLeft, Share2, MoreHorizontal, ChevronRight, ChevronDown, Trash2, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { InfoTab } from "./InfoTab"
 import { ContentIdeasTab } from "./ContentIdeasTab"
 import dynamic from "next/dynamic"
@@ -13,6 +22,7 @@ import { PaymentStamp, type PaymentRecord } from "@/components/payments/PaymentS
 import { ClientLogo } from "@/components/ClientLogo"
 import { formatMoney, summarizePayments } from "@/lib/payments"
 import { NotificationBell } from "@/components/NotificationBell"
+import { toast } from "sonner"
 
 const loadStoryboardsTab = () => import("./StoryboardsTab")
 const StoryboardsTab = dynamic(() => loadStoryboardsTab().then((m) => ({ default: m.StoryboardsTab })), { ssr: false })
@@ -30,12 +40,30 @@ function formatPeriod(p: string) {
   return p
 }
 
+const statusOpts = ["DRAFT", "IN_PROGRESS", "REVIEW", "APPROVED", "PUBLISHED"]
+
 const statusLabels: Record<string, string> = {
   DRAFT: "Borrador",
   IN_PROGRESS: "En Progreso",
   REVIEW: "Revisión",
   APPROVED: "Aprobado",
   PUBLISHED: "Publicado",
+}
+
+const statusChipStyles: Record<string, string> = {
+  DRAFT: "bg-white/5 text-zinc-300 ring-white/10",
+  IN_PROGRESS: "bg-blue-500/10 text-blue-300 ring-blue-400/25",
+  REVIEW: "bg-amber-500/10 text-amber-300 ring-amber-400/25",
+  APPROVED: "bg-emerald-500/10 text-emerald-300 ring-emerald-400/25",
+  PUBLISHED: "bg-purple-500/10 text-purple-300 ring-purple-400/25",
+}
+
+const statusDotStyles: Record<string, string> = {
+  DRAFT: "bg-zinc-400",
+  IN_PROGRESS: "bg-blue-400",
+  REVIEW: "bg-amber-400",
+  APPROVED: "bg-emerald-400",
+  PUBLISHED: "bg-purple-400",
 }
 
 const tabs = [
@@ -111,9 +139,30 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
   }, [])
 
   const handleDelete = async () => {
-    if (!confirm("¿Eliminar esta planificación?")) return
-    await fetch(`/api/plannings/${planning.id}`, { method: "DELETE" })
+    if (!confirm("¿Eliminar esta planificación? Se borran sus ideas, storyboards y pagos.")) return
+    const res = await fetch(`/api/plannings/${planning.id}`, { method: "DELETE" })
+    if (!res.ok) {
+      toast.error("No se pudo eliminar la planificación")
+      return
+    }
     router.push("/dashboard")
+  }
+
+  const changeStatus = async (status: string) => {
+    if (status === planning.status) return
+    const prev = planning.status
+    setPlanning((p) => ({ ...p, status }))
+    const res = await fetch(`/api/plannings/${planning.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) {
+      setPlanning((p) => ({ ...p, status: prev }))
+      toast.error("No se pudo cambiar el estado")
+      return
+    }
+    toast.success(`Estado: ${statusLabels[status] ?? status}`)
   }
 
   const savePeriod = async () => {
@@ -121,12 +170,17 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
     if (!periodMonth || !periodYear) return
     const newPeriod = `${periodYear}-${periodMonth}`
     if (newPeriod === planning.period) return
-    await fetch(`/api/plannings/${planning.id}`, {
+    const prev = planning.period
+    setPlanning((p) => ({ ...p, period: newPeriod }))
+    const res = await fetch(`/api/plannings/${planning.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ period: newPeriod }),
     })
-    setPlanning((prev) => ({ ...prev, period: newPeriod }))
+    if (!res.ok) {
+      setPlanning((p) => ({ ...p, period: prev }))
+      toast.error("No se pudo cambiar el período")
+    }
   }
 
   const paymentSummary = summarizePayments(planning.priceCents, planning.payments)
@@ -142,71 +196,148 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-300">
       {/* Sticky Header */}
-      <header className="px-4 sm:px-6 py-3 border-b border-white/5 flex items-center justify-between bg-[#09090b] sticky top-0 z-20 gap-2">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-white/5 bg-[#09090b]/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-1 py-2 sm:gap-2">
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="w-8 h-8 shrink-0 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-zinc-400 hover:text-white"
+            aria-label="Volver al workspace"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
           </button>
 
-          <div className="flex items-center text-sm font-medium min-w-0">
-            <span className="hidden sm:inline text-zinc-400 hover:text-zinc-300 cursor-pointer transition-colors truncate" onClick={() => router.push("/dashboard")}>Workspace</span>
-            <ChevronRight size={14} className="hidden sm:block text-zinc-700 mx-1 shrink-0" />
-            <span className="text-zinc-400 hover:text-zinc-300 cursor-pointer transition-colors truncate max-w-[120px] sm:max-w-[200px] flex items-center gap-1.5" onClick={() => router.push("/dashboard")}>
+          <div className="flex min-w-0 items-center text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="hidden truncate text-zinc-400 transition-colors hover:text-zinc-200 sm:inline"
+            >
+              Workspace
+            </button>
+            <ChevronRight size={14} className="mx-1 hidden shrink-0 text-zinc-700 sm:block" />
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="flex min-w-0 items-center gap-1.5 truncate text-zinc-300 transition-colors hover:text-white"
+            >
               {planning.client ? (
                 <ClientLogo clientId={planning.client.id} name={planning.client.name} size={20} />
               ) : null}
-              {planning.client?.name ?? "Sin cliente"}
-            </span>
-            <ChevronRight size={14} className="text-zinc-700 mx-1 shrink-0" />
-            <span className="text-zinc-100 flex items-center gap-2 min-w-0">
-              {editingPeriod ? (
-                <div className="flex items-center gap-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) savePeriod() }}>
-                  <select className="h-6 rounded border border-white/10 bg-zinc-800 px-1 text-[11px] text-zinc-200 focus:outline-none" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value)} autoFocus>
-                    <option value="">Mes</option>
-                    {Object.entries(months).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                  <select className="h-6 rounded border border-white/10 bg-zinc-800 px-1 text-[11px] text-zinc-200 focus:outline-none" value={periodYear} onChange={(e) => setPeriodYear(e.target.value)}>
-                    <option value="">Año</option>
-                    {Array.from({ length: 10 }, (_, i) => { const y = new Date().getFullYear() - 1 + i; return <option key={y} value={y}>{y}</option> })}
-                  </select>
-                  <button type="button" onClick={savePeriod} className="h-6 rounded bg-white px-1.5 text-[10px] font-semibold text-black hover:bg-zinc-200">OK</button>
-                </div>
-              ) : (
-                <>
-                  {planning.period ? formatPeriod(planning.period) : "Sin período"}
-                  <button type="button" onClick={startEditPeriod} className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/10 text-zinc-300 hover:bg-white/20 transition-colors">
-                    {statusLabels[planning.status] ?? planning.status}
-                  </button>
-                </>
-              )}
-            </span>
+              <span className="truncate">{planning.client?.name ?? "Sin cliente"}</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 py-2 sm:gap-2">
           <NotificationBell />
-          <div className="w-px h-4 bg-white/10 mx-1" />
-          <Button variant="ghost" size="sm" onClick={() => setShowShare(true)} className="text-zinc-300 hover:text-white hover:bg-white/5 gap-2 px-3">
+          <div className="mx-1 hidden h-4 w-px bg-white/10 sm:block" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowShare(true)}
+            className="hidden h-10 gap-2 px-3 text-zinc-300 hover:bg-white/5 hover:text-white sm:inline-flex"
+          >
             <Share2 size={14} /> Compartir
           </Button>
-          <button type="button" onClick={handleDelete} className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors text-zinc-400">
-            <MoreHorizontal size={16} />
-          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Más acciones"
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/5 hover:text-white data-[state=open]:bg-white/10 data-[state=open]:text-white"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem className="sm:hidden" onSelect={() => setShowShare(true)}>
+                <Share2 size={15} /> Compartir
+              </DropdownMenuItem>
+              <DropdownMenuItem className="sm:hidden" onSelect={startEditPeriod}>
+                <Calendar size={15} /> Cambiar período
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="sm:hidden" />
+              <DropdownMenuItem destructive onSelect={handleDelete}>
+                <Trash2 size={15} /> Eliminar planificación
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="mx-auto max-w-[1400px] px-3 py-5 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
         {/* Title Area */}
-        <div className="mb-8 flex items-end justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="mb-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               {planning.title || "Plan de Contenido"}
             </h1>
-            <p className="text-sm text-zinc-400">
+
+            {/* Período y estado son dos controles distintos, cada uno con su propia acción */}
+            <div className="flex flex-wrap items-center gap-2">
+              {editingPeriod ? (
+                <div
+                  className="flex items-center gap-1.5"
+                  onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) savePeriod() }}
+                >
+                  <select
+                    className="h-9 rounded-lg border border-white/10 bg-[#18181b] px-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                    value={periodMonth}
+                    onChange={(e) => setPeriodMonth(e.target.value)}
+                    aria-label="Mes"
+                    autoFocus
+                  >
+                    <option value="">Mes</option>
+                    {Object.entries(months).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                  <select
+                    className="h-9 rounded-lg border border-white/10 bg-[#18181b] px-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                    value={periodYear}
+                    onChange={(e) => setPeriodYear(e.target.value)}
+                    aria-label="Año"
+                  >
+                    <option value="">Año</option>
+                    {Array.from({ length: 10 }, (_, i) => { const y = new Date().getFullYear() - 1 + i; return <option key={y} value={y}>{y}</option> })}
+                  </select>
+                  <button type="button" onClick={savePeriod} className="h-9 rounded-lg bg-white px-3 text-xs font-semibold text-black hover:bg-zinc-200">OK</button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startEditPeriod}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/5 px-3 text-sm font-medium text-zinc-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <Calendar size={14} className="text-zinc-500" />
+                  {planning.period ? formatPeriod(planning.period) : "Sin período"}
+                </button>
+              )}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium ring-1 ring-inset transition-colors hover:brightness-125 ${statusChipStyles[planning.status] ?? statusChipStyles.DRAFT}`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${statusDotStyles[planning.status] ?? statusDotStyles.DRAFT}`} aria-hidden />
+                    {statusLabels[planning.status] ?? planning.status}
+                    <ChevronDown size={14} className="opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Estado del plan</DropdownMenuLabel>
+                  {statusOpts.map((s) => (
+                    <DropdownMenuCheckItem key={s} selected={planning.status === s} onSelect={() => changeStatus(s)}>
+                      <span className={`h-2 w-2 rounded-full ${statusDotStyles[s]}`} aria-hidden />
+                      {statusLabels[s]}
+                    </DropdownMenuCheckItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <p className="mt-3 text-sm text-zinc-400">
               Gestiona y organiza las ideas y publicaciones para {planning.period ? formatPeriod(planning.period) : "este período"}.
             </p>
           </div>
@@ -215,7 +346,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             <button
               type="button"
               onClick={() => setActiveTab("pagos")}
-              className="flex items-center gap-3 rounded-lg border border-white/5 bg-[#0c0c0e] px-3.5 py-2.5 transition-colors hover:border-white/10 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+              className="flex w-full shrink-0 items-center gap-3 rounded-lg border border-white/5 bg-[#0c0c0e] px-3.5 py-3 transition-colors hover:border-white/10 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 sm:w-auto sm:py-2.5"
             >
               <PaymentStamp state={paymentSummary.state} />
               <span className="text-xs text-zinc-400">
@@ -240,7 +371,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b border-white/5 mb-6 overflow-x-auto">
+        <div className="-mx-3 mb-5 flex items-center gap-1 overflow-x-auto border-b border-white/5 px-3 [scrollbar-width:none] sm:mx-0 sm:mb-6 sm:px-0 [&::-webkit-scrollbar]:hidden">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -248,15 +379,16 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
               onClick={() => setActiveTab(tab.id)}
               onMouseEnter={tab.id === "storyboard" ? loadStoryboardsTab : undefined}
               onFocus={tab.id === "storyboard" ? loadStoryboardsTab : undefined}
-              className={`px-3 sm:px-4 py-2.5 text-sm font-medium capitalize whitespace-nowrap transition-all relative ${
+              aria-current={activeTab === tab.id ? "page" : undefined}
+              className={`relative min-h-11 whitespace-nowrap px-3 py-3 text-sm font-medium capitalize transition-all sm:px-4 sm:py-2.5 ${
                 activeTab === tab.id
                   ? "text-zinc-100"
-                  : "text-zinc-400 hover:text-zinc-300 hover:bg-white/[0.02] rounded-t-lg"
+                  : "rounded-t-lg text-zinc-400 hover:bg-white/[0.02] hover:text-zinc-300"
               }`}
             >
               {tab.label}
               {activeTab === tab.id && (
-                <div className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-white rounded-t-full" />
+                <div className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-t-full bg-white" />
               )}
             </button>
           ))}

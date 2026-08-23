@@ -90,6 +90,27 @@ textarea {
   caret-color: var(--ring);
 }
 
+/* Móvil: sin flash gris al tocar y sin zoom automático de iOS al enfocar un
+   campo (Safari hace zoom cuando la fuente mide menos de 16px). */
+@media (max-width: 639px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  button,
+  a,
+  select,
+  [role="menuitem"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 .ProseMirror p.is-editor-empty:first-child::before {
   color: var(--muted-foreground);
   content: attr(data-placeholder);

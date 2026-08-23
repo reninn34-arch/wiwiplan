@@ -88,6 +88,8 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
   }
 
   const deleteClient = async (id: string) => {
+    const client = clients.find((c) => c.id === id)
+    if (!confirm(`¿Eliminar el cliente ${client?.name ?? ""}?`)) return
     await fetch(`/api/clients/${id}`, { method: "DELETE" })
     setClients((prev) => prev.filter((c) => c.id !== id))
     if (clientId === id) setClientId("")
@@ -170,15 +172,15 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
               placeholder="Nombre del cliente"
               value={newClientName}
               onChange={(e) => setNewClientName(e.target.value)}
-              className="flex-1"
+              className="h-10 w-full sm:h-9 sm:min-w-[10rem] sm:flex-1"
             />
             <Input
               placeholder="Email (opcional)"
               value={newClientEmail}
               onChange={(e) => setNewClientEmail(e.target.value)}
-              className="flex-1"
+              className="h-10 w-full sm:h-9 sm:min-w-[10rem] sm:flex-1"
             />
-            <Button size="sm" onClick={addClient}>Crear</Button>
+            <Button className="h-10 w-full sm:h-9 sm:w-auto" onClick={addClient}>Crear</Button>
           </div>
         )}
 
@@ -221,8 +223,13 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
                   <span className="font-medium text-zinc-200 truncate">{c.name}</span>
                   {c.email && <span className="ml-2 text-zinc-400 text-xs truncate">{c.email}</span>}
                 </div>
-                <button type="button" onClick={() => deleteClient(c.id)}>
-                  <Trash2 className="h-3 w-3 text-red-400" />
+                <button
+                  type="button"
+                  onClick={() => deleteClient(c.id)}
+                  aria-label={`Eliminar el cliente ${c.name}`}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             ))}
@@ -230,7 +237,7 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
         )}
       </div>
 
-      <Button onClick={handleSave} disabled={saving}>
+      <Button className="h-10 w-full sm:w-auto" onClick={handleSave} disabled={saving}>
         <Save className="h-4 w-4" /> {saving ? "Guardando..." : "Guardar cambios"}
       </Button>
     </div>

@@ -147,20 +147,22 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-200">WiwiPlan</h1>
-          <p className="mt-1 text-zinc-400">
+    <div className="mx-auto max-w-5xl px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:py-8">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:mb-8 sm:items-center">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-200 sm:text-3xl">WiwiPlan</h1>
+          <p className="mt-1 text-sm text-zinc-400 sm:text-base">
             {user.name ?? user.email} — {clients.length} clientes, {initial.length} meses
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => setShowClientForm(!showClientForm)}>
-            <Plus className="h-4 w-4" /> Nuevo cliente
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+          <Button className="h-10" onClick={() => setShowClientForm(!showClientForm)}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nuevo cliente</span>
+            <span className="sm:hidden">Cliente</span>
           </Button>
           <NotificationBell />
-          <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: "/login" })}>
+          <Button variant="ghost" size="icon" aria-label="Cerrar sesión" className="h-10 w-10" onClick={() => signOut({ callbackUrl: "/login" })}>
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -195,15 +197,15 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               placeholder="Nombre del cliente"
               value={newClientName}
               onChange={(e) => setNewClientName(e.target.value)}
-              className="flex-1"
+              className="h-10 w-full sm:h-9 sm:min-w-[12rem] sm:flex-1"
             />
             <Input
               placeholder="Email (opcional)"
               value={newClientEmail}
               onChange={(e) => setNewClientEmail(e.target.value)}
-              className="flex-1"
+              className="h-10 w-full sm:h-9 sm:min-w-[12rem] sm:flex-1"
             />
-            <Button onClick={createClient}>Crear cliente</Button>
+            <Button className="h-10 w-full sm:w-auto" onClick={createClient}>Crear cliente</Button>
           </div>
         </div>
       )}
@@ -293,6 +295,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           placeholder="Buscar clientes o meses..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          className="h-10 sm:h-9"
         />
       </div>
 
@@ -306,7 +309,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               <button
                 type="button"
                 onClick={() => setExpandedClient(isExpanded ? null : client.id)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors flex-wrap"
+                className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-lg px-4 py-3.5 text-left transition-colors hover:bg-white/[0.02]"
               >
                 <ClientLogo clientId={client.id} name={client.name} size={28} />
                 <span className="text-base sm:text-lg font-semibold text-zinc-200 truncate">{client.name}</span>

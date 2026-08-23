@@ -5,6 +5,16 @@ import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import { Bold, Italic, List, ListOrdered, Heading2, Undo, Redo } from "lucide-react"
 
+const toolLabels: Record<string, string> = {
+  bold: "Negrita",
+  italic: "Cursiva",
+  heading: "Título",
+  bulletList: "Lista",
+  orderedList: "Lista numerada",
+  undo: "Deshacer",
+  redo: "Rehacer",
+}
+
 interface Props {
   value: string
   onChange: (html: string) => void
@@ -29,12 +39,16 @@ export function RichEditor({ value, onChange, placeholder, className }: Props) {
 
   if (!editor) return null
 
+  // pointerdown (no mousedown): en pantallas táctiles el mousedown emulado llega
+  // tarde y a veces se cancela, así que los botones no respondían al primer toque.
   const btn = (label: string, active: boolean, onClick: () => void) => (
     <button
       type="button"
-      onMouseDown={(e) => { e.preventDefault(); onClick() }}
-      className={`rounded p-1 text-xs ${active ? "bg-white/20 text-white" : "text-zinc-400 hover:bg-white/5"}`}
-      title={label}
+      onPointerDown={(e) => { e.preventDefault(); onClick() }}
+      aria-label={toolLabels[label] ?? label}
+      aria-pressed={active}
+      className={`flex h-9 w-9 items-center justify-center rounded text-xs transition-colors sm:h-7 sm:w-7 ${active ? "bg-white/20 text-white" : "text-zinc-400 hover:bg-white/5"}`}
+      title={toolLabels[label] ?? label}
     >
       {label === "bold" ? <Bold className="h-3.5 w-3.5" /> :
        label === "italic" ? <Italic className="h-3.5 w-3.5" /> :
@@ -48,7 +62,7 @@ export function RichEditor({ value, onChange, placeholder, className }: Props) {
 
   return (
     <div className={`rounded-md border border-white/5 bg-[#0c0c0e] ${className ?? ""}`}>
-      <div className="flex items-center gap-0.5 border-b border-white/5 px-2 py-1">
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-white/5 px-2 py-1">
         {btn("bold", editor.isActive("bold"), () => editor.chain().focus().toggleBold().run())}
         {btn("italic", editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run())}
         <span className="mx-1 h-4 w-px bg-border" />

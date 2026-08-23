@@ -256,7 +256,7 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
       </section>
 
       <section className="rounded-xl border border-white/5 bg-[#0c0c0e]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 px-4 py-3 sm:px-5">
           <h2 className="text-sm font-semibold tracking-tight text-zinc-200">Cobros recibidos</h2>
           <div className="flex items-center gap-2">
             {summary.dueCents > 0 && payments.length > 0 && !formOpen && (
@@ -282,7 +282,7 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
         </div>
 
         {formOpen && (
-          <div className="border-b border-white/5 bg-white/[0.02] px-5 py-4">
+          <div className="border-b border-white/5 bg-white/[0.02] px-4 py-4 sm:px-5">
             <div className="grid gap-2 sm:grid-cols-[9rem_10rem_1fr]">
               <div className="relative">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">
@@ -359,7 +359,7 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
         )}
 
         {payments.length === 0 ? (
-          <div className="px-5 py-10 text-center">
+          <div className="px-4 py-10 text-center sm:px-5">
             <p className="text-sm text-zinc-300">Todavía no registraste ningún cobro</p>
             <p className="mx-auto mt-1 max-w-sm text-xs text-zinc-400">
               Cargá cada pago que vayas recibiendo, de una vez o en cuotas. El cliente ve el avance
@@ -369,7 +369,7 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
         ) : (
           <ul className="divide-y divide-white/5">
             {payments.map((payment) => (
-              <li key={payment.id} className="group px-5 py-3">
+              <li key={payment.id} className="group px-4 py-3 sm:px-5">
                 {editingId === payment.id ? (
                   <div className="space-y-2">
                     <div className="grid gap-2 sm:grid-cols-[9rem_10rem_1fr]">
@@ -450,7 +450,7 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
                         type="button"
                         onClick={() => startEdit(payment)}
                         aria-label={`Editar el cobro de ${formatMoney(payment.amountCents)}`}
-                        className="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-white/5 hover:text-zinc-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:opacity-100"
+                        className="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-white/5 hover:text-zinc-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:h-9 max-sm:w-9 max-sm:opacity-100"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -458,7 +458,7 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
                         type="button"
                         onClick={() => removePayment(payment)}
                         aria-label={`Borrar el cobro de ${formatMoney(payment.amountCents)}`}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-300 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:opacity-100"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-300 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:h-9 max-sm:w-9 max-sm:opacity-100"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
