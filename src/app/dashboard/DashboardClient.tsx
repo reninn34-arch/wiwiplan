@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera } from "lucide-react"
+import Link from "next/link"
+import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera, Settings } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { ClientLogo } from "@/components/ClientLogo"
@@ -17,6 +18,18 @@ const months: Record<string, string> = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
   "05": "Mayo", "06": "Junio", "07": "Julio", "08": "Agosto",
   "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre",
+}
+const shortMonths: Record<string, string> = {
+  "01": "ene", "02": "feb", "03": "mar", "04": "abr",
+  "05": "may", "06": "jun", "07": "jul", "08": "ago",
+  "09": "sep", "10": "oct", "11": "nov", "12": "dic",
+}
+
+/** Etiqueta compacta para chips de deuda: "sep 26" en vez de "Septiembre 2026". */
+function formatPeriodShort(p: string) {
+  const parts = p.split("-")
+  if (parts.length === 2) return `${shortMonths[parts[1]] ?? parts[1]} ${parts[0].slice(2)}`
+  return p
 }
 
 function formatPeriod(p: string) {
@@ -156,7 +169,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newClientName, email: newClientEmail || newClientName.toLowerCase().replace(/\s+/g, ".") + "@temp.com", logo: newClientLogo }),
+      body: JSON.stringify({ name: newClientName, email: newClientEmail.trim(), logo: newClientLogo }),
     })
     if (res.ok) {
       const client = await res.json()
@@ -308,6 +321,14 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
             <span className="sm:hidden">Cliente</span>
           </Button>
           <NotificationBell />
+          <Link
+            href="/settings"
+            aria-label="Administración"
+            title="Administración"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
+          >
+            <Settings className="h-4 w-4" />
+          </Link>
           <Button variant="ghost" size="icon" aria-label="Cerrar sesión" className="h-10 w-10" onClick={() => signOut({ callbackUrl: "/login" })}>
             <LogOut className="h-4 w-4" />
           </Button>
@@ -567,17 +588,25 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 {latestPeriod && <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-zinc-400">{latestPeriod}</span>}
                 <span className="text-xs text-zinc-400">{plans.length} {plans.length === 1 ? "mes" : "meses"}</span>
                 {(() => {
-                  const debe = plans.reduce(
-                    (sum, plan) => sum + summarizePayments(plan.priceCents, plan.payments).dueCents,
-                    0,
-                  )
-                  if (debe === 0) return null
-                  return (
-                    <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-amber-300 ring-1 ring-inset ring-amber-400/25">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden />
-                      debe {formatMoney(debe)}
-                    </span>
-                  )
+                  // Un chip por cada mes con deuda: el total mezclado no deja
+                  // claro de qué período es lo que falta cobrar.
+                  const conDeuda = plans
+                    .filter((plan) => summarizePayments(plan.priceCents, plan.payments).dueCents > 0)
+                    .sort(sortByPeriod)
+                  if (conDeuda.length === 0) return null
+                  return conDeuda.map((plan) => {
+                    const due = summarizePayments(plan.priceCents, plan.payments).dueCents
+                    return (
+                      <span
+                        key={plan.id}
+                        className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-amber-300 ring-1 ring-inset ring-amber-400/25"
+                        title={`Saldo pendiente de ${formatPeriod(plan.period) || plan.title}`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden />
+                        {formatPeriodShort(plan.period) || plan.title}: debe {formatMoney(due)}
+                      </span>
+                    )
+                  })
                 })()}
                 <ChevronRight className={`ml-auto h-4 w-4 text-zinc-500 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
               </button>

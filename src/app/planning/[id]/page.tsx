@@ -26,6 +26,10 @@ export default async function PlanningDetailPage({ params }: Props) {
           storyboard: true,
         },
       },
+      installments: {
+        orderBy: { dueDate: "asc" },
+        select: { id: true, label: true, amountCents: true, dueDate: true },
+      },
       storyboards: {
         orderBy: { createdAt: "desc" },
         select: { id: true, title: true, createdAt: true },
@@ -57,6 +61,14 @@ export default async function PlanningDetailPage({ params }: Props) {
       paidAt: p.paidAt.toISOString(),
       createdAt: p.createdAt.toISOString(),
     })),
+    installments: planning.installments.map((i) => ({
+      ...i,
+      dueDate: i.dueDate.toISOString(),
+    })),
+    user: {
+      name: session.user.name ?? null,
+      email: session.user.email ?? "",
+    },
   }
 
   const clients = await prisma.client.findMany({

@@ -101,16 +101,35 @@ model Planning {
   userId          String
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  /// Última vez que se envió recordatorio de saldo al cliente (anti-spam).
+  reminderSentAt  DateTime?
 
   client          Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   shareLinks      ShareLink[]
   contentIdeas    ContentIdea[]
   storyboards     Storyboard[]
   payments        Payment[]
+  installments    PaymentInstallment[]
 
   @@index([userId])
-  @@index([clientId])
+}
+
+/**
+ * Fechas de cobro esperadas del plan (ej.: una cuota por semana). El saldo
+ * real se sigue calculando con los pagos registrados; las cuotas sólo marcan
+ * cuándo corresponde pedir la plata y alimentan el recordatorio automático.
+ */
+model PaymentInstallment {
+  id          String   @id @default(cuid())
+  planningId  String
+  label       String   @default("")
+  amountCents Int
+  dueDate     DateTime
+
+  planning Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@index([planningId])
 }
 
 model Tag {
@@ -164,6 +183,13 @@ model ContentIdeaImage {
   idea ContentIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
 
   @@index([ideaId])
+}
+
+/** Configuración global de la app (clave → valor): credenciales de email, etc. */
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model ContentIdeaTag {

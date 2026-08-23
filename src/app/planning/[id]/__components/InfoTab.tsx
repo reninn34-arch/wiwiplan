@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Save, Plus, Trash2, Users, Camera } from "lucide-react"
+import { Save, Plus, Trash2, Users, Camera, Pencil, X } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RichEditor } from "./RichEditor"
@@ -93,6 +94,38 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
     await fetch(`/api/clients/${id}`, { method: "DELETE" })
     setClients((prev) => prev.filter((c) => c.id !== id))
     if (clientId === id) setClientId("")
+  }
+
+  // Editar nombre y correo de un cliente ya creado (ej.: agregarle el email
+  // para que le lleguen los recibos de pago).
+  const [editingClientId, setEditingClientId] = useState<string | null>(null)
+  const [clientDraft, setClientDraft] = useState({ name: "", email: "" })
+  const [savingClient, setSavingClient] = useState(false)
+
+  const startClientEdit = (c: Client) => {
+    setEditingClientId(c.id)
+    setClientDraft({ name: c.name, email: c.email ?? "" })
+  }
+
+  const saveClientEdit = async () => {
+    if (!editingClientId || !clientDraft.name.trim()) return
+    setSavingClient(true)
+    const res = await fetch(`/api/clients/${editingClientId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: clientDraft.name.trim(), email: clientDraft.email.trim() }),
+    })
+    setSavingClient(false)
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      toast.error(data?.error ?? "No se pudo actualizar el cliente")
+      return
+    }
+    setClients((prev) =>
+      prev.map((c) => (c.id === editingClientId ? { ...c, name: clientDraft.name.trim(), email: clientDraft.email.trim() } : c)),
+    )
+    setEditingClientId(null)
+    toast.success("Cliente actualizado")
   }
 
   return (
@@ -202,37 +235,78 @@ export function InfoTab({ planning, clients: initialClients, onUpdate }: InfoTab
 
         {clients.length > 0 && (
           <div className="space-y-1">
-            {clients.map((c) => (
-              <div key={c.id} className="flex items-center gap-2 rounded-md border border-white/5 px-3 py-2 text-sm">
-                <button type="button" onClick={() => document.getElementById(`logo-input-${c.id}`)?.click()} className="relative w-8 h-8 shrink-0 rounded-full overflow-hidden bg-white/5 hover:bg-white/10 flex items-center justify-center">
-                  <ClientLogo clientId={c.id} name={c.name} size={32} version={logoVersions[c.id]} />
-                </button>
-                <input
-                  id={`logo-input-${c.id}`}
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  aria-label={`Cambiar el logo de ${c.name}`}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    e.target.value = ""
-                    if (file) updateClientLogo(c.id, await compressAvatar(file))
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <span className="font-medium text-zinc-200 truncate">{c.name}</span>
-                  {c.email && <span className="ml-2 text-zinc-400 text-xs truncate">{c.email}</span>}
+            {clients.map((c) =>
+              editingClientId === c.id ? (
+                <div key={c.id} className="space-y-2 rounded-md border border-white/15 bg-white/[0.04] px-3 py-2.5">
+                  <Input
+                    value={clientDraft.name}
+                    onChange={(e) => setClientDraft((d) => ({ ...d, name: e.target.value }))}
+                    placeholder="Nombre del cliente"
+                    aria-label="Nombre del cliente"
+                    className="h-9"
+                  />
+                  <Input
+                    value={clientDraft.email}
+                    onChange={(e) => setClientDraft((d) => ({ ...d, email: e.target.value }))}
+                    placeholder="Correo para recibir recibos (opcional)"
+                    inputMode="email"
+                    aria-label="Correo del cliente"
+                    className="h-9"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" className="h-8 text-zinc-400 hover:text-zinc-100" onClick={() => setEditingClientId(null)}>
+                      <X className="mr-1 h-3 w-3" /> Cancelar
+                    </Button>
+                    <Button size="sm" className="h-8" onClick={saveClientEdit} disabled={savingClient || !clientDraft.name.trim()}>
+                      <Save className="mr-1 h-3 w-3" /> {savingClient ? "Guardando..." : "Guardar"}
+                    </Button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteClient(c.id)}
-                  aria-label={`Eliminar el cliente ${c.name}`}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+              ) : (
+                <div key={c.id} className="group flex items-center gap-2 rounded-md border border-white/5 px-3 py-2 text-sm">
+                  <button type="button" onClick={() => document.getElementById(`logo-input-${c.id}`)?.click()} className="relative w-8 h-8 shrink-0 rounded-full overflow-hidden bg-white/5 hover:bg-white/10 flex items-center justify-center">
+                    <ClientLogo clientId={c.id} name={c.name} size={32} version={logoVersions[c.id]} />
+                  </button>
+                  <input
+                    id={`logo-input-${c.id}`}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    aria-label={`Cambiar el logo de ${c.name}`}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      e.target.value = ""
+                      if (file) updateClientLogo(c.id, await compressAvatar(file))
+                    }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-zinc-200 truncate">{c.name}</span>
+                    {c.email ? (
+                      <span className="ml-2 text-zinc-400 text-xs truncate">{c.email}</span>
+                    ) : (
+                      <span className="ml-2 text-xs text-amber-400/70">sin correo</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => startClientEdit(c)}
+                    aria-label={`Editar el cliente ${c.name}`}
+                    title="Editar nombre y correo"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteClient(c.id)}
+                    aria-label={`Eliminar el cliente ${c.name}`}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ),
+            )}
           </div>
         )}
       </div>

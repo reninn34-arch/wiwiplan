@@ -119,6 +119,8 @@ interface PlanningData {
     createdAt: string
   }>
   payments: PaymentRecord[]
+  installments: Array<{ id: string; label: string; amountCents: number; dueDate: string }>
+  user: { name: string | null; email: string }
 }
 
 interface Props {
@@ -411,7 +413,13 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             planningId={planning.id}
             priceCents={planning.priceCents}
             payments={planning.payments}
+            installments={planning.installments}
             onChange={updatePlanning}
+            client={planning.client}
+            periodLabel={formatPeriod(planning.period)}
+            planTitle={planning.title}
+            businessName={planning.user.name ?? planning.user.email.split("@")[0]}
+            businessEmail={planning.user.email}
           />
         )}
       </main>

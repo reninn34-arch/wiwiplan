@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { CheckCheck, Pencil, Plus, Trash2, X } from "lucide-react"
+import { CheckCheck, FileText, Mail, Pencil, Plus, Printer, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PaymentAccountHeader, type PaymentRecord } from "@/components/payments/PaymentStatus"
@@ -14,12 +14,19 @@ import {
   paymentMethods,
   summarizePayments,
 } from "@/lib/payments"
+import { buildReceiptHtml, receiptNumberFromId } from "@/lib/receipt"
 
 interface Props {
   planningId: string
   priceCents: number
   payments: PaymentRecord[]
-  onChange: (updates: { priceCents?: number; payments?: PaymentRecord[] }) => void
+  installments: Array<{ id: string; label: string; amountCents: number; dueDate: string }>
+  onChange: (updates: { priceCents?: number; payments?: PaymentRecord[]; installments?: Array<{ id: string; label: string; amountCents: number; dueDate: string }> }) => void
+  client: { name: string; email: string } | null
+  periodLabel: string
+  planTitle?: string
+  businessName?: string
+  businessEmail?: string | null
 }
 
 function todayInputValue() {
@@ -42,7 +49,18 @@ function byDate(a: PaymentRecord, b: PaymentRecord) {
 const fieldClass =
   "h-9 w-full rounded-md border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 disabled:opacity-50"
 
-export function PaymentsTab({ planningId, priceCents, payments, onChange }: Props) {
+export function PaymentsTab({
+  planningId,
+  priceCents,
+  payments,
+  installments,
+  onChange,
+  client,
+  periodLabel,
+  planTitle,
+  businessName,
+  businessEmail,
+}: Props) {
   const [editingPrice, setEditingPrice] = useState(false)
   const [priceDraft, setPriceDraft] = useState("")
   const [savingPrice, setSavingPrice] = useState(false)
@@ -61,7 +79,128 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
   const [editNote, setEditNote] = useState("")
   const [savingEdit, setSavingEdit] = useState(false)
 
+  // Recibo: vista previa editable antes de mandar el email.
+  const [receiptFor, setReceiptFor] = useState<PaymentRecord | null>(null)
+  const [receiptTo, setReceiptTo] = useState("")
+  const [receiptDetail, setReceiptDetail] = useState("")
+  const [sendingReceipt, setSendingReceipt] = useState(false)
+  const receiptFrameRef = useRef<HTMLIFrameElement>(null)
+
+  // Fechas de cobro: cuotas esperadas que alimentan el recordatorio automático.
+  const [instFormOpen, setInstFormOpen] = useState(false)
+  const [instLabel, setInstLabel] = useState("")
+  const [instDate, setInstDate] = useState(todayInputValue())
+  const [instAmount, setInstAmount] = useState("")
+  const [savingInst, setSavingInst] = useState(false)
+
   const summary = useMemo(() => summarizePayments(priceCents, payments), [priceCents, payments])
+
+  /** El preview usa el estado local; el server recalcula con la base al enviar. */
+  const receiptHtml = useMemo(() => {
+    if (!receiptFor) return ""
+    return buildReceiptHtml({
+      businessName: businessName ?? "Recibos",
+      businessEmail: businessEmail ?? null,
+      clientName: client?.name ?? "Cliente",
+      periodLabel,
+      planTitle: planTitle ?? "",
+      receiptNumber: receiptNumberFromId(receiptFor.id),
+      priceCents,
+      paidCents: payments.reduce((sum, p) => sum + p.amountCents, 0),
+      dueCents: Math.max(0, priceCents - payments.reduce((sum, p) => sum + p.amountCents, 0)),
+      payment: {
+        dateLabel: formatPaymentDate(receiptFor.paidAt),
+        amountCents: receiptFor.amountCents,
+        methodLabel: paymentMethodLabels[receiptFor.method] ?? receiptFor.method,
+        note: receiptFor.note,
+      },
+      detail: receiptDetail,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receiptFor, receiptDetail])
+
+  const openReceipt = (payment: PaymentRecord) => {
+    setReceiptFor(payment)
+    setReceiptDetail(payment.note)
+    setReceiptTo(client?.email ?? "")
+    setSendingReceipt(false)
+  }
+
+  const sendReceipt = async () => {
+    if (!receiptFor) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiptTo.trim())) {
+      toast.error("Escribí un email de destino válido")
+      return
+    }
+    setSendingReceipt(true)
+    const res = await fetch(`/api/plannings/${planningId}/receipts/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId: receiptFor.id, to: receiptTo.trim(), detail: receiptDetail }),
+    })
+    setSendingReceipt(false)
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      toast.error(data?.error ?? "No se pudo enviar el recibo")
+      return
+    }
+    toast.success(`Recibo enviado a ${receiptTo.trim()}`)
+    setReceiptFor(null)
+  }
+
+  const printReceipt = () => {
+    const frame = receiptFrameRef.current
+    if (!frame?.contentWindow) return
+    frame.contentWindow.focus()
+    frame.contentWindow.print()
+  }
+
+  // ── Fechas de cobro ──
+  const sortedInstallments = [...installments].sort(
+    (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+  )
+  const paidCentsTotal = payments.reduce((sum, p) => sum + p.amountCents, 0)
+  const todayIso = todayInputValue()
+
+  const addInstallment = async () => {
+    const cents = parseAmountToCents(instAmount)
+    if (cents === null || cents <= 0) {
+      toast.error("El monto de la cuota tiene que ser mayor a cero")
+      return
+    }
+    setSavingInst(true)
+    const res = await fetch(`/api/plannings/${planningId}/installments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: instLabel.trim(), amountCents: cents, dueDate: instDate }),
+    })
+    setSavingInst(false)
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      toast.error(data?.error ?? "No se pudo agregar la fecha de cobro")
+      return
+    }
+    const created = await res.json()
+    onChange({
+      installments: [...installments, created].sort(
+        (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+      ),
+    })
+    setInstFormOpen(false)
+    setInstLabel("")
+    setInstAmount("")
+  }
+
+  const removeInstallment = async (installmentId: string) => {
+    const res = await fetch(`/api/plannings/${planningId}/installments/${installmentId}`, {
+      method: "DELETE",
+    })
+    if (!res.ok) {
+      toast.error("No se pudo quitar la fecha de cobro")
+      return
+    }
+    onChange({ installments: installments.filter((i) => i.id !== installmentId) })
+  }
 
   const openPriceEditor = () => {
     setPriceDraft(priceCents > 0 ? (priceCents / 100).toFixed(2) : "")
@@ -134,6 +273,9 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
           ? `${formatMoney(cents)} cobrado. Quedan ${formatMoney(after.dueCents)}.`
           : `${formatMoney(cents)} cobrado.`,
     )
+
+    // El recibo se ofrece apenas registrado: lo revisás antes de mandar nada.
+    openReceipt(created)
   }
 
   const startEdit = (payment: PaymentRecord) => {
@@ -252,6 +394,119 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
               </button>
             }
           />
+        )}
+      </section>
+
+      {/* Fechas de cobro: cuotas esperadas que disparan el recordatorio automático */}
+      <section className="rounded-xl border border-white/5 bg-[#0c0c0e]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 px-4 py-3 sm:px-5">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold tracking-tight text-zinc-200">Fechas de cobro</h2>
+            <p className="mt-0.5 max-w-md text-xs text-zinc-500">
+              Cuotas esperadas del plan. Cuando una queda vencida con saldo, el cliente recibe un
+              recordatorio automático (máximo uno cada 3 días).
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => setInstFormOpen((v) => !v)}
+            disabled={instFormOpen}
+          >
+            <Plus className="h-3.5 w-3.5" /> Agregar fecha
+          </Button>
+        </div>
+
+        {instFormOpen && (
+          <div className="border-b border-white/5 bg-white/[0.02] px-4 py-4 sm:px-5">
+            <div className="grid gap-2 sm:grid-cols-[1fr_10rem_9rem]">
+              <input
+                value={instLabel}
+                onChange={(e) => setInstLabel(e.target.value)}
+                placeholder="Etiqueta (ej.: Semana 1)"
+                aria-label="Etiqueta de la cuota"
+                className={`${fieldClass}`}
+              />
+              <input
+                type="date"
+                value={instDate}
+                onChange={(e) => setInstDate(e.target.value)}
+                aria-label="Fecha de vencimiento"
+                className={`${fieldClass} [color-scheme:dark]`}
+              />
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">$</span>
+                <input
+                  value={instAmount}
+                  onChange={(e) => setInstAmount(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addInstallment()}
+                  inputMode="decimal"
+                  placeholder={summary.dueCents > 0 ? (summary.dueCents / 100).toFixed(2) : "0.00"}
+                  aria-label="Monto de la cuota"
+                  className={`${fieldClass} pl-7 tabular-nums`}
+                />
+              </div>
+            </div>
+            <div className="mt-2 flex justify-end gap-2">
+              <Button size="sm" variant="ghost" className="text-zinc-400 hover:text-zinc-100" onClick={() => setInstFormOpen(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={addInstallment} disabled={savingInst}>
+                {savingInst ? "Agregando..." : "Agregar"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {sortedInstallments.length === 0 ? (
+          <p className="px-4 py-6 text-xs text-zinc-500 sm:px-5">
+            Sin fechas cargadas. Agregá las cuotas acordadas (ej.: semana por semana) para que el
+            cliente reciba recordatorios automáticos.
+          </p>
+        ) : (
+          <ul className="divide-y divide-white/5">
+            {(() => {
+              let accumulated = 0
+              return sortedInstallments.map((installment) => {
+                accumulated += installment.amountCents
+                const covered = paidCentsTotal >= accumulated
+                const isOverdue =
+                  !covered && installment.dueDate.slice(0, 10) <= todayIso && priceCents > 0
+                const chipClass = covered
+                  ? "bg-emerald-500/10 text-emerald-300 ring-emerald-400/25"
+                  : isOverdue
+                    ? "bg-rose-500/10 text-rose-300 ring-rose-400/25"
+                    : "bg-white/5 text-zinc-400 ring-white/10"
+                return (
+                  <li key={installment.id} className="group flex items-center gap-3 px-4 py-2.5 sm:px-5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-zinc-200">
+                        {installment.label || "Cuota"}
+                        <span className="ml-2 text-xs font-normal text-zinc-500">
+                          vence {formatPaymentDate(installment.dueDate)}
+                        </span>
+                      </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${chipClass}`}>
+                      {covered ? "cubierta" : isOverdue ? "vencida" : "pendiente"}
+                    </span>
+                    <span className="w-20 shrink-0 text-right text-sm font-medium tabular-nums text-zinc-200">
+                      {formatMoney(installment.amountCents)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeInstallment(installment.id)}
+                      aria-label={`Quitar ${installment.label || "cuota"}`}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                )
+              })
+            })()}
+          </ul>
         )}
       </section>
 
@@ -448,6 +703,15 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
                       </span>
                       <button
                         type="button"
+                        onClick={() => openReceipt(payment)}
+                        aria-label={`Recibo del cobro de ${formatMoney(payment.amountCents)}`}
+                        title="Ver recibo"
+                        className="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-white/5 hover:text-zinc-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:h-9 max-sm:w-9 max-sm:opacity-100"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => startEdit(payment)}
                         aria-label={`Editar el cobro de ${formatMoney(payment.amountCents)}`}
                         className="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-white/5 hover:text-zinc-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:h-9 max-sm:w-9 max-sm:opacity-100"
@@ -470,6 +734,77 @@ export function PaymentsTab({ planningId, priceCents, payments, onChange }: Prop
           </ul>
         )}
       </section>
+
+      {receiptFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6" onClick={() => setReceiptFor(null)}>
+          <div
+            className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0c0c0e] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-3.5">
+              <h2 className="text-base font-semibold text-zinc-100">Recibo de pago</h2>
+              <button type="button" onClick={() => setReceiptFor(null)} className="rounded-md p-1 text-zinc-400 hover:bg-white/5 hover:text-zinc-100" aria-label="Cerrar recibo">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+              <iframe
+                ref={receiptFrameRef}
+                title="Vista previa del recibo"
+                srcDoc={receiptHtml}
+                className="h-[34rem] w-full rounded-lg border border-white/10 bg-white"
+              />
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-400" htmlFor="receipt-to">
+                  Enviar a
+                </label>
+                <Input
+                  id="receipt-to"
+                  value={receiptTo}
+                  onChange={(e) => setReceiptTo(e.target.value)}
+                  placeholder="cliente@email.com"
+                  inputMode="email"
+                  autoComplete="off"
+                  className="border-white/10 bg-[#18181b]"
+                />
+                {!client?.email && (
+                  <p className="text-xs text-zinc-500">
+                    Este cliente no tiene email guardado: escribilo acá (y cargalo en el cliente para la próxima).
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-400" htmlFor="receipt-detail">
+                  Detalle del documento
+                </label>
+                <textarea
+                  id="receipt-detail"
+                  value={receiptDetail}
+                  onChange={(e) => setReceiptDetail(e.target.value)}
+                  rows={3}
+                  placeholder="Ej.: Incluye $75 de deuda anterior de julio + mensualidad de septiembre..."
+                  className="w-full rounded-md border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+                />
+                <p className="text-xs text-zinc-500">
+                  Lo que escribas sale como párrafo de «Detalle» en el recibo, debajo del concepto del cobro.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-white/10 px-5 py-3.5">
+              <Button variant="ghost" className="gap-1.5 text-zinc-400 hover:text-zinc-100" onClick={printReceipt}>
+                <Printer className="h-3.5 w-3.5" /> Imprimir / PDF
+              </Button>
+              <Button className="gap-1.5 bg-emerald-500 text-black hover:bg-emerald-400" onClick={sendReceipt} disabled={sendingReceipt}>
+                <Mail className="h-3.5 w-3.5" /> {sendingReceipt ? "Enviando..." : `Enviar a ${client?.name ?? "cliente"}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
