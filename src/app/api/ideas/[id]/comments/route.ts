@@ -19,11 +19,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { id } = await params
     const body = await request.json()
 
+    const text = typeof body.text === "string" ? body.text.trim() : ""
+    if (!text || text.length > 2000) {
+      return NextResponse.json({ error: "Comentario inválido" }, { status: 400 })
+    }
+    const authorName =
+      typeof body.authorName === "string" && body.authorName.trim()
+        ? body.authorName.trim().slice(0, 60)
+        : "Cliente"
+
     const comment = await prisma.comment.create({
       data: {
         contentIdeaId: id,
-        authorName: body.authorName ?? "Cliente",
-        text: body.text,
+        authorName,
+        text,
       },
     })
 
@@ -38,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           userId: idea.createdBy,
           type: "comment",
           title: "Nuevo comentario",
-          message: `"${body.text.slice(0, 120)}${body.text.length > 120 ? "…" : ""}" en "${idea.title}"`,
+          message: `"${text.slice(0, 120)}${text.length > 120 ? "…" : ""}" en "${idea.title}"`,
           link: `/planning/${idea.planningId}`,
         },
       })

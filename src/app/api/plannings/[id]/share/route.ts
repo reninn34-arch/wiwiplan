@@ -45,6 +45,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   try {
     const { id } = await params
+    const planning = await prisma.planning.findFirst({
+      where: { id, userId: session.user.id },
+      select: { id: true },
+    })
+    if (!planning) {
+      return NextResponse.json({ error: "No encontrada" }, { status: 404 })
+    }
+
     const links = await prisma.shareLink.findMany({
       where: { planningId: id },
       orderBy: { createdAt: "desc" },
