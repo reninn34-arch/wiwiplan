@@ -33,7 +33,7 @@ export function RichEditor({ value, onChange, placeholder, className }: Props) {
     <button
       type="button"
       onMouseDown={(e) => { e.preventDefault(); onClick() }}
-      className={`rounded p-1 text-xs ${active ? "bg-white/20 text-white" : "text-zinc-500 hover:bg-white/5"}`}
+      className={`rounded p-1 text-xs ${active ? "bg-white/20 text-white" : "text-zinc-400 hover:bg-white/5"}`}
       title={label}
     >
       {label === "bold" ? <Bold className="h-3.5 w-3.5" /> :

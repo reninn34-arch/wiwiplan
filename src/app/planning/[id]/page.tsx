@@ -30,6 +30,7 @@ export default async function PlanningDetailPage({ params }: Props) {
         select: { id: true, title: true, createdAt: true },
       },
       shareLinks: { orderBy: { createdAt: "desc" } },
+      payments: { orderBy: { paidAt: "asc" } },
     },
   })
 
@@ -50,11 +51,17 @@ export default async function PlanningDetailPage({ params }: Props) {
       expiresAt: l.expiresAt?.toISOString() ?? null,
       createdAt: l.createdAt.toISOString(),
     })),
+    payments: planning.payments.map((p) => ({
+      ...p,
+      paidAt: p.paidAt.toISOString(),
+      createdAt: p.createdAt.toISOString(),
+    })),
   }
 
   const clients = await prisma.client.findMany({
     where: { userId: session.user.id },
     orderBy: { name: "asc" },
+    select: { id: true, name: true, email: true },
   })
 
   return <PlanningDetailClient planning={serialized} clients={clients} />

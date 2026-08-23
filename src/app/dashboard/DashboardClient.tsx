@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation"
 import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, Building2, Camera } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
+import { ClientLogo } from "@/components/ClientLogo"
+import { paymentDotStyles } from "@/components/payments/PaymentStatus"
+import { formatMoney, summarizePayments } from "@/lib/payments"
+import { compressAvatar } from "@/lib/compress-image"
 import { Input } from "@/components/ui/input"
 import { NotificationBell } from "@/components/NotificationBell"
 
@@ -40,7 +44,6 @@ interface Client {
   id: string
   name: string
   email?: string
-  logo?: string | null
 }
 
 interface Planning {
@@ -52,6 +55,8 @@ interface Planning {
   createdAt: string
   client: { id: string; name: string } | null
   _count: { contentIdeas: number; storyboards: number }
+  priceCents: number
+  payments: Array<{ amountCents: number }>
 }
 
 interface PendingIdea {
@@ -141,26 +146,12 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     return c.name.toLowerCase().includes(search.toLowerCase()) || plans.some((p) => p.title.toLowerCase().includes(search.toLowerCase()))
   }
 
-  const periodOptions = () => {
-    const opts = []
-    const y = now.getFullYear()
-    const m = now.getMonth() + 1
-    for (let i = 0; i < 6; i++) {
-      const ym = m - i
-      const year = ym <= 0 ? y - 1 : y
-      const month = ym <= 0 ? ym + 12 : ym
-      const key = `${year}-${String(month).padStart(2, "0")}`
-      opts.push(key)
-    }
-    return opts
-  }
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-200">WiwiPlan</h1>
-          <p className="mt-1 text-zinc-500">
+          <p className="mt-1 text-zinc-400">
             {user.name ?? user.email} — {clients.length} clientes, {initial.length} meses
           </p>
         </div>
@@ -187,7 +178,18 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                   <Camera size={16} className="text-zinc-500" />
                 )}
               </button>
-              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => { if (typeof r.result === "string") setNewClientLogo(r.result) }; r.readAsDataURL(f) } }} />
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                aria-label="Logo del cliente"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  e.target.value = ""
+                  if (file) setNewClientLogo(await compressAvatar(file))
+                }}
+              />
             </div>
             <Input
               placeholder="Nombre del cliente"
@@ -218,23 +220,23 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden cursor-pointer" onClick={() => router.push(`/planning/${idea.planning.id}`)}>
                 <div className="p-3 space-y-2">
                   <p className="text-sm font-medium text-zinc-200">{idea.title}</p>
-                  {idea.description && <p className="text-xs text-zinc-500 line-clamp-2">{idea.description}</p>}
+                  {idea.description && <p className="text-xs text-zinc-400 line-clamp-2">{idea.description}</p>}
                   <div className="flex flex-wrap gap-1.5 text-xs text-zinc-400">
                     <span className="rounded bg-white/5 px-1.5 py-0.5">
                       {idea.planning.client?.name}{idea.planning.period && <> — {formatPeriod(idea.planning.period)}</>}
                     </span>
                     <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-400">{ideaStatusLabels[idea.status] ?? idea.status}</span>
-                    <span className={`rounded bg-white/5 px-1.5 py-0.5 ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-500"}`}>
+                    <span className={`rounded bg-white/5 px-1.5 py-0.5 ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-400"}`}>
                       {priorityLabels[idea.priority] ?? idea.priority}
                     </span>
                     {idea.dueDate && (
-                      <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-500">
+                      <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-400">
                         📅 {new Date(idea.dueDate).toLocaleDateString("es-AR")}
                       </span>
                     )}
                   </div>
                   {idea._count.comments > 0 && (
-                    <p className="text-xs text-zinc-500"><MessageSquare className="h-3 w-3 inline-block" /> {idea._count.comments} comentarios</p>
+                    <p className="text-xs text-zinc-400"><MessageSquare className="h-3 w-3 inline-block" /> {idea._count.comments} comentarios</p>
                   )}
                 </div>
               </div>
@@ -259,9 +261,9 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                   <tr key={idea.id} className="cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/[0.02]" onClick={() => router.push(`/planning/${idea.planning.id}`)}>
                     <td className="px-3 py-2">
                       <p className="font-medium text-zinc-200">{idea.title}</p>
-                      {idea.description && <p className="text-xs text-zinc-500 line-clamp-1">{idea.description}</p>}
+                      {idea.description && <p className="text-xs text-zinc-400 line-clamp-1">{idea.description}</p>}
                     </td>
-                    <td className="px-3 py-2 text-xs text-zinc-500">
+                    <td className="px-3 py-2 text-xs text-zinc-400">
                       {idea.planning.client?.name}
                       {idea.planning.period && <span> — {formatPeriod(idea.planning.period)}</span>}
                     </td>
@@ -269,12 +271,12 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                       <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400">{ideaStatusLabels[idea.status] ?? idea.status}</span>
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`text-xs font-semibold ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-500"}`}>{idea.priority === "HIGH" ? "Alta" : idea.priority === "MEDIUM" ? "Media" : "Baja"}</span>
+                      <span className={`text-xs font-semibold ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-400"}`}>{idea.priority === "HIGH" ? "Alta" : idea.priority === "MEDIUM" ? "Media" : "Baja"}</span>
                     </td>
-                    <td className="px-3 py-2 text-xs text-zinc-500">
+                    <td className="px-3 py-2 text-xs text-zinc-400">
                       {idea.dueDate ? new Date(idea.dueDate).toLocaleDateString("es-AR") : "—"}
                     </td>
-                    <td className="px-3 py-2 text-center text-xs text-zinc-600">
+                    <td className="px-3 py-2 text-center text-xs text-zinc-400">
                       {idea._count.comments > 0 && <MessageSquare className="h-3 w-3 inline-block" />}
                       {idea._count.comments}
                     </td>
@@ -306,17 +308,23 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 onClick={() => setExpandedClient(isExpanded ? null : client.id)}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors flex-wrap"
               >
-                <Building2 className="h-5 w-5 text-zinc-500" />
-                {client.logo ? (
-                  <img src={client.logo} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center shrink-0">
-                    <Building2 size={14} className="text-zinc-500" />
-                  </div>
-                )}
+                <ClientLogo clientId={client.id} name={client.name} size={28} />
                 <span className="text-base sm:text-lg font-semibold text-zinc-200 truncate">{client.name}</span>
                 {latestPeriod && <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-zinc-400">{latestPeriod}</span>}
-                <span className="text-xs text-zinc-500">{plans.length} {plans.length === 1 ? "mes" : "meses"}</span>
+                <span className="text-xs text-zinc-400">{plans.length} {plans.length === 1 ? "mes" : "meses"}</span>
+                {(() => {
+                  const debe = plans.reduce(
+                    (sum, plan) => sum + summarizePayments(plan.priceCents, plan.payments).dueCents,
+                    0,
+                  )
+                  if (debe === 0) return null
+                  return (
+                    <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-amber-300 ring-1 ring-inset ring-amber-400/25">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden />
+                      debe {formatMoney(debe)}
+                    </span>
+                  )
+                })()}
                 <ChevronRight className={`ml-auto h-4 w-4 text-zinc-500 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
               </button>
               {isExpanded && (
@@ -342,14 +350,26 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                             {p.status === "DRAFT" ? "Borrador" : p.status === "IN_PROGRESS" ? "En Progreso" : p.status === "REVIEW" ? "Revisión" : p.status === "APPROVED" ? "Aprobado" : p.status === "PUBLISHED" ? "Publicado" : p.status}
                           </span>
                         </div>
-                        {p.title && p.period && <p className="mb-2 text-xs text-zinc-500">{p.title}</p>}
-                        <div className="flex gap-3 text-[10px] text-zinc-500">
+                        {p.title && p.period && <p className="mb-2 text-xs text-zinc-400">{p.title}</p>}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-400">
                           <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas</span>
                           <span className="flex items-center gap-1"><Layout className="h-3 w-3" /> {p._count.storyboards} sb</span>
+                          {(() => {
+                            const cobro = summarizePayments(p.priceCents, p.payments)
+                            if (cobro.state === "UNPRICED") return null
+                            return (
+                              <span className="flex items-center gap-1 tabular-nums">
+                                <span className={`h-1.5 w-1.5 rounded-full ${paymentDotStyles[cobro.state]}`} aria-hidden />
+                                {cobro.dueCents > 0
+                                  ? `debe ${formatMoney(cobro.dueCents)}`
+                                  : "pagado"}
+                              </span>
+                            )
+                          })()}
                         </div>
                       </button>
                     ))}
-                    {plans.length === 0 && <p className="col-span-full py-6 text-center text-xs text-zinc-600">Sin meses todavía. Agregá el primer mes.</p>}
+                    {plans.length === 0 && <p className="col-span-full py-6 text-center text-xs text-zinc-400">Sin meses todavía. Agregá el primer mes.</p>}
                   </div>
                 </div>
               )}
@@ -361,7 +381,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           <div className="rounded-lg border border-white/5 bg-[#0c0c0e]">
             <div className="px-4 py-3">
               <span className="text-lg font-semibold text-zinc-200">Sin cliente</span>
-              <span className="ml-2 text-xs text-zinc-500">{filteredUncategorized.length} planificaciones</span>
+              <span className="ml-2 text-xs text-zinc-400">{filteredUncategorized.length} planificaciones</span>
             </div>
             <div className="grid gap-3 border-t border-white/5 p-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredUncategorized.map((p) => (
@@ -372,7 +392,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                   className="group rounded-lg border border-white/5 bg-[#0c0c0e] p-4 text-left transition-all hover:bg-white/[0.02]"
                 >
                   <h3 className="text-sm font-semibold text-zinc-200 group-hover:text-white">{p.title}</h3>
-                  <div className="mt-2 flex gap-3 text-xs text-zinc-500">
+                  <div className="mt-2 flex gap-3 text-xs text-zinc-400">
                     <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas</span>
                   </div>
                 </button>
@@ -383,7 +403,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
 
         {clients.filter(hasClientMatch).length === 0 && filteredUncategorized.length === 0 && (
           <div className="rounded-lg border border-dashed border-white/10 p-12 text-center">
-            <p className="text-zinc-500">{search ? "Sin resultados" : "Creá un cliente para empezar."}</p>
+            <p className="text-zinc-400">{search ? "Sin resultados" : "Creá un cliente para empezar."}</p>
           </div>
         )}
       </div>

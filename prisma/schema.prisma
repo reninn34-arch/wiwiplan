@@ -49,6 +49,15 @@ enum Priority {
   HIGH
 }
 
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+  PAYPAL
+  CRYPTO
+  OTHER
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -87,6 +96,7 @@ model Planning {
   targetAudience  String          @default("")
   goals           String          @default("")
   notes           String          @default("")
+  priceCents      Int             @default(0)
   clientId        String?
   userId          String
   createdAt       DateTime        @default(now())
@@ -97,6 +107,7 @@ model Planning {
   shareLinks      ShareLink[]
   contentIdeas    ContentIdea[]
   storyboards     Storyboard[]
+  payments        Payment[]
 
   @@index([userId])
   @@index([clientId])
@@ -209,6 +220,20 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  planningId String
+  amountCents Int
+  method     PaymentMethod @default(TRANSFER)
+  note       String        @default("")
+  paidAt     DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+
+  planning Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@index([planningId])
 }
 
 model ShareLink {

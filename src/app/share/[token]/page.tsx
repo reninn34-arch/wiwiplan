@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { SharedPlanningView } from "./SharedPlanningView"
+import { panelSelect } from "@/lib/media"
+import { panelsWithImage } from "@/lib/media.server"
 
 interface Props {
   params: Promise<{ token: string }>
@@ -21,14 +23,15 @@ export default async function SharePage({ params }: Props) {
               contentIdeaTags: { include: { tag: true } },
               comments: { orderBy: { createdAt: "asc" } },
               storyboard: {
-                include: { panels: { orderBy: { order: "asc" } } },
+                include: { panels: { orderBy: { order: "asc" }, select: panelSelect } },
               },
             },
           },
           storyboards: {
             orderBy: { createdAt: "desc" },
-            include: { panels: { orderBy: { order: "asc" } } },
+            include: { panels: { orderBy: { order: "asc" }, select: panelSelect } },
           },
+          payments: { orderBy: { paidAt: "asc" } },
         },
       },
     },
@@ -40,12 +43,18 @@ export default async function SharePage({ params }: Props) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-zinc-500">Enlace Expirado</h1>
-          <p className="mt-2 text-zinc-500">Este enlace ha expirado. Solicita uno nuevo.</p>
+          <h1 className="text-2xl font-bold text-zinc-400">Enlace Expirado</h1>
+          <p className="mt-2 text-zinc-400">Este enlace ha expirado. Solicita uno nuevo.</p>
         </div>
       </main>
     )
   }
+
+  const storyboardIds = [
+    ...shareLink.planning.storyboards.map((s) => s.id),
+    ...shareLink.planning.contentIdeas.flatMap((i) => (i.storyboard ? [i.storyboard.id] : [])),
+  ]
+  const withImage = await panelsWithImage(storyboardIds)
 
   const serialized = {
     ...shareLink.planning,
@@ -58,7 +67,7 @@ export default async function SharePage({ params }: Props) {
         createdAt: i.storyboard.createdAt.toISOString(),
         panels: i.storyboard.panels.map((p) => ({
           ...p,
-          createdAt: p.createdAt.toISOString(),
+          hasImage: withImage.has(p.id),
         })),
       } : null,
       comments: i.comments.map((c) => ({
@@ -66,12 +75,19 @@ export default async function SharePage({ params }: Props) {
         createdAt: c.createdAt.toISOString(),
       })),
     })),
+    payments: shareLink.planning.payments.map((p) => ({
+      id: p.id,
+      amountCents: p.amountCents,
+      method: p.method,
+      note: p.note,
+      paidAt: p.paidAt.toISOString(),
+    })),
     storyboards: shareLink.planning.storyboards.map((s) => ({
       ...s,
       createdAt: s.createdAt.toISOString(),
       panels: s.panels.map((p) => ({
         ...p,
-        createdAt: p.createdAt.toISOString(),
+        hasImage: withImage.has(p.id),
       })),
     })),
   }

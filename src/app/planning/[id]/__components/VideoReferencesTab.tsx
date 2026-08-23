@@ -65,7 +65,7 @@ export function VideoReferencesTab({ planningId, videos: initial }: Props) {
       </div>
 
       {videos.length === 0 ? (
-        <p className="py-8 text-center text-zinc-500">No hay videos de referencia.</p>
+        <p className="py-8 text-center text-zinc-400">No hay videos de referencia.</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {videos.map((video) => (
@@ -86,21 +86,21 @@ export function VideoReferencesTab({ planningId, videos: initial }: Props) {
                   rel="noopener noreferrer"
                   className="group flex aspect-video items-center justify-center bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
                 >
-                  <div className="flex flex-col items-center gap-2 text-zinc-500 group-hover:text-zinc-300">
+                  <div className="flex flex-col items-center gap-2 text-zinc-400 group-hover:text-zinc-300">
                     <ExternalLink className="h-8 w-8" />
                     <span className="text-xs font-medium">Abrir en {platformLabel(video.platform)}</span>
                   </div>
                 </a>
               ) : (
                 <div className="flex aspect-video items-center justify-center bg-white/[0.02]">
-                  <ExternalLink className="h-8 w-8 text-zinc-600" />
+                  <ExternalLink className="h-8 w-8 text-zinc-500" />
                 </div>
               )}
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-zinc-200">{video.title || "Video de referencia"}</p>
-                  <p className="text-xs text-zinc-500">{platformLabel(video.platform)}</p>
-                  {video.notes && <p className="text-xs text-zinc-500">{video.notes}</p>}
+                  <p className="text-xs text-zinc-400">{platformLabel(video.platform)}</p>
+                  {video.notes && <p className="text-xs text-zinc-400">{video.notes}</p>}
                 </div>
                 <button type="button" onClick={() => deleteVideo(video.id)}>
                   <Trash2 className="h-4 w-4 text-red-400" />

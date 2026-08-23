@@ -31,9 +31,18 @@ export function NotificationBell() {
         }
       } catch {}
     }
-    fetchNotifs()
-    const interval = setInterval(fetchNotifs, 30000)
-    return () => clearInterval(interval)
+    // Sin consultas mientras la pestaña está en segundo plano: al volver,
+    // una sola consulta pone al día el contador.
+    const tick = () => {
+      if (document.visibilityState === "visible") fetchNotifs()
+    }
+    tick()
+    const interval = setInterval(tick, 30000)
+    document.addEventListener("visibilitychange", tick)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", tick)
+    }
   }, [])
 
   useEffect(() => {
@@ -64,7 +73,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="relative rounded-md p-1.5 text-zinc-500 hover:bg-white/5 hover:text-zinc-300 transition-colors"
+        className="relative rounded-md p-1.5 text-zinc-400 hover:bg-white/5 hover:text-zinc-300 transition-colors"
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
@@ -85,7 +94,7 @@ export function NotificationBell() {
           </div>
           <div className="max-h-72 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-zinc-500">Sin notificaciones</p>
+              <p className="px-3 py-6 text-center text-xs text-zinc-400">Sin notificaciones</p>
             ) : (
               notifications.map((n) => (
                 <Link
@@ -97,10 +106,10 @@ export function NotificationBell() {
                   {icon(n.type)}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-zinc-200">{n.title}</p>
-                    <p className="text-zinc-500 line-clamp-2">{n.message}</p>
-                    <p className="mt-0.5 text-[10px] text-zinc-600">{new Date(n.createdAt).toLocaleString("es-AR")}</p>
+                    <p className="text-zinc-400 line-clamp-2">{n.message}</p>
+                    <p className="mt-0.5 text-[10px] text-zinc-400">{new Date(n.createdAt).toLocaleString("es-AR")}</p>
                   </div>
-                  <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-zinc-600" />
+                  <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-zinc-500" />
                 </Link>
               ))
             )}

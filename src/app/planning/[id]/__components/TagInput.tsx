@@ -75,7 +75,7 @@ export function TagInput({ selectedIds, onChange }: Props) {
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/10 px-2 py-0.5 text-[10px] text-zinc-500 hover:text-zinc-300"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/10 px-2 py-0.5 text-[10px] text-zinc-400 hover:text-zinc-300"
         >
           <Plus className="h-2.5 w-2.5" />
         </button>
@@ -107,7 +107,7 @@ export function TagInput({ selectedIds, onChange }: Props) {
                 {tag.name}
               </button>
             ))}
-            {allTags.length === 0 && <p className="px-2 py-1 text-[10px] text-zinc-500">No hay tags todavía</p>}
+            {allTags.length === 0 && <p className="px-2 py-1 text-[10px] text-zinc-400">No hay tags todavía</p>}
           </div>
         </div>
       )}

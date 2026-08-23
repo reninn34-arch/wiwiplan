@@ -2,15 +2,20 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Bell, Share2, MoreHorizontal, ChevronRight } from "lucide-react"
+import { ArrowLeft, Share2, MoreHorizontal, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { InfoTab } from "./InfoTab"
 import { ContentIdeasTab } from "./ContentIdeasTab"
 import dynamic from "next/dynamic"
 import { ShareModal } from "./ShareModal"
+import { PaymentsTab } from "./PaymentsTab"
+import { PaymentStamp, type PaymentRecord } from "@/components/payments/PaymentStatus"
+import { ClientLogo } from "@/components/ClientLogo"
+import { formatMoney, summarizePayments } from "@/lib/payments"
 import { NotificationBell } from "@/components/NotificationBell"
 
-const StoryboardsTab = dynamic(() => import("./StoryboardsTab").then((m) => ({ default: m.StoryboardsTab })), { ssr: false })
+const loadStoryboardsTab = () => import("./StoryboardsTab")
+const StoryboardsTab = dynamic(() => loadStoryboardsTab().then((m) => ({ default: m.StoryboardsTab })), { ssr: false })
 
 const months: Record<string, string> = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -37,6 +42,7 @@ const tabs = [
   { id: "contenido", label: "Contenido" },
   { id: "info", label: "Información" },
   { id: "storyboard", label: "Storyboards" },
+  { id: "pagos", label: "Pagos" },
 ] as const
 
 type TabId = (typeof tabs)[number]["id"]
@@ -51,9 +57,10 @@ interface PlanningData {
   goals: string
   notes: string
   clientId: string | null
+  priceCents: number
   createdAt: string
   updatedAt: string
-  client: { id: string; name: string; email: string; logo?: string | null } | null
+  client: { id: string; name: string; email: string } | null
   contentIdeas: Array<{
     id: string
     title: string
@@ -82,6 +89,7 @@ interface PlanningData {
     expiresAt: string | null
     createdAt: string
   }>
+  payments: PaymentRecord[]
 }
 
 interface Props {
@@ -121,6 +129,9 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
     setPlanning((prev) => ({ ...prev, period: newPeriod }))
   }
 
+  const paymentSummary = summarizePayments(planning.priceCents, planning.payments)
+  const showPaymentBadge = planning.priceCents > 0 || planning.payments.length > 0
+
   const startEditPeriod = () => {
     const parts = planning.period ? planning.period.split("-") : []
     setPeriodMonth(parts[1] ?? "")
@@ -142,11 +153,11 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           </button>
 
           <div className="flex items-center text-sm font-medium min-w-0">
-            <span className="hidden sm:inline text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors truncate" onClick={() => router.push("/dashboard")}>Workspace</span>
+            <span className="hidden sm:inline text-zinc-400 hover:text-zinc-300 cursor-pointer transition-colors truncate" onClick={() => router.push("/dashboard")}>Workspace</span>
             <ChevronRight size={14} className="hidden sm:block text-zinc-700 mx-1 shrink-0" />
-            <span className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors truncate max-w-[120px] sm:max-w-[200px] flex items-center gap-1.5" onClick={() => router.push("/dashboard")}>
-              {planning.client?.logo ? (
-                <img src={planning.client.logo} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+            <span className="text-zinc-400 hover:text-zinc-300 cursor-pointer transition-colors truncate max-w-[120px] sm:max-w-[200px] flex items-center gap-1.5" onClick={() => router.push("/dashboard")}>
+              {planning.client ? (
+                <ClientLogo clientId={planning.client.id} name={planning.client.name} size={20} />
               ) : null}
               {planning.client?.name ?? "Sin cliente"}
             </span>
@@ -190,15 +201,42 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Title Area */}
-        <div className="mb-8 flex items-end justify-between flex-wrap gap-2">
+        <div className="mb-8 flex items-end justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">
               {planning.title || "Plan de Contenido"}
             </h1>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-400">
               Gestiona y organiza las ideas y publicaciones para {planning.period ? formatPeriod(planning.period) : "este período"}.
             </p>
           </div>
+
+          {showPaymentBadge && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("pagos")}
+              className="flex items-center gap-3 rounded-lg border border-white/5 bg-[#0c0c0e] px-3.5 py-2.5 transition-colors hover:border-white/10 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+            >
+              <PaymentStamp state={paymentSummary.state} />
+              <span className="text-xs text-zinc-400">
+                {paymentSummary.dueCents > 0 ? (
+                  <>
+                    Saldo{" "}
+                    <span className="font-medium tabular-nums text-zinc-100">
+                      {formatMoney(paymentSummary.dueCents)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Cobrado{" "}
+                    <span className="font-medium tabular-nums text-zinc-100">
+                      {formatMoney(paymentSummary.paidCents)}
+                    </span>
+                  </>
+                )}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Tabs */}
@@ -208,10 +246,12 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
+              onMouseEnter={tab.id === "storyboard" ? loadStoryboardsTab : undefined}
+              onFocus={tab.id === "storyboard" ? loadStoryboardsTab : undefined}
               className={`px-3 sm:px-4 py-2.5 text-sm font-medium capitalize whitespace-nowrap transition-all relative ${
                 activeTab === tab.id
                   ? "text-zinc-100"
-                  : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02] rounded-t-lg"
+                  : "text-zinc-400 hover:text-zinc-300 hover:bg-white/[0.02] rounded-t-lg"
               }`}
             >
               {tab.label}
@@ -230,6 +270,14 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
         )}
         {activeTab === "storyboard" && (
           <StoryboardsTab planningId={planning.id} />
+        )}
+        {activeTab === "pagos" && (
+          <PaymentsTab
+            planningId={planning.id}
+            priceCents={planning.priceCents}
+            payments={planning.payments}
+            onChange={updatePlanning}
+          />
         )}
       </main>
 

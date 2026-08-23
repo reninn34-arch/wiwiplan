@@ -40,12 +40,15 @@ export function ShareModal({ planningId, shareLinks: initial, onClose }: Props) 
     setTimeout(() => setCopied(null), 2000)
   }
 
+  const shareUrl = (token: string) =>
+    `${typeof window !== "undefined" ? window.location.origin : ""}/share/${token}`
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
       <div className="w-full max-w-md rounded-lg border border-white/5 bg-[#0c0c0e] p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-zinc-200">Compartir Planificación</h2>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-300">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -55,7 +58,7 @@ export function ShareModal({ planningId, shareLinks: initial, onClose }: Props) 
         </Button>
 
         {links.length === 0 ? (
-          <p className="py-4 text-center text-sm text-zinc-500">
+          <p className="py-4 text-center text-sm text-zinc-400">
             No hay enlaces de compartir generados.
           </p>
         ) : (
@@ -64,7 +67,7 @@ export function ShareModal({ planningId, shareLinks: initial, onClose }: Props) 
               <div key={link.id} className="flex items-center gap-2 rounded-md border border-white/5 bg-[#0c0c0e] p-2">
                 <Input
                   readOnly
-                  value={`${window.location.origin}/share/${link.token}`}
+                  value={shareUrl(link.token)}
                   className="flex-1 text-xs"
                 />
                 <Button

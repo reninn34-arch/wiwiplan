@@ -14,6 +14,7 @@ export default async function DashboardPage() {
       include: {
         client: { select: { id: true, name: true } },
         _count: { select: { contentIdeas: true, storyboards: true } },
+        payments: { select: { amountCents: true } },
       },
     }),
     prisma.contentIdea.findMany({
@@ -27,6 +28,7 @@ export default async function DashboardPage() {
     prisma.client.findMany({
       where: { userId: session.user.id },
       orderBy: { name: "asc" },
+      select: { id: true, name: true, email: true },
     }),
   ])
 

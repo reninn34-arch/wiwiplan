@@ -126,7 +126,7 @@ function ToolbarButton({
       className={`flex h-7 w-7 items-center justify-center rounded text-sm transition-colors ${
         active
           ? "bg-white/10 text-white"
-          : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
+          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-300"
       } ${className ?? ""}`}
     >
       {label}

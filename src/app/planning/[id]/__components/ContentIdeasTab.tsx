@@ -1,15 +1,13 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef, type ClipboardEvent } from "react"
+import { useState, useMemo, useRef, useCallback, useSyncExternalStore, type ClipboardEvent } from "react"
 import {
-  Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Columns3, Table2, MessageSquare, Send,
-  ArrowUp, LayoutGrid, Bell, CheckCircle2, Circle,
+  Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Table2, MessageSquare,
+  ArrowUp, LayoutGrid, CheckCircle2, Circle,
   MonitorPlay, Smartphone, Hash, SlidersHorizontal, Command, Globe, Camera, ChevronRight, Layout,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { detectEmbed, platformLabel, postTypeLabel } from "@/lib/embeds"
-import { TagInput } from "./TagInput"
+import { compressImage } from "@/lib/compress-image"
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -81,38 +79,24 @@ function priorityColor(p: string) {
   }
 }
 
-function statusColor(s: string) {
-  const map: Record<string, string> = {
-    IDEA: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-    SELECTED: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
-    IN_PRODUCTION: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200",
-    DONE: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200",
-  }
-  return map[s] ?? "bg-gray-100 text-gray-700"
-}
-
 function formatDate(d: string | null) {
   if (!d) return ""
   return new Date(d).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
 }
 
 function handleImagePaste(e: ClipboardEvent<HTMLInputElement>, onDataUrl: (url: string) => void) {
-  const file = e.clipboardData.files?.[0]
-  if (file && file.type.startsWith("image/")) {
+  const direct = e.clipboardData.files?.[0]
+  if (direct && direct.type.startsWith("image/")) {
     e.preventDefault()
-    const reader = new FileReader()
-    reader.onload = () => { if (typeof reader.result === "string") onDataUrl(reader.result) }
-    reader.readAsDataURL(file)
+    compressImage(direct).then(onDataUrl)
     return
   }
   for (const item of e.clipboardData.items) {
     if (item.type.startsWith("image/")) {
+      const file = item.getAsFile()
+      if (!file) return
       e.preventDefault()
-      const file2 = item.getAsFile()
-      if (!file2) return
-      const reader = new FileReader()
-      reader.onload = () => { if (typeof reader.result === "string") onDataUrl(reader.result) }
-      reader.readAsDataURL(file2)
+      compressImage(file).then(onDataUrl)
       return
     }
   }
@@ -149,13 +133,11 @@ interface Props {
   storyboards: Array<{ id: string; title: string }>
 }
 
-function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, onUpdateTags, storyboards, onEdit, cols }: {
+function SortableRow({ idea, updateIdea, deleteIdea, search, storyboards, onEdit, cols }: {
   idea: Idea
   updateIdea: (id: string, data: Record<string, unknown>) => void
   deleteIdea: (id: string) => void
-  setPreviewImage: (url: string | null) => void
   search: string
-  onUpdateTags: (ideaId: string, tagIds: string[]) => void
   storyboards: Array<{ id: string; title: string }>
   onEdit: (idea: Idea) => void
   cols: Set<string>
@@ -169,7 +151,6 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
   }
 
   const [showComments, setShowComments] = useState(false)
-  const tagIds = idea.contentIdeaTags?.map((ct) => ct.tag.id) ?? []
 
   if (search && !idea.title.toLowerCase().includes(search) && !idea.description.toLowerCase().includes(search)) {
     return null
@@ -178,7 +159,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
   return (
     <>
     <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
-      <div className="flex items-center justify-center text-zinc-600 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
+      <div className="flex items-center justify-center text-zinc-400 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
         <GripVertical size={14} />
       </div>
 
@@ -192,13 +173,13 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
         />
         {cols.has("description") ? (
           <input
-            className="w-full bg-transparent text-xs text-zinc-500 focus:outline-none truncate mt-0.5"
+            className="w-full bg-transparent text-xs text-zinc-400 focus:outline-none truncate mt-0.5"
             value={idea.description}
             onChange={(e) => updateIdea(idea.id, { description: e.target.value })}
             placeholder="Objetivo / detalle..."
           />
         ) : (
-          <p className="text-xs text-zinc-500 truncate mt-0.5">{idea.description}</p>
+          <p className="text-xs text-zinc-400 truncate mt-0.5">{idea.description}</p>
         )}
       </div>
 
@@ -234,7 +215,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
 
       <div className="min-w-0">
         {idea.referenceUrl && (
-          <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate max-w-full group/link" title={idea.referenceUrl}>
+          <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-white truncate max-w-full group/link" title={idea.referenceUrl}>
             {idea.referenceEmbed && idea.platform === "IMAGE" ? (
               <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
             ) : (
@@ -244,7 +225,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
           </a>
         )}
         {!idea.referenceUrl && idea.referenceEmbed && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 truncate">
+          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400 truncate">
             {idea.platform === "IMAGE" ? (
               <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
             ) : (
@@ -254,7 +235,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
           </span>
         )}
         {!idea.referenceUrl && !idea.referenceEmbed && idea.storyboardId ? (
-          <button type="button" onClick={() => onEdit(idea)} className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate">
+          <button type="button" onClick={() => onEdit(idea)} className="inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-white truncate">
             <Layout size={10} className="shrink-0" />
             {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}
           </button>
@@ -296,22 +277,22 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
         ) : (
           <>
             <PriorityIcon priority={idea.priority} />
-            <span className={`text-sm ${idea.priority === "HIGH" ? "text-zinc-300" : "text-zinc-500"}`}>{priorityLabels[idea.priority]}</span>
+            <span className={`text-sm ${idea.priority === "HIGH" ? "text-zinc-300" : "text-zinc-400"}`}>{priorityLabels[idea.priority]}</span>
           </>
         )}
       </div>
 
       <div className="flex items-center justify-end gap-2">
         {idea.comments?.length > 0 && (
-          <button type="button" onClick={() => setShowComments((p) => !p)} className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300" title="Comentarios del cliente">
+          <button type="button" onClick={() => setShowComments((p) => !p)} className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-300" title="Comentarios del cliente">
             <MessageSquare size={12} />
             {idea.comments.length}
           </button>
         )}
-        <button type="button" onClick={() => onEdit(idea)} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-all">
+        <button type="button" onClick={() => onEdit(idea)} className="p-1.5 rounded hover:bg-white/10 text-zinc-400 hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-all">
           <ExternalLink size={14} />
         </button>
-        <button type="button" onClick={() => deleteIdea(idea.id)} className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+        <button type="button" onClick={() => deleteIdea(idea.id)} className="p-1.5 rounded hover:bg-white/10 text-zinc-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
           <Trash2 size={14} />
         </button>
       </div>
@@ -319,12 +300,12 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
     {showComments && (
       <div className="border-b border-white/5 bg-white/[0.01] px-12 py-3">
         <div className="space-y-2 max-h-48 overflow-y-auto">
-          {(idea.comments?.length ?? 0) === 0 && <p className="text-xs text-zinc-500">Sin comentarios del cliente.</p>}
+          {(idea.comments?.length ?? 0) === 0 && <p className="text-xs text-zinc-400">Sin comentarios del cliente.</p>}
           {idea.comments?.map((c) => (
             <div key={c.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] px-3 py-2">
               <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
               <p className="text-sm text-zinc-400">{c.text}</p>
-              <p className="text-[10px] text-zinc-600">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+              <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
             </div>
           ))}
         </div>
@@ -334,9 +315,10 @@ function SortableRow({ idea, updateIdea, deleteIdea, setPreviewImage, search, on
   )
 }
 
+const emptySubscribe = () => () => {}
+
 export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Props) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
 
   const [ideas, setIdeas] = useState(initial)
   const [showForm, setShowForm] = useState(false)
@@ -370,8 +352,8 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
   const [filterPlatform, setFilterPlatform] = useState("ALL")
   const [filterType, setFilterType] = useState("ALL")
   const [view, setView] = useState<"table" | "kanban">("table")
-  const [sortKey, setSortKey] = useState<SortKey>("order")
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
+  const [sortKey] = useState<SortKey>("order")
+  const [sortDir] = useState<"asc" | "desc">("asc")
   const [groupBy, setGroupBy] = useState<string>("none")
   const [showColumnSettings, setShowColumnSettings] = useState(false)
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(COLUMNS.map((c) => c.key)))
@@ -384,15 +366,6 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
     const next = new Set(visibleCols)
     if (next.has(key)) next.delete(key); else next.add(key)
     setVisibleCols(next)
-  }
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      if (sortDir === "asc") { setSortDir("desc"); setSortKey(key) }
-      else { setSortDir("asc"); setSortKey(null) }
-    } else {
-      setSortKey(key); setSortDir("asc")
-    }
   }
 
   const filtered = useMemo(() => {
@@ -523,6 +496,19 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
     setIdeas((prev) => prev.filter((i) => i.id !== ideaId))
   }
 
+  const setIdeaStatus = useCallback(async (ideaId: string, status: string, prevStatus: string) => {
+    setIdeas((p) => p.map((i) => (i.id === ideaId ? { ...i, status } : i)))
+    const res = await fetch(`/api/plannings/${planningId}/ideas/${ideaId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) {
+      setIdeas((p) => p.map((i) => (i.id === ideaId ? { ...i, status: prevStatus } : i)))
+      toast.error("Error al guardar")
+    }
+  }, [planningId])
+
   const openEditDialog = (idea: Idea) => {
     setEditTitle(idea.title)
     setEditDescription(idea.description)
@@ -583,19 +569,9 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
       body: JSON.stringify(body),
     })
     if (res.ok) {
-      const updated = await res.json()
       setIdeas((prev) => prev.map((i) => (i.id === editingIdea.id ? { ...i, ...body, contentIdeaTags: i.contentIdeaTags } : i)))
       closeEditDialog()
     }
-  }
-
-  const updateTagsGlobally = (ideaId: string, tagIds: string[]) => {
-    fetch(`/api/ideas/${ideaId}/tags`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tagIds }),
-    })
-    setIdeas((prev) => prev.map((i) => i.id === ideaId ? { ...i, contentIdeaTags: tagIds.map((tid) => ({ tag: { id: tid, name: tid, color: "#6366f1" } })) } : i))
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -637,16 +613,16 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                       <div className="flex items-center justify-center w-5 h-5 rounded bg-white/5 border border-white/5">
                         <PlatformIcon platform={idea.platform} />
                       </div>
-                      <span className="text-[10px] font-medium text-zinc-500">{postTypeLabel(idea.postType)}</span>
+                      <span className="text-[10px] font-medium text-zinc-400">{postTypeLabel(idea.postType)}</span>
                     </div>
-                    <button type="button" onClick={() => deleteIdea(idea.id)} className="text-zinc-600 hover:text-red-400"><Trash2 size={12} /></button>
+                    <button type="button" onClick={() => deleteIdea(idea.id)} className="text-zinc-400 hover:text-red-400"><Trash2 size={12} /></button>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     <StatusIcon status={idea.status} />
                     <p className="cursor-pointer text-xs font-medium text-zinc-200 hover:text-white" onClick={() => openEditDialog(idea)}>{idea.title}</p>
                   </div>
-                  {idea.description && <p className="mt-0.5 text-[10px] text-zinc-500 line-clamp-2">{idea.description}</p>}
-                  <div className="mt-1 flex items-center gap-1 text-[9px] text-zinc-600">
+                  {idea.description && <p className="mt-0.5 text-[10px] text-zinc-400 line-clamp-2">{idea.description}</p>}
+                  <div className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400">
                     {idea.referenceUrl ? (
                       <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-white truncate" title={idea.referenceUrl}>
                         {idea.referenceEmbed && idea.platform === "IMAGE" ? (
@@ -669,7 +645,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                       <span className="inline-flex items-center gap-1"><Layout size={9} /> {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}</span>
                     ) : null}
                   </div>
-                  {idea.dueDate && <p className="mt-1 text-[10px] text-zinc-600">📅 {formatDate(idea.dueDate)}</p>}
+                  {idea.dueDate && <p className="mt-1 text-[10px] text-zinc-400">📅 {formatDate(idea.dueDate)}</p>}
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {idea.contentIdeaTags?.map((ct) => (
                       <span key={ct.tag.id} className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: ct.tag.color }}>{ct.tag.name}</span>
@@ -677,12 +653,12 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   </div>
                   <div className="mt-2 flex gap-1">
                     {statusOpts.filter((s) => s !== status).map((s) => (
-                      <button key={s} type="button" onClick={() => updateIdea(idea.id, { status: s })} className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-zinc-400 hover:bg-white/10 hover:text-zinc-200">{ideaStatusLabels[s]}</button>
+                      <button key={s} type="button" onClick={() => setIdeaStatus(idea.id, s, idea.status)} className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-zinc-400 hover:bg-white/10 hover:text-zinc-200">{ideaStatusLabels[s]}</button>
                     ))}
                   </div>
                 </div>
               ))}
-              {items.length === 0 && <p className="py-4 text-center text-[10px] text-zinc-600">Vacío</p>}
+              {items.length === 0 && <p className="py-4 text-center text-[10px] text-zinc-400">Vacío</p>}
             </div>
           </div>
         )
@@ -702,11 +678,11 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
             <input
               type="text"
               placeholder="Buscar ideas..."
-              className="w-full bg-[#18181b] border border-white/10 rounded-lg pl-9 pr-12 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-zinc-600 text-zinc-200"
+              className="w-full bg-[#18181b] border border-white/10 rounded-lg pl-9 pr-12 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder:text-zinc-400 text-zinc-200"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] text-zinc-500 font-medium">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] text-zinc-400 font-medium">
               <Command size={10} /> K
             </div>
           </div>
@@ -746,7 +722,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
             </button>
             {showColumnSettings && (
               <div className="absolute right-0 top-full z-40 mt-1 w-44 rounded-lg border border-white/10 bg-[#18181b] p-2 shadow-lg">
-                <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Columnas</p>
+                <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Columnas</p>
                 {COLUMNS.map((c) => (
                   <label key={c.key} className="flex items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-white/5 cursor-pointer text-zinc-400">
                     <input type="checkbox" checked={visibleCols.has(c.key)} onChange={() => toggleCol(c.key)} className="rounded border-white/20 bg-zinc-800" />
@@ -782,15 +758,15 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
             </div>
             <div className="space-y-1 sm:col-span-2">
               <label className="text-xs font-medium text-zinc-400">Tema</label>
-              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Ej: Nueva imagen voz en off..." />
+              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-400" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Ej: Nueva imagen voz en off..." />
             </div>
             <div className="space-y-1 sm:col-span-3">
               <label className="text-xs font-medium text-zinc-400">Objetivo</label>
-              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Detalle del objetivo..." />
+              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-400" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Detalle del objetivo..." />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-zinc-400">Pilar</label>
-              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newPilar} onChange={(e) => setNewPilar(e.target.value)} placeholder="Pilar..." list="new-pillar-list" />
+              <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-400" value={newPilar} onChange={(e) => setNewPilar(e.target.value)} placeholder="Pilar..." list="new-pillar-list" />
               <datalist id="new-pillar-list">
                 {pillarOpts.map((p) => <option key={p} value={p} />)}
               </datalist>
@@ -825,7 +801,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   <button type="button" onClick={() => setNewImageDataUrl(null)} className="text-xs text-zinc-400 hover:text-white">Quitar</button>
                 </div>
               ) : (
-                <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-600" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setNewImageDataUrl)} placeholder="Pegar URL o imagen (Ctrl+V)..." />
+                <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-zinc-400" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setNewImageDataUrl)} placeholder="Pegar URL o imagen (Ctrl+V)..." />
               )}
             </div>
             {storyboards.length > 0 && (
@@ -847,7 +823,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
 
       {ideas.length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-zinc-500">No hay contenido. Agregá la primera fila.</p>
+          <p className="text-zinc-400">No hay contenido. Agregá la primera fila.</p>
         </div>
       ) : view === "table" ? (
         <>
@@ -864,7 +840,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   </span>
                 </div>
 
-                {idea.description && <p className="text-xs text-zinc-500">{idea.description}</p>}
+                {idea.description && <p className="text-xs text-zinc-400">{idea.description}</p>}
 
                 <div className="flex flex-wrap gap-1.5 text-xs text-zinc-400">
                   <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
@@ -876,12 +852,12 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                       <Hash size={10} /> {idea.pilar}
                     </span>
                   )}
-                  <span className={`inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-500"}`}>
+                  <span className={`inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-400"}`}>
                     <PriorityIcon priority={idea.priority} />
                     {priorityLabels[idea.priority]}
                   </span>
                   {idea.dueDate && (
-                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-zinc-500">
+                    <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-zinc-400">
                       📅 {new Date(idea.dueDate).toLocaleDateString("es-AR")}
                     </span>
                   )}
@@ -896,7 +872,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
                     <img src={idea.referenceEmbed} alt="" className="h-12 w-12 rounded object-cover bg-white/[0.03]" />
                   ) : idea.storyboardId ? (
-                    <span className="inline-flex items-center gap-1 text-zinc-500">
+                    <span className="inline-flex items-center gap-1 text-zinc-400">
                       <Layout size={10} /> {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}
                     </span>
                   ) : null}
@@ -914,7 +890,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   <button type="button" onClick={() => openEditDialog(idea)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white">
                     <ExternalLink size={12} /> Editar
                   </button>
-                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <div className="flex items-center gap-2 text-xs text-zinc-400">
                     {idea.comments?.length > 0 && (
                       <span className="inline-flex items-center gap-1"><MessageSquare size={12} /> {idea.comments.length}</span>
                     )}
@@ -932,12 +908,12 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
           {/* Table Header */}
           <div className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_48px] gap-4 px-4 py-3 border-b border-white/5 bg-white/[0.01]">
             <div />
-            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Tema</div>
-            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Estado</div>
-            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Formato</div>
-            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Referencia</div>
-            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Pilar</div>
-            <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Prioridad</div>
+            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Tema</div>
+            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Estado</div>
+            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Formato</div>
+            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Referencia</div>
+            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Pilar</div>
+            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Prioridad</div>
             <div />
           </div>
 
@@ -948,7 +924,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   <div />
                   <div className="min-w-0 pr-4">
                     <h3 className="text-sm font-medium text-zinc-100 truncate">{idea.title}</h3>
-                    <p className="text-xs text-zinc-500 truncate mt-0.5">{idea.description}</p>
+                    <p className="text-xs text-zinc-400 truncate mt-0.5">{idea.description}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusIcon status={idea.status} />
@@ -962,7 +938,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   </div>
                   <div className="min-w-0">
                     {idea.referenceUrl && (
-                      <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white truncate max-w-full" title={idea.referenceUrl}>
+                      <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-white truncate max-w-full" title={idea.referenceUrl}>
                         {idea.referenceEmbed && idea.platform === "IMAGE" ? (
                           <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
                         ) : (
@@ -972,7 +948,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                       </a>
                     )}
                     {!idea.referenceUrl && idea.referenceEmbed && (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 truncate">
+                      <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400 truncate">
                         {idea.platform === "IMAGE" ? (
                           <img src={idea.referenceEmbed} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
                         ) : (
@@ -982,7 +958,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                       </span>
                     )}
                     {!idea.referenceUrl && !idea.referenceEmbed && idea.storyboardId && (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-zinc-600">
+                      <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
                         <Layout size={10} />
                         {storyboards.find((s) => s.id === idea.storyboardId)?.title ?? "Storyboard"}
                       </span>
@@ -999,7 +975,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   </div>
                   <div className="flex items-center gap-1.5">
                     <PriorityIcon priority={idea.priority} />
-                    <span className={`text-sm ${idea.priority === "HIGH" ? "text-zinc-300" : "text-zinc-500"}`}>{priorityLabels[idea.priority]}</span>
+                    <span className={`text-sm ${idea.priority === "HIGH" ? "text-zinc-300" : "text-zinc-400"}`}>{priorityLabels[idea.priority]}</span>
                   </div>
                   <div />
                 </div>
@@ -1011,11 +987,11 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                 {grouped.map(([key, items]) => (
                   <div key={key}>
                     <div className="px-4 py-2 bg-white/[0.02] border-b border-white/5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{key} <span className="font-normal text-[10px]">({items.length})</span></span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{key} <span className="font-normal text-[10px]">({items.length})</span></span>
                     </div>
                     <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                       {items.map((idea) => (
-                        <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} setPreviewImage={setPreviewImage} search={search} onUpdateTags={updateTagsGlobally} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                        <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
                       ))}
                     </SortableContext>
                   </div>
@@ -1027,7 +1003,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
               <SortableContext items={filtered.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col">
                   {filtered.map((idea) => (
-                    <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} setPreviewImage={setPreviewImage} search={search} onUpdateTags={updateTagsGlobally} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                    <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
                   ))}
                 </div>
               </SortableContext>
@@ -1058,15 +1034,15 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-medium text-zinc-400">Tema</label>
-                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-400" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
                 </div>
                 <div className="space-y-1 sm:col-span-3">
                   <label className="text-xs font-medium text-zinc-400">Objetivo</label>
-                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-400" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-zinc-400">Pilar</label>
-                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editPilar} onChange={(e) => setEditPilar(e.target.value)} list="edit-pillar-list" />
+                  <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-400" value={editPilar} onChange={(e) => setEditPilar(e.target.value)} list="edit-pillar-list" />
                   <datalist id="edit-pillar-list">{pillarOpts.map((p) => <option key={p} value={p} />)}</datalist>
                 </div>
                 <div className="space-y-1">
@@ -1099,7 +1075,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                       <button type="button" onClick={() => { setEditImageDataUrl(null); setEditUrl("") }} className="text-xs text-zinc-400 hover:text-white">Quitar</button>
                     </div>
                   ) : (
-                    <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setEditImageDataUrl)} />
+                    <input className="w-full rounded-lg border border-white/10 bg-[#18181b] px-3 py-2 text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-400" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} onPaste={(e) => handleImagePaste(e, setEditImageDataUrl)} />
                   )}
                 </div>
                 {storyboards.length > 0 && (
@@ -1122,7 +1098,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-zinc-600">
+      <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-zinc-400">
         <p>Mostrando {filtered.length} de {ideas.length} ideas.</p>
         <div className="flex gap-3 sm:gap-4">
           <span className="flex items-center gap-1 hover:text-zinc-400 cursor-pointer transition-colors"><Command size={12} /> Gestionar columnas</span>

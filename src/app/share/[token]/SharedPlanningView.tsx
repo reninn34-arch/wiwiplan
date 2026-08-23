@@ -4,6 +4,14 @@ import { useState } from "react"
 import { CheckCircle, Lightbulb, Layout, Clock, ImagePlus, ExternalLink, MessageSquare, Send, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { platformLabel, postTypeLabel } from "@/lib/embeds"
+import {
+  PaymentAccountHeader,
+  PaymentLedger,
+  type PaymentRecord,
+} from "@/components/payments/PaymentStatus"
+import { summarizePayments } from "@/lib/payments"
+import { ClientLogo } from "@/components/ClientLogo"
+import { panelImageUrl } from "@/lib/media"
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Borrador", IN_PROGRESS: "En Progreso", REVIEW: "Revisión",
@@ -18,10 +26,6 @@ const statusColors: Record<string, string> = {
   PUBLISHED: "bg-purple-500/10 text-purple-400",
 }
 
-const platformLabels: Record<string, string> = {
-  YOUTUBE: "YouTube", INSTAGRAM: "Instagram", TIKTOK: "TikTok", LINKEDIN: "LinkedIn", OTHER: "Otro",
-}
-
 const ideaStatusLabels: Record<string, string> = {
   IDEA: "Idea", SELECTED: "Seleccionada", IN_PRODUCTION: "En Producción", DONE: "Lista",
 }
@@ -29,7 +33,7 @@ const ideaStatusLabels: Record<string, string> = {
 interface Panel {
   id: string
   sceneNumber: number
-  imageUrl: string
+  hasImage: boolean
   description: string
   duration: string
   notes: string
@@ -78,9 +82,11 @@ interface Planning {
   targetAudience: string
   goals: string
   notes: string
-  client: { id: string; name: string; logo?: string | null } | null
+  client: { id: string; name: string } | null
+  priceCents: number
   contentIdeas: ContentIdea[]
   storyboards: Storyboard[]
+  payments: PaymentRecord[]
 }
 
 interface Props {
@@ -118,7 +124,7 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
           <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400">{ideaStatusLabels[idea.status]}</span>
         </div>
 
-        {idea.description && <p className="text-xs text-zinc-500">{idea.description}</p>}
+        {idea.description && <p className="text-xs text-zinc-400">{idea.description}</p>}
 
         <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
           {idea.pilar && (
@@ -158,12 +164,12 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
 
         {open && (
           <div className="space-y-2 pt-2 border-t border-white/5">
-            {comments.length === 0 && <p className="text-xs text-zinc-500">Sin comentarios.</p>}
+            {comments.length === 0 && <p className="text-xs text-zinc-400">Sin comentarios.</p>}
             {comments.map((c) => (
               <div key={c.id} className="rounded border border-white/5 px-3 py-2">
                 <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
                 <p className="text-sm text-zinc-200">{c.text}</p>
-                <p className="text-[10px] text-zinc-500">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+                <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
               </div>
             ))}
             <div className="flex gap-2">
@@ -216,7 +222,7 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
           <p className="font-medium text-sm text-zinc-200">{idea.title}</p>
         </td>
         <td className="px-3 py-2">
-          {idea.description ? <p className="text-xs text-zinc-500 line-clamp-2">{idea.description}</p> : <span className="text-xs text-zinc-600">—</span>}
+          {idea.description ? <p className="text-xs text-zinc-400 line-clamp-2">{idea.description}</p> : <span className="text-xs text-zinc-400">—</span>}
         </td>
         <td className="px-3 py-2">
           {idea.referenceEmbed && (idea.platform === "YOUTUBE" || idea.platform === "VIMEO") ? (
@@ -238,10 +244,10 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
               <Layout className="h-3 w-3" /> {idea.storyboard.title}
             </button>
           ) : (
-            <span className="text-xs text-zinc-600">—</span>
+            <span className="text-xs text-zinc-400">—</span>
           )}
         </td>
-        <td className="px-3 py-2 text-xs text-zinc-400">{idea.pilar || <span className="text-zinc-600">—</span>}</td>
+        <td className="px-3 py-2 text-xs text-zinc-400">{idea.pilar || <span className="text-zinc-400">—</span>}</td>
         <td className="px-3 py-2">
           <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400">{ideaStatusLabels[idea.status]}</span>
         </td>
@@ -256,12 +262,12 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
         <tr>
           <td colSpan={6} className="bg-white/[0.02] px-6 py-3">
             <div className="space-y-2">
-              {comments.length === 0 && <p className="text-xs text-zinc-500">Sin comentarios.</p>}
+              {comments.length === 0 && <p className="text-xs text-zinc-400">Sin comentarios.</p>}
               {comments.map((c) => (
                 <div key={c.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] px-3 py-2">
                   <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
                   <p className="text-sm text-zinc-200">{c.text}</p>
-                  <p className="text-[10px] text-zinc-500">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
+                  <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-AR")}</p>
                 </div>
               ))}
               <div className="flex gap-2">
@@ -289,6 +295,9 @@ export function SharedPlanningView({ planning }: Props) {
   const [status, setStatus] = useState(planning.status)
   const [isApproving, setIsApproving] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+
+  const paymentSummary = summarizePayments(planning.priceCents, planning.payments)
+  const showPayments = planning.priceCents > 0 || planning.payments.length > 0
 
   const formatPeriod = (p: string) => {
     if (!p) return ""
@@ -322,10 +331,15 @@ export function SharedPlanningView({ planning }: Props) {
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-3xl font-bold text-zinc-200 truncate">{planning.title}</h1>
               {planning.client && (
-                <p className="mt-1 text-sm sm:text-base text-zinc-500">
-                  {planning.client.logo && <img src={planning.client.logo} alt="" className="w-5 h-5 rounded-full inline-block mr-1.5 align-middle" />}
+                <p className="mt-1 text-sm sm:text-base text-zinc-400">
+                  <ClientLogo
+                    clientId={planning.client.id}
+                    name={planning.client.name}
+                    size={20}
+                    className="mr-1.5 inline-block align-middle"
+                  />
                   Planificación para: <span className="font-medium text-zinc-300">{planning.client.name}</span>
-                  {planning.period && <span className="text-zinc-600"> — {formatPeriod(planning.period)}</span>}
+                  {planning.period && <span className="text-zinc-400"> — {formatPeriod(planning.period)}</span>}
                 </p>
               )}
             </div>
@@ -334,6 +348,25 @@ export function SharedPlanningView({ planning }: Props) {
             </span>
           </div>
         </header>
+
+        {showPayments && (
+          <section className="mb-8 rounded-xl border border-white/5 bg-[#0c0c0e] p-5">
+            <PaymentAccountHeader
+              summary={paymentSummary}
+              payments={planning.payments}
+              title="Tu plan de pago"
+            />
+
+            {planning.payments.length > 0 && (
+              <div className="mt-5 border-t border-white/5 pt-4">
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+                  Pagos recibidos
+                </h3>
+                <PaymentLedger payments={planning.payments} />
+              </div>
+            )}
+          </section>
+        )}
 
         {planning.description && (
           <section className="mb-8">
@@ -406,7 +439,7 @@ export function SharedPlanningView({ planning }: Props) {
               <Layout className="h-5 w-5" /> {sb.title}
             </h2>
             {sb.panels.length === 0 ? (
-              <p className="text-zinc-500">Sin escenas.</p>
+              <p className="text-zinc-400">Sin escenas.</p>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {sb.panels.map((panel, idx) => (
@@ -414,21 +447,28 @@ export function SharedPlanningView({ planning }: Props) {
                     <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.03] px-3 py-2">
                       <span className="text-sm font-medium text-zinc-300">Escena {idx + 1}</span>
                       {panel.duration && (
-                        <span className="ml-auto flex items-center gap-1 text-xs text-zinc-500">
+                        <span className="ml-auto flex items-center gap-1 text-xs text-zinc-400">
                           <Clock className="h-3 w-3" /> {panel.duration}
                         </span>
                       )}
                     </div>
                     <div className="flex aspect-video items-center justify-center bg-white/[0.02]">
-                      {panel.imageUrl && !panel.imageUrl.startsWith("blob:") ? (
-                        <img src={panel.imageUrl} alt={`Escena ${idx + 1}`} className="h-full w-full object-cover cursor-pointer" onClick={() => setPreviewImage(panel.imageUrl)} />
+                      {panel.hasImage ? (
+                        <img
+                          src={panelImageUrl(panel.id)}
+                          alt={`Escena ${idx + 1}`}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full cursor-zoom-in object-cover"
+                          onClick={() => setPreviewImage(panelImageUrl(panel.id))}
+                        />
                       ) : (
-                        <ImagePlus className="h-8 w-8 text-zinc-600" />
+                        <ImagePlus className="h-8 w-8 text-zinc-500" aria-hidden />
                       )}
                     </div>
                     <div className="p-3">
                       <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-zinc-300" dangerouslySetInnerHTML={{ __html: panel.description || "Sin descripción" }} />
-                      {panel.notes && <div className="prose prose-xs dark:prose-invert max-w-none mt-1 text-xs text-zinc-500" dangerouslySetInnerHTML={{ __html: panel.notes }} />}
+                      {panel.notes && <div className="prose prose-xs dark:prose-invert max-w-none mt-1 text-xs text-zinc-400" dangerouslySetInnerHTML={{ __html: panel.notes }} />}
                     </div>
                   </div>
                 ))}
