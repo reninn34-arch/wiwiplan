@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Share2, MoreHorizontal, ChevronRight, ChevronDown, Trash2, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -127,6 +127,8 @@ interface Props {
 
 export function PlanningDetailClient({ planning: initial, clients }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const focusIdeaId = searchParams.get("idea")
   const [planning, setPlanning] = useState(initial)
   const [editingPeriod, setEditingPeriod] = useState(false)
   const [periodMonth, setPeriodMonth] = useState("")
@@ -398,7 +400,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           <InfoTab planning={planning} clients={clients} onUpdate={updatePlanning} />
         )}
         {activeTab === "contenido" && (
-          <ContentIdeasTab planningId={planning.id} ideas={planning.contentIdeas} storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))} />
+          <ContentIdeasTab planningId={planning.id} ideas={planning.contentIdeas} storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))} focusIdeaId={focusIdeaId} />
         )}
         {activeTab === "storyboard" && (
           <StoryboardsTab planningId={planning.id} />

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, Building2, Camera } from "lucide-react"
+import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { ClientLogo } from "@/components/ClientLogo"
@@ -11,6 +11,7 @@ import { formatMoney, summarizePayments } from "@/lib/payments"
 import { compressAvatar } from "@/lib/compress-image"
 import { Input } from "@/components/ui/input"
 import { NotificationBell } from "@/components/NotificationBell"
+import { toast } from "sonner"
 
 const months: Record<string, string> = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -38,6 +39,49 @@ const ideaStatusLabels: Record<string, string> = {
 }
 const priorityLabels: Record<string, string> = {
   HIGH: "Alta", MEDIUM: "Media", LOW: "Baja",
+}
+const planStatusLabels: Record<string, string> = {
+  DRAFT: "Borrador", IN_PROGRESS: "En Progreso", REVIEW: "Revisión", APPROVED: "Aprobado", PUBLISHED: "Publicado",
+}
+const ACTIVE_STATES = ["IN_PROGRESS", "REVIEW", "APPROVED"]
+
+/**
+ * Card de mes, compartida entre "En curso" y el archivo de clientes.
+ * Muestra el cliente porque en la vista plana los meses conviven de varios dueños.
+ */
+function MonthCard({ p }: { p: Planning }) {
+  const router = useRouter()
+  const cobro = summarizePayments(p.priceCents, p.payments)
+  return (
+    <button
+      type="button"
+      onClick={() => router.push(`/planning/${p.id}`)}
+      className="group rounded-lg border border-white/5 bg-[#0c0c0e] p-4 text-left transition-all hover:bg-white/[0.02]"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-zinc-200 group-hover:text-white">
+          {p.period ? formatPeriod(p.period) : p.title}
+        </h3>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${statusColors[p.status]}`}>
+          {planStatusLabels[p.status] ?? p.status}
+        </span>
+      </div>
+      {p.title && p.period && <p className="mb-2 truncate text-xs text-zinc-400">{p.title}</p>}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-400">
+        {p.client && (
+          <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {p.client.name}</span>
+        )}
+        <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas</span>
+        <span className="flex items-center gap-1"><Layout className="h-3 w-3" /> {p._count.storyboards} sb</span>
+        {cobro.state !== "UNPRICED" && (
+          <span className="flex items-center gap-1 tabular-nums">
+            <span className={`h-1.5 w-1.5 rounded-full ${paymentDotStyles[cobro.state]}`} aria-hidden />
+            {cobro.dueCents > 0 ? `debe ${formatMoney(cobro.dueCents)}` : "pagado"}
+          </span>
+        )}
+      </div>
+    </button>
+  )
 }
 
 interface Client {
@@ -87,6 +131,22 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const [clients, setClients] = useState(initialClients)
   const [expandedClient, setExpandedClient] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  // Filtro activado desde el resumen de negocio.
+  const [summaryFilter, setSummaryFilter] = useState<"ALL" | "DEBT" | "REVIEW" | "APPROVED">("ALL")
+  const [clientChip, setClientChip] = useState("ALL")
+  // Pendientes arranca abierto y recuerda si lo colapsaste.
+  const [pendOpen, setPendOpen] = useState<boolean | null>(null)
+  const [showAllPendientes, setShowAllPendientes] = useState(false)
+  const [showMonthDialog, setShowMonthDialog] = useState(false)
+  const [monthClientId, setMonthClientId] = useState("")
+  const [monthPeriod, setMonthPeriod] = useState("")
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPendOpen(localStorage.getItem("wiwiplan-pendientes") !== "0")
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
 
   const now = new Date()
   const defaultPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
@@ -118,7 +178,31 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     if (res.ok) {
       const data = await res.json()
       router.push(`/planning/${data.id}`)
+      return true
     }
+    if (res.status === 409) {
+      toast.error("Ese cliente ya tiene un mes con ese período")
+    } else {
+      toast.error("No se pudo crear el mes")
+    }
+    return false
+  }
+
+  /** Si el cliente ya tiene el mes corriente, propone el siguiente. */
+  const suggestPeriod = (clientId: string) => {
+    if (!clientId) return defaultPeriod
+    const periods = new Set(initial.filter((p) => p.client?.id === clientId).map((p) => p.period))
+    if (!periods.has(defaultPeriod)) return defaultPeriod
+    const [y, m] = defaultPeriod.split("-").map(Number)
+    const next = new Date(y, m, 1)
+    return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`
+  }
+
+  const openMonthDialog = () => {
+    const clientId = monthClientId || clients[0]?.id || ""
+    setMonthClientId(clientId)
+    setMonthPeriod(suggestPeriod(clientId))
+    setShowMonthDialog(true)
   }
 
   const clientPlannings = new Map<string, Planning[]>()
@@ -145,6 +229,63 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     const plans = clientPlannings.get(c.id) ?? []
     return c.name.toLowerCase().includes(search.toLowerCase()) || plans.some((p) => p.title.toLowerCase().includes(search.toLowerCase()))
   }
+
+  // --- Resumen de negocio (todo sale de datos ya cargados) ---
+  const debtOf = (p: Planning) => summarizePayments(p.priceCents, p.payments).dueCents
+  const totalDebt = initial.reduce((sum, p) => sum + debtOf(p), 0)
+  const reviewCount = initial.filter((p) => p.status === "REVIEW").length
+  const approvedCount = initial.filter((p) => p.status === "APPROVED").length
+
+  // --- Pool de "En curso": cambia según el filtro que activaste en el resumen ---
+  let basePlans: Planning[]
+  let sectionLabel = "En curso"
+  if (summaryFilter === "DEBT") {
+    basePlans = initial.filter((p) => debtOf(p) > 0)
+    sectionLabel = "Con saldo pendiente"
+  } else {
+    const active = initial.filter((p) => ACTIVE_STATES.includes(p.status))
+    if (active.length > 0) {
+      basePlans = active
+    } else {
+      basePlans = [...initial].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 6)
+      sectionLabel = "Últimos meses tocados"
+    }
+    if (summaryFilter === "REVIEW") {
+      basePlans = basePlans.filter((p) => p.status === "REVIEW")
+      sectionLabel = "En revisión"
+    } else if (summaryFilter === "APPROVED") {
+      basePlans = basePlans.filter((p) => p.status === "APPROVED")
+      sectionLabel = "Aprobados"
+    }
+  }
+  basePlans.sort(sortByPeriod)
+
+  const chipClients = clients.filter((c) => basePlans.some((p) => p.client?.id === c.id))
+  const visibleActive = clientChip === "ALL" ? basePlans : basePlans.filter((p) => p.client?.id === clientChip)
+
+  const toggleSummary = (filter: "DEBT" | "REVIEW" | "APPROVED") => {
+    setSummaryFilter((prev) => (prev === filter ? "ALL" : filter))
+    setClientChip("ALL")
+  }
+
+  // --- Pendientes domados ---
+  const PEND_LIMIT = 8
+  const visiblePendientes = showAllPendientes ? pendingIdeas : pendingIdeas.slice(0, PEND_LIMIT)
+  const togglePend = () =>
+    setPendOpen((open) => {
+      localStorage.setItem("wiwiplan-pendientes", open ? "0" : "1")
+      return !open
+    })
+
+  // --- Diálogo nuevo mes ---
+  const monthDuplicate =
+    !!monthClientId && !!monthPeriod && initial.some((p) => p.client?.id === monthClientId && p.period === monthPeriod)
+  const yearOpts = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1]
+
+  const metricCardClass = (active: boolean) =>
+    `rounded-lg border px-4 py-3 text-left transition-colors ${
+      active ? "border-white/25 bg-white/[0.07]" : "border-white/5 bg-[#0c0c0e] hover:bg-white/[0.02]"
+    }`
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:py-8">
@@ -210,16 +351,100 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
         </div>
       )}
 
+      {/* Resumen de negocio: un vistazo a la plata y al pipeline */}
+      <section className="mb-8 grid grid-cols-3 gap-3">
+        <button
+          type="button"
+          className={metricCardClass(summaryFilter === "DEBT")}
+          onClick={() => toggleSummary("DEBT")}
+        >
+          <p className="text-[11px] uppercase tracking-wide text-zinc-500">Por cobrar</p>
+          <p className={`mt-1 text-xl font-bold tabular-nums ${totalDebt > 0 ? "text-amber-300" : "text-zinc-100"}`}>
+            {formatMoney(totalDebt)}
+          </p>
+        </button>
+        <button
+          type="button"
+          className={metricCardClass(summaryFilter === "REVIEW")}
+          onClick={() => toggleSummary("REVIEW")}
+        >
+          <p className="text-[11px] uppercase tracking-wide text-zinc-500">En revisión</p>
+          <p className={`mt-1 text-xl font-bold tabular-nums ${reviewCount > 0 ? "text-yellow-300" : "text-zinc-100"}`}>
+            {reviewCount}
+          </p>
+        </button>
+        <button
+          type="button"
+          className={metricCardClass(summaryFilter === "APPROVED")}
+          onClick={() => toggleSummary("APPROVED")}
+        >
+          <p className="text-[11px] uppercase tracking-wide text-zinc-500">Aprobados</p>
+          <p className={`mt-1 text-xl font-bold tabular-nums ${approvedCount > 0 ? "text-green-300" : "text-zinc-100"}`}>
+            {approvedCount}
+          </p>
+        </button>
+      </section>
+
+      {/* En curso: los meses vivos a un clic, sin acordeón */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-zinc-200">
+            {sectionLabel} <span className="text-sm font-normal text-zinc-500">({visibleActive.length})</span>
+          </h2>
+          {clients.length > 0 && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={openMonthDialog}>
+              <Plus className="h-3 w-3" /> Nuevo mes
+            </Button>
+          )}
+        </div>
+        {chipClients.length > 1 && (
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+            {[{ id: "ALL", name: "Todos" }, ...chipClients].map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setClientChip(c.id)}
+                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  clientChip === c.id
+                    ? "border-white/20 bg-white/10 text-zinc-100"
+                    : "border-white/5 text-zinc-400 hover:border-white/15 hover:text-zinc-200"
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {visibleActive.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleActive.map((p) => (
+              <MonthCard key={p.id} p={p} />
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-lg border border-dashed border-white/10 p-6 text-center text-xs text-zinc-400">
+            {summaryFilter === "ALL"
+              ? clients.length === 0
+                ? "Creá un cliente para empezar."
+                : "Nada en curso. Creá un mes nuevo para arrancar."
+              : "Sin meses que cumplan ese filtro."}
+          </p>
+        )}
+      </section>
+
       {pendingIdeas.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-200">
-            <ArrowUp className="h-4 w-4 text-rose-400" /> Pendientes ({pendingIdeas.length})
-          </h2>
-
+          <button type="button" onClick={togglePend} className="mb-3 flex w-full items-center gap-2 text-left text-lg font-semibold text-zinc-200 hover:text-white">
+            <ArrowUp className="h-4 w-4 shrink-0 text-rose-400" />
+            <span>Pendientes ({pendingIdeas.length})</span>
+            <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-zinc-500 transition-transform ${pendOpen ?? true ? "" : "-rotate-90"}`} />
+          </button>
+          {(pendOpen ?? true) && (
+          <>
           {/* Mobile cards */}
           <div className="space-y-3 sm:hidden">
-            {pendingIdeas.map((idea) => (
-              <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden cursor-pointer" onClick={() => router.push(`/planning/${idea.planning.id}`)}>
+            {visiblePendientes.map((idea) => (
+              <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden cursor-pointer" onClick={() => router.push(`/planning/${idea.planning.id}?idea=${idea.id}`)}>
                 <div className="p-3 space-y-2">
                   <p className="text-sm font-medium text-zinc-200">{idea.title}</p>
                   {idea.description && <p className="text-xs text-zinc-400 line-clamp-2">{idea.description}</p>}
@@ -259,8 +484,8 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 </tr>
               </thead>
               <tbody>
-                {pendingIdeas.map((idea) => (
-                  <tr key={idea.id} className="cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/[0.02]" onClick={() => router.push(`/planning/${idea.planning.id}`)}>
+                {visiblePendientes.map((idea) => (
+                  <tr key={idea.id} className="cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/[0.02]" onClick={() => router.push(`/planning/${idea.planning.id}?idea=${idea.id}`)}>
                     <td className="px-3 py-2">
                       <p className="font-medium text-zinc-200">{idea.title}</p>
                       {idea.description && <p className="text-xs text-zinc-400 line-clamp-1">{idea.description}</p>}
@@ -287,6 +512,17 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               </tbody>
             </table>
           </div>
+          {pendingIdeas.length > 8 && (
+            <button
+              type="button"
+              onClick={() => setShowAllPendientes((v) => !v)}
+              className="mt-3 w-full rounded-lg border border-dashed border-white/10 py-2.5 text-xs text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200"
+            >
+              {showAllPendientes ? "Ver menos" : `Ver todas (${pendingIdeas.length})`}
+            </button>
+          )}
+          </>
+          )}
         </section>
       )}
 
@@ -339,38 +575,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {plans.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => router.push(`/planning/${p.id}`)}
-                        className="group rounded-lg border border-white/5 bg-[#0c0c0e] p-4 text-left transition-all hover:bg-white/[0.02]"
-                      >
-                        <div className="mb-2 flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-zinc-200 group-hover:text-white">
-                            {p.period ? formatPeriod(p.period) : p.title}
-                          </h3>
-                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${statusColors[p.status]}`}>
-                            {p.status === "DRAFT" ? "Borrador" : p.status === "IN_PROGRESS" ? "En Progreso" : p.status === "REVIEW" ? "Revisión" : p.status === "APPROVED" ? "Aprobado" : p.status === "PUBLISHED" ? "Publicado" : p.status}
-                          </span>
-                        </div>
-                        {p.title && p.period && <p className="mb-2 text-xs text-zinc-400">{p.title}</p>}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-400">
-                          <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas</span>
-                          <span className="flex items-center gap-1"><Layout className="h-3 w-3" /> {p._count.storyboards} sb</span>
-                          {(() => {
-                            const cobro = summarizePayments(p.priceCents, p.payments)
-                            if (cobro.state === "UNPRICED") return null
-                            return (
-                              <span className="flex items-center gap-1 tabular-nums">
-                                <span className={`h-1.5 w-1.5 rounded-full ${paymentDotStyles[cobro.state]}`} aria-hidden />
-                                {cobro.dueCents > 0
-                                  ? `debe ${formatMoney(cobro.dueCents)}`
-                                  : "pagado"}
-                              </span>
-                            )
-                          })()}
-                        </div>
-                      </button>
+                      <MonthCard key={p.id} p={p} />
                     ))}
                     {plans.length === 0 && <p className="col-span-full py-6 text-center text-xs text-zinc-400">Sin meses todavía. Agregá el primer mes.</p>}
                   </div>
@@ -410,6 +615,67 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
           </div>
         )}
       </div>
+
+      {showMonthDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4" onClick={() => setShowMonthDialog(false)}>
+          <div className="w-full max-w-sm rounded-lg border border-white/5 bg-[#0c0c0e] p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-1 text-lg font-semibold text-zinc-200">Nuevo mes</h2>
+            <p className="mb-4 text-xs text-zinc-400">Elegí el cliente y el período a planificar.</p>
+            <div className="space-y-3">
+              <select
+                value={monthClientId}
+                onChange={(e) => {
+                  setMonthClientId(e.target.value)
+                  setMonthPeriod(suggestPeriod(e.target.value))
+                }}
+                className="h-10 w-full rounded-lg border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 focus:outline-none"
+              >
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <select
+                  value={monthPeriod.slice(5)}
+                  onChange={(e) => setMonthPeriod(`${monthPeriod.slice(0, 4)}-${e.target.value}`)}
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 focus:outline-none"
+                >
+                  {Object.entries(months).map(([num, name]) => (
+                    <option key={num} value={num}>{name}</option>
+                  ))}
+                </select>
+                <select
+                  value={monthPeriod.slice(0, 4)}
+                  onChange={(e) => setMonthPeriod(`${e.target.value}-${monthPeriod.slice(5)}`)}
+                  className="h-10 w-24 shrink-0 rounded-lg border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 focus:outline-none"
+                >
+                  {yearOpts.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              {monthDuplicate && (
+                <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300 ring-1 ring-inset ring-amber-400/25">
+                  Ese cliente ya tiene un mes con este período.
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="ghost" className="min-h-10" onClick={() => setShowMonthDialog(false)}>Cancelar</Button>
+                <Button
+                  className="min-h-10 bg-white text-black hover:bg-zinc-200"
+                  disabled={monthDuplicate || !monthClientId}
+                  onClick={async () => {
+                    const created = await createMonth(monthClientId, monthPeriod)
+                    if (created) setShowMonthDialog(false)
+                  }}
+                >
+                  Crear mes
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

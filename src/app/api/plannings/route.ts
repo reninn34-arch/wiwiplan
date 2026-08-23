@@ -10,6 +10,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
+
+    // Un cliente no puede tener dos planes del mismo período: es la unidad de
+    // trabajo y de cobro, duplicarlo solo genera confusión.
+    if (body.clientId && body.period) {
+      const duplicate = await prisma.planning.findFirst({
+        where: { userId: session.user.id, clientId: body.clientId, period: body.period },
+        select: { id: true },
+      })
+      if (duplicate) {
+        return NextResponse.json({ error: "Ese cliente ya tiene un mes con ese período" }, { status: 409 })
+      }
+    }
+
     const planning = await prisma.planning.create({
       data: {
         title: body.title ?? "Sin título",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useRef, useCallback, useSyncExternalStore, type ClipboardEvent } from "react"
+import { useState, useMemo, useRef, useCallback, useEffect, useSyncExternalStore, type ClipboardEvent } from "react"
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Table2, MessageSquare,
   ArrowUp, LayoutGrid, CheckCircle2, Circle, ChevronDown, MoreHorizontal, Pencil,
@@ -260,9 +260,11 @@ interface Props {
   planningId: string
   ideas: Idea[]
   storyboards: Array<{ id: string; title: string }>
+  /** Idea a resaltar al entrar (?idea= desde Pendientes o notificaciones). */
+  focusIdeaId?: string | null
 }
 
-function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, storyboards, onEdit, cols }: {
+function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, storyboards, onEdit, cols, highlighted }: {
   idea: Idea
   updateIdea: (id: string, data: Record<string, unknown>) => void
   deleteIdea: (id: string) => void
@@ -271,6 +273,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, sto
   storyboards: Array<{ id: string; title: string }>
   onEdit: (idea: Idea) => void
   cols: Set<string>
+  highlighted?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: idea.id })
 
@@ -288,7 +291,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, sto
 
   return (
     <>
-    <div ref={setNodeRef} style={style} className="grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_56px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer">
+    <div ref={setNodeRef} style={style} data-idea-id={idea.id} className={`grid grid-cols-[32px_minmax(250px,2fr)_minmax(120px,1fr)_120px_120px_100px_100px_56px] items-center gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer ${highlighted ? "bg-white/[0.06] ring-1 ring-inset ring-white/25" : ""}`}>
       <div className="flex items-center justify-center text-zinc-400 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity cursor-grab hover:text-zinc-300" suppressHydrationWarning {...attributes} {...listeners}>
         <GripVertical size={14} />
       </div>
@@ -416,8 +419,21 @@ function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, sto
 
 const emptySubscribe = () => () => {}
 
-export function ContentIdeasTab({ planningId, ideas: initial, storyboards }: Props) {
+export function ContentIdeasTab({ planningId, ideas: initial, storyboards, focusIdeaId }: Props) {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
+
+  // Deep-link: resalta temporalmente la idea pedida y limpia el query param.
+  const [highlightedIdeaId, setHighlightedIdeaId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!focusIdeaId) return
+    const timer = setTimeout(() => {
+      document.querySelector(`[data-idea-id="${focusIdeaId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+      setHighlightedIdeaId(focusIdeaId)
+      setTimeout(() => setHighlightedIdeaId(null), 2600)
+      window.history.replaceState(null, "", window.location.pathname)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [focusIdeaId])
 
   const [ideas, setIdeas] = useState(initial)
   const [showForm, setShowForm] = useState(false)
@@ -706,7 +722,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{ideaStatusLabels[status]} ({items.length})</h4>
             <div className="space-y-2">
               {items.map((idea) => (
-                <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] p-3">
+                <div key={idea.id} data-idea-id={idea.id} className={`rounded-lg border bg-[#0c0c0e] p-3 ${highlightedIdeaId === idea.id ? "border-white/25 ring-1 ring-inset ring-white/25" : "border-white/5"}`}>
                   <div className="mb-1 flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
                       <div className="flex items-center justify-center w-5 h-5 rounded bg-white/5 border border-white/5">
@@ -941,7 +957,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
         {/* Mobile cards */}
         <div className="space-y-3 sm:hidden">
           {filtered.map((idea) => (
-            <div key={idea.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden">
+            <div key={idea.id} data-idea-id={idea.id} className={`rounded-lg border bg-[#0c0c0e] overflow-hidden ${highlightedIdeaId === idea.id ? "border-white/25 ring-1 ring-inset ring-white/25" : "border-white/5"}`}>
               <div className="space-y-2.5 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <button type="button" className="min-h-9 flex-1 text-left text-sm font-medium text-zinc-100 hover:text-white" onClick={() => openEditDialog(idea)}>{idea.title}</button>
@@ -1098,7 +1114,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                     </div>
                     <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                       {items.map((idea) => (
-                        <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} onStatusChange={setIdeaStatus} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                        <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} onStatusChange={setIdeaStatus} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} highlighted={highlightedIdeaId === idea.id} />
                       ))}
                     </SortableContext>
                   </div>
@@ -1110,7 +1126,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
               <SortableContext items={filtered.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col">
                   {filtered.map((idea) => (
-                    <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} onStatusChange={setIdeaStatus} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} />
+                    <SortableRow key={idea.id} idea={idea} updateIdea={updateIdea} deleteIdea={deleteIdea} onStatusChange={setIdeaStatus} search={search} storyboards={storyboards} onEdit={openEditDialog} cols={visibleCols} highlighted={highlightedIdeaId === idea.id} />
                   ))}
                 </div>
               </SortableContext>
