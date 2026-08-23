@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
       },
     })
     return NextResponse.json(tag, { status: 201 })
-  } catch {
+  } catch (error) {
+    console.error("Error al crear tag:", error)
     return NextResponse.json({ error: "Error al crear tag" }, { status: 500 })
   }
 }

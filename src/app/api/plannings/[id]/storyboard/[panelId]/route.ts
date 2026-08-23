@@ -79,6 +79,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (error instanceof ImageError) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+    console.error("Error al actualizar panel:", error)
     return NextResponse.json({ error: "Error al actualizar panel" }, { status: 500 })
   }
 }
@@ -98,7 +99,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return NextResponse.json({ error: "No encontrado" }, { status: 404 })
     }
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (error) {
+    console.error("Error al eliminar panel:", error)
     return NextResponse.json({ error: "Error al eliminar panel" }, { status: 500 })
   }
 }

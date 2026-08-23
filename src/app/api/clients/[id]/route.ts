@@ -23,6 +23,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (error instanceof ImageError) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+    console.error("Error al actualizar cliente:", error)
     return NextResponse.json({ error: "Error al actualizar" }, { status: 500 })
   }
 }
@@ -37,7 +38,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     const { id } = await params
     await prisma.client.deleteMany({ where: { id, userId: session.user.id } })
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (error) {
+    console.error("Error al eliminar cliente:", error)
     return NextResponse.json({ error: "Error al eliminar" }, { status: 500 })
   }
 }

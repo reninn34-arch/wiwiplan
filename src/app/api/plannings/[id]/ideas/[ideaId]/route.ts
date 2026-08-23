@@ -3,11 +3,24 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { ImageError, normalizeImageDataUrl } from "@/lib/image-processing.server"
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string; ideaId: string }> }) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+type AuthResult = { ok: false; response: NextResponse } | { ok: true; userId: string }
+
+async function getSessionOrUnauthorized(): Promise<AuthResult> {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return { ok: false, response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) }
+    }
+    return { ok: true, userId: session.user.id }
+  } catch (error) {
+    console.error("Error de sesión:", error)
+    return { ok: false, response: NextResponse.json({ error: "Error de autenticación" }, { status: 500 }) }
   }
+}
+
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string; ideaId: string }> }) {
+  const authResult = await getSessionOrUnauthorized()
+  if (!authResult.ok) return authResult.response
 
   try {
     const { ideaId } = await params
@@ -18,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         : undefined
 
     const idea = await prisma.contentIdea.updateMany({
-      where: { id: ideaId, planning: { userId: session.user.id } },
+      where: { id: ideaId, planning: { userId: authResult.userId } },
       data: {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
@@ -39,6 +52,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     return NextResponse.json(idea)
   } catch (error) {
+    console.error("Error al actualizar idea:", error)
     if (error instanceof ImageError) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
@@ -47,21 +61,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string; ideaId: string }> }) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  const authResult = await getSessionOrUnauthorized()
+  if (!authResult.ok) return authResult.response
 
   try {
     const { ideaId } = await params
     const result = await prisma.contentIdea.deleteMany({
-      where: { id: ideaId, planning: { userId: session.user.id } },
+      where: { id: ideaId, planning: { userId: authResult.userId } },
     })
     if (result.count === 0) {
       return NextResponse.json({ error: "No encontrada" }, { status: 404 })
     }
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (error) {
+    console.error("Error al eliminar idea:", error)
     return NextResponse.json({ error: "Error al eliminar" }, { status: 500 })
   }
 }

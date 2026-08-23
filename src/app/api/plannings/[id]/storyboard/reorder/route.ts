@@ -34,7 +34,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       )
     )
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (error) {
+    console.error("Error al reordenar storyboard:", error)
     return NextResponse.json({ error: "Error al reordenar" }, { status: 500 })
   }
 }

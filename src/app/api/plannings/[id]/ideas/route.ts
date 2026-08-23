@@ -74,7 +74,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       include: { contentIdeaTags: { include: { tag: true } } },
     })
     return NextResponse.json(ideas)
-  } catch {
+  } catch (error) {
+    console.error("Error al obtener ideas:", error)
     return NextResponse.json({ error: "Error al obtener ideas" }, { status: 500 })
   }
 }
