@@ -158,10 +158,10 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const [monthPeriod, setMonthPeriod] = useState("")
   // Duplicar mes anterior: "" arranca en blanco.
   const [copyFromId, setCopyFromId] = useState("")
-  const [copyIdeas, setCopyIdeas] = useState(true)
-  const [copyPricing, setCopyPricing] = useState(true)
-  const [copyCosts, setCopyCosts] = useState(true)
-  const [copyNotes, setCopyNotes] = useState(true)
+  const [copyIdeas, setCopyIdeas] = useState(false)
+  const [copyPricing, setCopyPricing] = useState(false)
+  const [copyCosts, setCopyCosts] = useState(false)
+  const [copyNotes, setCopyNotes] = useState(false)
   const [creatingMonth, setCreatingMonth] = useState(false)
 
   useEffect(() => {
@@ -251,13 +251,6 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     return false
   }
 
-  /** El mes más reciente del cliente: el candidato natural a duplicar. */
-  const latestMonthOf = (clientId: string) => {
-    const plans = initial.filter((p) => p.client?.id === clientId)
-    if (plans.length === 0) return ""
-    return [...plans].sort(sortByPeriod)[0].id
-  }
-
   /** Si el cliente ya tiene el mes corriente, propone el siguiente. */
   const suggestPeriod = (clientId: string) => {
     if (!clientId) return defaultPeriod
@@ -268,11 +261,20 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`
   }
 
+  /** Todo apagado: el mes nuevo arranca limpio salvo que pidas lo contrario. */
+  const resetCopy = () => {
+    setCopyFromId("")
+    setCopyIdeas(false)
+    setCopyPricing(false)
+    setCopyCosts(false)
+    setCopyNotes(false)
+  }
+
   const openMonthDialog = (forClientId?: string, forPeriod?: string) => {
     const clientId = forClientId || monthClientId || clients[0]?.id || ""
     setMonthClientId(clientId)
     setMonthPeriod(forPeriod ?? suggestPeriod(clientId))
-    setCopyFromId(latestMonthOf(clientId))
+    resetCopy()
     setShowMonthDialog(true)
   }
 
@@ -367,6 +369,9 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
       return own(a) - own(b) || sortByPeriod(a, b)
     })
   const copySource = copySources.find((p) => p.id === copyFromId) ?? null
+  // Con un molde elegido pero nada marcado no hay nada que traer: el mes sale
+  // en blanco igual, y el botón lo dice en vez de prometer un duplicado vacío.
+  const copyAnything = copySource !== null && (copyIdeas || copyPricing || copyCosts || copyNotes)
   const copyToggleClass = (on: boolean) =>
     `rounded-md px-2.5 py-1.5 text-xs transition-colors ${
       on ? "bg-white/10 text-zinc-200 ring-1 ring-inset ring-white/20" : "text-zinc-500 hover:text-zinc-300"
@@ -776,7 +781,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 onChange={(e) => {
                   setMonthClientId(e.target.value)
                   setMonthPeriod(suggestPeriod(e.target.value))
-                  setCopyFromId(latestMonthOf(e.target.value))
+                  resetCopy()
                 }}
                 className="h-10 w-full rounded-lg border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 focus:outline-none"
               >
@@ -807,7 +812,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               {copySources.length > 0 && (
                 <div className="rounded-lg border border-white/5 bg-[#0a0a0c] p-3">
                   <label htmlFor="copy-from" className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-                    Duplicar de
+                    Duplicar de <span className="normal-case tracking-normal text-zinc-600">(opcional)</span>
                   </label>
                   <select
                     id="copy-from"
@@ -840,8 +845,9 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                         </button>
                       </div>
                       <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-                        Las ideas se copian como ideas nuevas, sin comentarios, imágenes ni estado de producción.
-                        Los cobros registrados y los storyboards no se copian.
+                        {copyAnything
+                          ? "Las ideas se copian como ideas nuevas, sin comentarios, imágenes ni estado de producción. Los cobros registrados y los storyboards no se copian."
+                          : "Marca qué traer de ese mes. Sin nada marcado, el mes nuevo sale en blanco."}
                       </p>
                     </>
                   )}
@@ -861,7 +867,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                     const created = await createMonth(
                       monthClientId,
                       monthPeriod,
-                      copySource
+                      copyAnything && copySource
                         ? {
                             fromId: copySource.id,
                             ideas: copyIdeas,
@@ -874,7 +880,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                     if (created) setShowMonthDialog(false)
                   }}
                 >
-                  {creatingMonth ? "Creando…" : copySource ? "Crear y duplicar" : "Crear mes"}
+                  {creatingMonth ? "Creando…" : copyAnything ? "Crear y duplicar" : "Crear mes"}
                 </Button>
               </div>
             </div>
