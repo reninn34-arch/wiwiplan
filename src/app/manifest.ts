@@ -7,13 +7,14 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Crea y comparte planificaciones con tus clientes",
     start_url: "/",
     display: "standalone",
-    background_color: "#09090b",
+    // Splash de instalación: fondo del rojo de marca con el logo blanco encima.
+    background_color: "#c42c33",
     theme_color: "#09090b",
     orientation: "portrait",
     icons: [
-      { src: "/pwa-icon.svg", sizes: "512x512", type: "image/svg+xml" },
-      { src: "/pwa-icon.svg", sizes: "192x192", type: "image/svg+xml" },
-      { src: "/pwa-icon.svg", sizes: "512x512", type: "image/svg+xml", purpose: "maskable" },
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   }
 }

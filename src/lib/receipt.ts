@@ -92,11 +92,13 @@ export function buildReceiptHtml(data: ReceiptData): string {
 </head>
 <body style="margin:0;padding:32px 14px;background:#efefec;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:${INK};-webkit-font-smoothing:antialiased;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid ${HAIR};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #d4d4d8;">
+  <!-- Franja superior del rojo WIWI -->
+  <tr><td colspan="2" style="height:6px;background:#c42c33;font-size:0;line-height:0;">&nbsp;</td></tr>
 
   <!-- Encabezado -->
   <tr>
-    <td style="padding:34px 42px 22px;">
+    <td style="padding:30px 42px 22px;">
       <table role="presentation" width="100%">
         <tr>
           <td style="vertical-align:top;">
@@ -104,7 +106,7 @@ export function buildReceiptHtml(data: ReceiptData): string {
             ${data.businessEmail ? `<p style="margin:7px 0 0;font-size:12px;color:${MUTED};">${esc(data.businessEmail)}</p>` : ""}
           </td>
           <td style="vertical-align:top;text-align:right;">
-            <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#8f8f8c;">Recibo</p>
+            <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#c42c33;">Recibo</p>
             <p style="margin:6px 0 0;font-size:15px;font-weight:700;color:${INK};">Nº ${esc(data.receiptNumber)}</p>
             <p style="margin:3px 0 0;font-size:12px;color:${MUTED};">${esc(issuedLabel)}</p>
           </td>

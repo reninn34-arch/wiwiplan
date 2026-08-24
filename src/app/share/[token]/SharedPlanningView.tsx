@@ -197,7 +197,7 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
                 placeholder="Escribe un comentario..."
                 disabled={sending}
               />
-              <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-black disabled:opacity-50 sm:h-9 sm:w-9">
+              <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand text-white disabled:opacity-50 sm:h-9 sm:w-9">
                 <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
               </button>
             </div>
@@ -309,7 +309,7 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
                   placeholder="Escribe un comentario..."
                   disabled={sending}
                 />
-                <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-black disabled:opacity-50 sm:h-9 sm:w-9">
+                <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand text-white disabled:opacity-50 sm:h-9 sm:w-9">
                   <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
                 </button>
               </div>
@@ -516,7 +516,7 @@ export function SharedPlanningView({ planning }: Props) {
 
         {!isApproved && (
           <div className="flex justify-center py-8">
-            <Button size="lg" onClick={handleApprove} disabled={isApproving} className="w-full gap-2 bg-white text-black hover:bg-zinc-200 sm:w-auto">
+            <Button size="lg" onClick={handleApprove} disabled={isApproving} className="w-full gap-2 bg-brand text-white hover:bg-[#d0424a] sm:w-auto">
               <CheckCircle className="h-5 w-5" />
               {isApproving ? "Aprobando..." : "Aprobar Planificación"}
             </Button>

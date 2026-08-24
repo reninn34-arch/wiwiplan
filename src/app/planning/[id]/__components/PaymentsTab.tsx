@@ -798,7 +798,7 @@ export function PaymentsTab({
               <Button variant="ghost" className="gap-1.5 text-zinc-400 hover:text-zinc-100" onClick={printReceipt}>
                 <Printer className="h-3.5 w-3.5" /> Imprimir / PDF
               </Button>
-              <Button className="gap-1.5 bg-emerald-500 text-black hover:bg-emerald-400" onClick={sendReceipt} disabled={sendingReceipt}>
+              <Button className="gap-1.5 bg-brand text-white hover:bg-[#d0424a]" onClick={sendReceipt} disabled={sendingReceipt}>
                 <Mail className="h-3.5 w-3.5" /> {sendingReceipt ? "Enviando..." : `Enviar a ${client?.name ?? "cliente"}`}
               </Button>
             </div>

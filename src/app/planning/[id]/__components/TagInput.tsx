@@ -91,7 +91,7 @@ export function TagInput({ selectedIds, onChange }: Props) {
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); createTag() } }}
               placeholder="Nuevo tag..."
             />
-            <button type="button" onClick={createTag} className="shrink-0 rounded bg-white px-2 py-1 text-xs text-black">
+            <button type="button" onClick={createTag} className="shrink-0 rounded bg-brand px-2 py-1 text-xs text-white">
               <Plus className="h-3 w-3" />
             </button>
           </div>

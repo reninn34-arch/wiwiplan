@@ -706,7 +706,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               <div className="flex justify-end gap-2 pt-1">
                 <Button variant="ghost" className="min-h-10" onClick={() => setShowMonthDialog(false)}>Cancelar</Button>
                 <Button
-                  className="min-h-10 bg-white text-black hover:bg-zinc-200"
+                  className="min-h-10 bg-brand text-white hover:bg-[#d0424a]"
                   disabled={monthDuplicate || !monthClientId}
                   onClick={async () => {
                     const created = await createMonth(monthClientId, monthPeriod)

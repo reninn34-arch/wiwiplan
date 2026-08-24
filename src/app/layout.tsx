@@ -23,7 +23,12 @@ export const metadata: Metadata = {
     title: "WiwiPlan",
   },
   icons: {
-    apple: "/pwa-icon.svg",
+    icon: [
+      { url: "/icons/favicon.ico", sizes: "48x48" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
   },
 }
 
@@ -44,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
-        <link rel="apple-touch-icon" href="/pwa-icon.svg" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body className="min-h-full">
         <Toaster richColors />

@@ -55,7 +55,7 @@ export function ShareModal({ planningId, shareLinks: initial, onCreated, onClose
           </button>
         </div>
 
-        <Button className="mb-4 w-full bg-white text-black hover:bg-zinc-200" onClick={createLink}>
+        <Button className="mb-4 w-full bg-brand text-white hover:bg-[#d0424a]" onClick={createLink}>
           Generar nuevo enlace
         </Button>
 

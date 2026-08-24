@@ -306,7 +306,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
                     <option value="">Año</option>
                     {Array.from({ length: 10 }, (_, i) => { const y = new Date().getFullYear() - 1 + i; return <option key={y} value={y}>{y}</option> })}
                   </select>
-                  <button type="button" onClick={savePeriod} className="h-9 rounded-lg bg-white px-3 text-xs font-semibold text-black hover:bg-zinc-200">OK</button>
+                  <button type="button" onClick={savePeriod} className="h-9 rounded-lg bg-brand px-3 text-xs font-semibold text-white hover:bg-[#d0424a]">OK</button>
                 </div>
               ) : (
                 <button

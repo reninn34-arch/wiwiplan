@@ -53,6 +53,16 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   const contentWidth = PAGE_WIDTH - MARGIN * 2
   let y = 841.89 - MARGIN
 
+  // Franja superior del rojo WIWI
+  page.drawRectangle({
+    x: 0,
+    y: 841.89 - 6,
+    width: PAGE_WIDTH,
+    height: 6,
+    color: rgb(0.77, 0.17, 0.2), // #c42c33
+  })
+  y -= 6
+
   // ── Encabezado: emisor a la izquierda, comprobante a la derecha ──
   page.drawText(data.businessName.toUpperCase(), {
     x: MARGIN,

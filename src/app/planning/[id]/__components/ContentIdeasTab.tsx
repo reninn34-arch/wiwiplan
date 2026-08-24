@@ -881,7 +881,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
           <button
             type="button"
             onClick={() => setShowForm(!showForm)}
-            className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-white px-3 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 sm:h-9 sm:px-4"
+            className="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-brand px-3 text-sm font-semibold text-white transition-colors hover:bg-[#d0424a] sm:h-9 sm:px-4"
           >
             <Plus size={16} />
             <span className="whitespace-nowrap">Nueva idea</span>
@@ -1013,7 +1013,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setShowForm(false)} className="min-h-10 rounded-lg px-4 text-sm text-zinc-300 hover:bg-white/5 hover:text-white">Cancelar</button>
-            <button type="button" onClick={addIdea} className="min-h-10 rounded-lg bg-white px-5 text-sm font-semibold text-black hover:bg-zinc-200">Agregar</button>
+            <button type="button" onClick={addIdea} className="min-h-10 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-[#d0424a]">Agregar</button>
           </div>
         </div>
       )}
@@ -1351,7 +1351,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
             </div>
             <div className="flex shrink-0 justify-end gap-2 border-t border-white/10 bg-[#0c0c0e] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-5">
               <button type="button" onClick={closeEditDialog} className="min-h-10 rounded-lg px-4 text-sm text-zinc-300 hover:bg-white/5 hover:text-white">Cancelar</button>
-              <button type="button" onClick={saveEdit} className="min-h-10 rounded-lg bg-white px-5 text-sm font-semibold text-black hover:bg-zinc-200">Guardar</button>
+              <button type="button" onClick={saveEdit} className="min-h-10 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-[#d0424a]">Guardar</button>
             </div>
           </div>
         </>

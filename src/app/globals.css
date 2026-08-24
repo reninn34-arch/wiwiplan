@@ -22,6 +22,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  /* Identidad WIWI Estudio: rojo institucional del logo. */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius: 0.5rem;
@@ -34,8 +37,11 @@
   --card-foreground: #fafafa;
   --popover: #18181b;
   --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #09090b;
+  /* Identidad WIWI Estudio: rojo #c42c33 del logo, blanco roto del isotipo. */
+  --brand: #c42c33;
+  --brand-foreground: #fbf9fa;
+  --primary: var(--brand);
+  --primary-foreground: #fbf9fa;
   --secondary: #18181b;
   --secondary-foreground: #d4d4d4;
   --muted: #18181b;
@@ -56,8 +62,8 @@ body {
 }
 
 ::selection {
-  background: color-mix(in oklch, var(--ring) 22%, transparent);
-  color: var(--card-foreground);
+  background: color-mix(in srgb, var(--brand) 32%, transparent);
+  color: #fbf9fa;
 }
 
 * {

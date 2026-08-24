@@ -57,9 +57,10 @@ function reminderHtml(params: {
 <body style="margin:0;padding:32px 14px;background:#efefec;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#141414;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e4e4e0;">
+  <tr><td colspan="2" style="height:6px;background:#c42c33;font-size:0;line-height:0;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:30px 36px 20px;">
-      <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#8f8f8c;">Recordatorio de pago</p>
+    <td style="padding:28px 36px 20px;">
+      <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#c42c33;">Recordatorio de pago</p>
       <p style="margin:8px 0 0;font-size:19px;font-weight:700;color:#141414;">${esc(params.businessName)}</p>
     </td>
   </tr>

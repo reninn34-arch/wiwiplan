@@ -289,7 +289,7 @@ export function StoryboardsTab({ planningId }: Props) {
             aria-current={sb.id === activeSb}
             className={`min-h-9 shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 ${
               sb.id === activeSb
-                ? "bg-white text-black"
+                ? "bg-brand text-white"
                 : "bg-white/5 text-zinc-300 hover:bg-white/10"
             }`}
           >
