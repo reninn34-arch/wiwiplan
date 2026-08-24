@@ -23,6 +23,7 @@ import { PaymentStamp, type PaymentRecord } from "@/components/payments/PaymentS
 import { ClientLogo } from "@/components/ClientLogo"
 import { formatMoney, summarizePayments } from "@/lib/payments"
 import { NotificationBell } from "@/components/NotificationBell"
+import { GlobalSearch } from "@/components/GlobalSearch"
 import { toast } from "sonner"
 
 const loadStoryboardsTab = () => import("./StoryboardsTab")
@@ -244,6 +245,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1 py-2 sm:gap-2">
+          <GlobalSearch />
           <NotificationBell />
           <div className="mx-1 hidden h-4 w-px bg-white/10 sm:block" />
           <Button

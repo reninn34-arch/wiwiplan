@@ -43,6 +43,7 @@ Las cuatro apuestas donde tiene que ganarle a Notion, confirmadas por el usuario
 - La deuda es **del cliente, no del mes**: `/clients/[id]` muestra el estado de cuenta acumulado de todos sus meses, cuál es el más viejo con saldo y los últimos movimientos juntos. El arrastre es de lectura: no se crea una línea de "saldo anterior" en el mes siguiente, porque contaría la misma deuda dos veces.
 - Un mes se puede **duplicar del anterior**: viajan las ideas (como ideas nuevas, sin comentarios, imágenes ni estado de producción), el valor con sus líneas y las cuotas corridas al mes destino. Los cobros registrados y los storyboards no se copian.
 - El enlace compartido es de solo lectura salvo comentar y aprobar; puede tener vencimiento.
+- La **búsqueda global** (Ctrl/⌘+K, o la lupa del encabezado) cruza clientes, meses y piezas de contenido a la vez, con el fragmento del texto que coincidió. Responde "¿en qué mes hicimos ese carrusel de precios?", que antes obligaba a acordarse del cliente y del mes para llegar a la pieza. Es sensible a tildes.
 - Las notificaciones avisan al creador cuando el cliente comenta o aprueba.
 - **Pendiente y deliberado:** el recordatorio automático de saldo sólo se dispara si el plan tiene cuotas cargadas y vencidas. Ampliarlo haría salir cobranza automática a clientes reales sin que el usuario la revise, así que es una decisión suya, no un arreglo técnico.
 

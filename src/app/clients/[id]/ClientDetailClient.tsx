@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ClientLogo } from "@/components/ClientLogo"
 import { NotificationBell } from "@/components/NotificationBell"
+import { GlobalSearch } from "@/components/GlobalSearch"
 import { PaymentLedger, paymentDotStyles, type PaymentRecord } from "@/components/payments/PaymentStatus"
 import { formatMoney, formatPaymentDate, parseAmountToCents } from "@/lib/payments"
 import { formatPeriodLabel } from "@/lib/planning-period"
@@ -94,6 +95,7 @@ export function ClientDetailClient({ client, account, ideaCounts, recentEntries 
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1 py-2 sm:gap-2">
+          <GlobalSearch />
           <NotificationBell />
         </div>
       </header>

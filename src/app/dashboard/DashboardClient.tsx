@@ -14,6 +14,7 @@ import { formatDayLabel } from "@/lib/calendar"
 import { compressAvatar } from "@/lib/compress-image"
 import { Input } from "@/components/ui/input"
 import { NotificationBell } from "@/components/NotificationBell"
+import { GlobalSearch } from "@/components/GlobalSearch"
 import { toast } from "sonner"
 
 const months: Record<string, string> = {
@@ -391,6 +392,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
             <span className="hidden sm:inline">Nuevo cliente</span>
             <span className="sm:hidden">Cliente</span>
           </Button>
+          <GlobalSearch />
           <NotificationBell />
           <Link
             href="/settings"
