@@ -18,6 +18,7 @@ import { ContentIdeasTab } from "./ContentIdeasTab"
 import dynamic from "next/dynamic"
 import { ShareModal } from "./ShareModal"
 import { PaymentsTab } from "./PaymentsTab"
+import { CalendarTab } from "./CalendarTab"
 import { PaymentStamp, type PaymentRecord } from "@/components/payments/PaymentStatus"
 import { ClientLogo } from "@/components/ClientLogo"
 import { formatMoney, summarizePayments } from "@/lib/payments"
@@ -68,6 +69,7 @@ const statusDotStyles: Record<string, string> = {
 
 const tabs = [
   { id: "contenido", label: "Contenido" },
+  { id: "calendario", label: "Calendario" },
   { id: "info", label: "Información" },
   { id: "storyboard", label: "Storyboards" },
   { id: "pagos", label: "Pagos" },
@@ -85,7 +87,12 @@ interface PlanningData {
   goals: string
   notes: string
   clientId: string | null
+  /** Suma de `items`; el servidor la recalcula, la interfaz nunca la inventa. */
   priceCents: number
+  items: Array<{ id: string; label: string; amountCents: number; order: number }>
+  /** Suma de `costs`; igual que `priceCents`, la mantiene el servidor. */
+  costCents: number
+  costs: Array<{ id: string; label: string; amountCents: number; category: string; billable: boolean; order: number }>
   createdAt: string
   updatedAt: string
   client: { id: string; name: string; email: string } | null
@@ -137,6 +144,8 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
   const [periodMonth, setPeriodMonth] = useState("")
   const [periodYear, setPeriodYear] = useState("")
   const [activeTab, setActiveTab] = useState<TabId>("contenido")
+  /** Idea a resaltar al saltar desde el calendario a Contenido. */
+  const [jumpToIdeaId, setJumpToIdeaId] = useState<string | null>(null)
   const [showShare, setShowShare] = useState(false)
 
   const updatePlanning = useCallback((updates: Partial<PlanningData>) => {
@@ -403,7 +412,34 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           <InfoTab planning={planning} clients={clients} onUpdate={updatePlanning} />
         )}
         {activeTab === "contenido" && (
-          <ContentIdeasTab planningId={planning.id} ideas={planning.contentIdeas} storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))} focusIdeaId={focusIdeaId} />
+          <ContentIdeasTab
+            planningId={planning.id}
+            ideas={planning.contentIdeas}
+            storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))}
+            focusIdeaId={jumpToIdeaId ?? focusIdeaId}
+            onIdeasChange={(next) => updatePlanning({ contentIdeas: next })}
+          />
+        )}
+        {activeTab === "calendario" && (
+          <CalendarTab
+            planningId={planning.id}
+            period={planning.period}
+            ideas={planning.contentIdeas}
+            onChange={(next) =>
+              // Se recomponen las ideas completas: el calendario sólo conoce
+              // las cuatro columnas que dibuja, no la idea entera.
+              updatePlanning({
+                contentIdeas: planning.contentIdeas.map((idea) => {
+                  const moved = next.find((n) => n.id === idea.id)
+                  return moved ? { ...idea, dueDate: moved.dueDate } : idea
+                }),
+              })
+            }
+            onOpenIdea={(ideaId) => {
+              setJumpToIdeaId(ideaId)
+              setActiveTab("contenido")
+            }}
+          />
         )}
         {activeTab === "storyboard" && (
           <StoryboardsTab planningId={planning.id} />
@@ -412,6 +448,8 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           <PaymentsTab
             planningId={planning.id}
             priceCents={planning.priceCents}
+            items={planning.items}
+            costs={planning.costs}
             payments={planning.payments}
             installments={planning.installments}
             onChange={updatePlanning}

@@ -1,0 +1,82 @@
+# Product
+
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+web
+
+## Users
+
+Usuario primario: **un creador/freelance que trabaja solo** y lleva varios clientes en paralelo. Arma la planificación de contenido de cada cliente mes a mes, la comparte y la cobra. Trabaja indistintamente en escritorio (carga y edición pesada) y en el celular (revisión, cambios rápidos, mostrarle algo a alguien). Es el dueño de todos los datos: no hay equipo, no hay roles, no hay edición concurrente.
+
+Usuario secundario: **el cliente**, que nunca entra a la app con cuenta. Llega por un enlace público (`/share/[token]`), lee el plan, comenta pieza por pieza y aprueba. Suele abrirlo desde el celular y no vuelve seguido: cada visita tiene que explicarse sola.
+
+## Product Purpose
+
+Llevar el ciclo completo de una planificación mensual de contenido —ideas, formato, referencias, storyboards, aprobación del cliente y cobro— en un solo lugar, sin armar la herramienta antes de poder usarla.
+
+Éxito: el creador arma el plan del mes en una sentada, el cliente lo aprueba sin llamadas ni audios, y el creador ve en cualquier momento qué falta producir y qué falta cobrar.
+
+## Positioning
+
+Notion puede modelar esto, pero hay que construirlo: cada mes es una base de datos que alguien arma, mantiene y explica. WiwiPlan llega con el flujo ya formado —cliente → mes → ideas → storyboard → aprobación → cobro— y con la parte que Notion no tiene: **un enlace de aprobación pensado para alguien que no usa la herramienta**, y **el dinero pegado al plan**, no en otra planilla.
+
+Las cuatro apuestas donde tiene que ganarle a Notion, confirmadas por el usuario:
+
+1. **Cargar ideas rápido.** Escribir veinte ideas del mes sin pelear con la interfaz: teclado, pegar links e imágenes, duplicar, atajos.
+2. **Ver el mes.** El plan como calendario de publicaciones: arrastrar piezas a fechas, ver huecos y choques.
+3. **El momento de aprobación.** Que el cliente entienda y apruebe sin fricción, comente pieza por pieza, y quede registro.
+4. **Plata y estado.** De un vistazo: qué se debe, qué falta producir, en qué está cada pieza.
+
+## Operating Context
+
+- El trabajo se organiza por **cliente** y dentro de cada cliente por **mes** (`period`, formato `YYYY-MM`). El mes es la unidad real de trabajo y de cobro.
+- Cada plan tiene estado: Borrador → En Progreso → Revisión → Aprobado → Publicado.
+- Cada idea de contenido tiene formato (carrusel, reel, video, imagen, historia, estático), plataforma (Instagram, TikTok, YouTube, Vimeo, LinkedIn, Facebook), pilar de contenido, prioridad, fecha de entrega, estado propio (Idea → Seleccionada → En Producción → Lista), tags, referencia (URL con embed o imagen pegada) y comentarios del cliente.
+- Los storyboards son secuencias de escenas con imagen, descripción, notas y duración; se vinculan a una idea.
+- Cada **cliente** tiene un plan contratado (nombre + tarifa mensual). La tarifa es el contrato y siembra el valor de cada mes nuevo, para no reescribir el mismo número doce veces al año.
+- El **valor del mes** se compone de líneas (honorarios del plan, extras acordados sobre la marcha, descuentos en negativo). `Planning.priceCents` es la suma cacheada de esas líneas y no se escribe a mano.
+- Los cobros se registran contra ese valor, en dólares, con fecha, medio y nota; el saldo se calcula solo. El recibo desglosa las líneas cuando hay más de una.
+- Un movimiento puede ser **cobro**, **retención** o **ajuste**. Los tres cierran saldo, pero sólo el cobro es plata que entró: al facturar a empresas el cliente transfiere menos de lo facturado y la diferencia es una retención, no una deuda. Sólo los cobros generan recibo.
+- Cada mes registra también sus **costos** (equipo, pauta, producción, herramientas). Un costo puede marcarse **recobrable**: entra al valor del mes y sale en la factura como línea propia, sin cargarlo dos veces. Suma igual de los dos lados, así que el margen no se mueve. Los costos no recobrables **nunca** cruzan al lado del cliente: mostrarlos sería mostrarle el margen. `priceCents` = líneas + costos recobrables; `costCents` = todos los costos; las dos las mantiene `recalcPlanningMoney` en la misma transacción.
+- La deuda es **del cliente, no del mes**: `/clients/[id]` muestra el estado de cuenta acumulado de todos sus meses, cuál es el más viejo con saldo y los últimos movimientos juntos. El arrastre es de lectura: no se crea una línea de "saldo anterior" en el mes siguiente, porque contaría la misma deuda dos veces.
+- Un mes se puede **duplicar del anterior**: viajan las ideas (como ideas nuevas, sin comentarios, imágenes ni estado de producción), el valor con sus líneas y las cuotas corridas al mes destino. Los cobros registrados y los storyboards no se copian.
+- El enlace compartido es de solo lectura salvo comentar y aprobar; puede tener vencimiento.
+- Las notificaciones avisan al creador cuando el cliente comenta o aprueba.
+- **Pendiente y deliberado:** el recordatorio automático de saldo sólo se dispara si el plan tiene cuotas cargadas y vencidas. Ampliarlo haría salir cobranza automática a clientes reales sin que el usuario la revise, así que es una decisión suya, no un arreglo técnico.
+
+## Capabilities and Constraints
+
+- Next.js 16 (App Router, React 19), Tailwind v4, Prisma 7 + PostgreSQL, NextAuth v5 con credenciales, Radix primitives, dnd-kit, TipTap, sonner. PWA instalable (manifest + service worker), orientación vertical.
+- Las imágenes se comprimen en el cliente y se sirven por URL desde la API; hay recompresión de originales ya hecha.
+- Todo el contenido de la interfaz está en **español latino** (tuteo ecuatoriano: "Agrega", "Carga", "Tócalo").
+- Datos por usuario: cada consulta filtra por `userId`. No hay compartición entre cuentas.
+- **Decisión abierta:** el nombre "WiwiPlan" puede cambiar; el usuario lo dejó libre. Ningún trabajo debe asumir un nombre nuevo sin confirmarlo con él.
+- La pestaña **Calendario** muestra el mes como rejilla de publicaciones: las piezas se arrastran a un día (o se tocan y luego se toca el día, que es lo que funciona en el celular), se ven los huecos —días sin nada— y los choques —dos piezas el mismo día—. Las fechas de entrega son **fechas de calendario**, no instantes: se leen por sus componentes UTC para que no se corran un día.
+
+## Brand Commitments
+
+Identidad WIWI Estudio (definida por el usuario en agosto 2026):
+- Color de marca: rojo #c42c33; blanco roto #fbf9fa para arte e isotipo; negro para texto de documentos.
+- Tipografía original: Myriad Pro (PDF del logo); la app usa la sans del sistema como aproximación.
+- Ícono de app: isotipo blanco sobre fondo rojo (public/icons), con variante maskable full-bleed.
+- Superficie general: se mantiene el dark (#09090b sobre zinc); el rojo se reserva para acciones primarias y estados activos.
+
+## Evidence on Hand
+
+- Producto real y funcionando, con datos reales del usuario en su base.
+- Assets: `public/pwa-icon.svg` (ícono actual, reemplazable). No hay logo profesional, ni fotos, ni material de marca.
+- No hay clientes de referencia públicos, testimonios, métricas, precios ni casos de estudio. Nada de eso debe inventarse.
+
+## Product Principles
+
+1. **El mes es la unidad.** Toda navegación, memoria y resumen se organiza alrededor de cliente + mes; nunca alrededor de una lista global de tareas.
+2. **La carga es el trabajo.** Escribir la idea número diecisiete tiene que costar lo mismo que la primera; cualquier fricción repetida se paga veinte veces por mes.
+3. **El cliente no aprendió la herramienta.** Cada superficie que ve alguien de afuera se explica sola, en una sola pantalla, desde el celular.
+4. **El dinero es parte del plan, no un anexo.** Precio, cobrado y saldo viven junto al trabajo que los generó.
+5. **Nada que haya que armar antes de usar.** El flujo viene formado; configurar es la excepción, no el precio de entrada.
+
+## Accessibility & Inclusion
+
+Sin requisito formal establecido por el usuario. Restricciones de hecho que el trabajo previo ya asumió y que conviene sostener: contraste legible sobre fondo oscuro, áreas táctiles de 36–44px en móvil, campos a 16px para no disparar el zoom de iOS, y `env(safe-area-inset-*)` por la PWA a pantalla completa.

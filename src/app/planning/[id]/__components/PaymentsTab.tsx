@@ -9,19 +9,36 @@ import { PaymentAccountHeader, type PaymentRecord } from "@/components/payments/
 import {
   formatMoney,
   formatPaymentDate,
+  isPaymentKind,
   parseAmountToCents,
+  paymentKindHints,
+  paymentKindLabels,
+  paymentKinds,
   paymentMethodLabels,
   paymentMethods,
   summarizePayments,
+  type PaymentKind,
 } from "@/lib/payments"
-import { buildReceiptHtml, receiptNumberFromId } from "@/lib/receipt"
+import { buildReceiptHtml, receiptLines, receiptNumberFromId } from "@/lib/receipt"
+import { CostsSection, type PlanningCostRow } from "./CostsSection"
+
+export interface PlanningItemRow {
+  id: string
+  label: string
+  amountCents: number
+  order: number
+}
 
 interface Props {
   planningId: string
   priceCents: number
+  /** Líneas que componen el valor del mes. `priceCents` es su suma. */
+  items: PlanningItemRow[]
+  /** Lo que costó producir el mes: la otra mitad del dinero. */
+  costs: PlanningCostRow[]
   payments: PaymentRecord[]
   installments: Array<{ id: string; label: string; amountCents: number; dueDate: string }>
-  onChange: (updates: { priceCents?: number; payments?: PaymentRecord[]; installments?: Array<{ id: string; label: string; amountCents: number; dueDate: string }> }) => void
+  onChange: (updates: { priceCents?: number; items?: PlanningItemRow[]; costCents?: number; costs?: PlanningCostRow[]; payments?: PaymentRecord[]; installments?: Array<{ id: string; label: string; amountCents: number; dueDate: string }> }) => void
   client: { name: string; email: string } | null
   periodLabel: string
   planTitle?: string
@@ -42,6 +59,11 @@ function dateInputValue(iso: string) {
   return new Date(d.getTime() - offset).toISOString().slice(0, 10)
 }
 
+/** Una retención o un ajuste cierran saldo, pero no son plata que entró. */
+function isCashEntry(record: PaymentRecord) {
+  return record.kind !== "WITHHOLDING" && record.kind !== "ADJUSTMENT"
+}
+
 function byDate(a: PaymentRecord, b: PaymentRecord) {
   return new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime()
 }
@@ -52,6 +74,8 @@ const fieldClass =
 export function PaymentsTab({
   planningId,
   priceCents,
+  items,
+  costs,
   payments,
   installments,
   onChange,
@@ -61,14 +85,21 @@ export function PaymentsTab({
   businessName,
   businessEmail,
 }: Props) {
-  const [editingPrice, setEditingPrice] = useState(false)
-  const [priceDraft, setPriceDraft] = useState("")
-  const [savingPrice, setSavingPrice] = useState(false)
+  // Valor del mes: se edita línea por línea, nunca como un total suelto.
+  const [itemFormOpen, setItemFormOpen] = useState(false)
+  const [itemLabel, setItemLabel] = useState("")
+  const [itemAmount, setItemAmount] = useState("")
+  const [savingItem, setSavingItem] = useState(false)
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editItemLabel, setEditItemLabel] = useState("")
+  const [editItemAmount, setEditItemAmount] = useState("")
 
   const [formOpen, setFormOpen] = useState(false)
   const [amount, setAmount] = useState("")
   const [paidAt, setPaidAt] = useState(todayInputValue())
   const [method, setMethod] = useState("TRANSFER")
+  // Naturaleza del movimiento: no todo lo que cierra saldo es plata que entró.
+  const [kind, setKind] = useState<PaymentKind>("PAYMENT")
   const [note, setNote] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -106,6 +137,7 @@ export function PaymentsTab({
       planTitle: planTitle ?? "",
       receiptNumber: receiptNumberFromId(receiptFor.id),
       priceCents,
+      items: receiptLines(items, costs),
       paidCents: payments.reduce((sum, p) => sum + p.amountCents, 0),
       dueCents: Math.max(0, priceCents - payments.reduce((sum, p) => sum + p.amountCents, 0)),
       payment: {
@@ -117,7 +149,7 @@ export function PaymentsTab({
       detail: receiptDetail,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [receiptFor, receiptDetail])
+  }, [receiptFor, receiptDetail, items, costs, priceCents])
 
   const openReceipt = (payment: PaymentRecord) => {
     setReceiptFor(payment)
@@ -202,37 +234,83 @@ export function PaymentsTab({
     onChange({ installments: installments.filter((i) => i.id !== installmentId) })
   }
 
-  const openPriceEditor = () => {
-    setPriceDraft(priceCents > 0 ? (priceCents / 100).toFixed(2) : "")
-    setEditingPrice(true)
+  /** El servidor devuelve el total recalculado: la interfaz no lo suma sola. */
+  const applyItems = (data: { priceCents: number; items: PlanningItemRow[] }) => {
+    onChange({ priceCents: data.priceCents, items: data.items })
   }
 
-  const savePrice = async () => {
-    const cents = parseAmountToCents(priceDraft)
-    if (cents === null || cents < 0) {
-      toast.error("Escribe un precio válido, por ejemplo 1200")
+  const openItemForm = () => {
+    setItemLabel("")
+    setItemAmount("")
+    setItemFormOpen(true)
+  }
+
+  const addItem = async () => {
+    const cents = parseAmountToCents(itemAmount)
+    if (cents === null || cents === 0) {
+      toast.error("Escribe un monto, por ejemplo 600")
       return
     }
-    setSavingPrice(true)
-    const res = await fetch(`/api/plannings/${planningId}`, {
+    setSavingItem(true)
+    const res = await fetch(`/api/plannings/${planningId}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: itemLabel.trim(), amountCents: cents }),
+    })
+    setSavingItem(false)
+    if (!res.ok) {
+      toast.error("No se pudo agregar la línea")
+      return
+    }
+    applyItems(await res.json())
+    setItemFormOpen(false)
+    setItemLabel("")
+    setItemAmount("")
+  }
+
+  const startEditItem = (item: PlanningItemRow) => {
+    setEditingItemId(item.id)
+    setEditItemLabel(item.label)
+    setEditItemAmount((item.amountCents / 100).toFixed(2))
+  }
+
+  const saveItem = async () => {
+    if (!editingItemId) return
+    const cents = parseAmountToCents(editItemAmount)
+    if (cents === null || cents === 0) {
+      toast.error("Escribe un monto válido")
+      return
+    }
+    setSavingItem(true)
+    const res = await fetch(`/api/plannings/${planningId}/items/${editingItemId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceCents: cents }),
+      body: JSON.stringify({ label: editItemLabel.trim(), amountCents: cents }),
     })
-    setSavingPrice(false)
+    setSavingItem(false)
     if (!res.ok) {
-      toast.error("No se pudo guardar el precio")
+      toast.error("No se pudo guardar la línea")
       return
     }
-    onChange({ priceCents: cents })
-    setEditingPrice(false)
-    toast.success(`Precio del plan: ${formatMoney(cents)}`)
+    applyItems(await res.json())
+    setEditingItemId(null)
+  }
+
+  const removeItem = async (item: PlanningItemRow) => {
+    if (!confirm(`¿Quitar "${item.label || "esta línea"}" del valor del mes?`)) return
+    const res = await fetch(`/api/plannings/${planningId}/items/${item.id}`, { method: "DELETE" })
+    if (!res.ok) {
+      toast.error("No se pudo quitar la línea")
+      return
+    }
+    applyItems(await res.json())
   }
 
   const openForm = (prefillCents?: number) => {
     setAmount(prefillCents && prefillCents > 0 ? (prefillCents / 100).toFixed(2) : "")
     setPaidAt(todayInputValue())
     setMethod("TRANSFER")
+    setKind("PAYMENT")
     setNote("")
     setFormOpen(true)
   }
@@ -249,6 +327,7 @@ export function PaymentsTab({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amountCents: cents,
+        kind,
         method,
         note: note.trim(),
         paidAt: new Date(`${paidAt}T12:00:00`).toISOString(),
@@ -266,12 +345,13 @@ export function PaymentsTab({
     setFormOpen(false)
 
     const after = summarizePayments(priceCents, next)
+    const verb = kind === "PAYMENT" ? "cobrado" : `registrado como ${paymentKindLabels[kind].toLowerCase()}`
     toast.success(
       priceCents > 0 && after.dueCents === 0
-        ? `${formatMoney(cents)} cobrado. El plan queda saldado.`
+        ? `${formatMoney(cents)} ${verb}. El mes queda saldado.`
         : priceCents > 0
-          ? `${formatMoney(cents)} cobrado. Quedan ${formatMoney(after.dueCents)}.`
-          : `${formatMoney(cents)} cobrado.`,
+          ? `${formatMoney(cents)} ${verb}. Quedan ${formatMoney(after.dueCents)}.`
+          : `${formatMoney(cents)} ${verb}.`,
     )
 
     // El recibo se ofrece apenas registrado: lo revisas antes de mandar nada.
@@ -329,73 +409,157 @@ export function PaymentsTab({
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-white/5 bg-[#0c0c0e] p-5">
-        {editingPrice ? (
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold tracking-tight text-zinc-200">Precio acordado</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">
-                  $
-                </span>
-                <Input
-                  value={priceDraft}
-                  onChange={(e) => setPriceDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") savePrice()
-                    if (e.key === "Escape") setEditingPrice(false)
-                  }}
-                  inputMode="decimal"
-                  placeholder="1200.00"
-                  autoFocus
-                  aria-label="Precio acordado del plan"
-                  className="h-9 w-36 border-white/10 bg-[#18181b] pl-7 tabular-nums text-zinc-100"
-                />
-              </div>
-              <Button size="sm" onClick={savePrice} disabled={savingPrice}>
-                {savingPrice ? "Guardando..." : "Guardar"}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-zinc-400 hover:text-zinc-100"
-                onClick={() => setEditingPrice(false)}
-              >
-                Cancelar
-              </Button>
-            </div>
-            <p className="text-xs text-zinc-400">Los montos van en dólares (USD).</p>
-          </div>
-        ) : summary.state === "UNPRICED" ? (
+        {summary.state === "UNPRICED" && items.length === 0 ? (
           <div className="flex flex-col items-start gap-3 py-2">
             <div>
               <h2 className="text-sm font-semibold tracking-tight text-zinc-100">
-                Pon el precio de este plan
+                Pon el valor de este mes
               </h2>
               <p className="mt-1 max-w-md text-sm text-zinc-400">
-                Con el precio cargado registrás cada cobro, ves el saldo al instante y el cliente
-                puede seguir cuánto lleva pagado desde el enlace que le compartís.
+                Cárgalo línea por línea —el plan y los extras que se acordaron— y así en tres meses
+                vas a saber de dónde salió el total. Con el valor puesto registras cada cobro, ves el
+                saldo al instante y el cliente lo sigue desde el enlace que le compartes.
               </p>
             </div>
-            <Button size="sm" onClick={openPriceEditor}>
-              Definir precio
+            <Button size="sm" onClick={openItemForm}>
+              Definir valor del mes
             </Button>
           </div>
         ) : (
-          <PaymentAccountHeader
-            summary={summary}
-            payments={payments}
-            action={
-              <button
-                type="button"
-                onClick={openPriceEditor}
-                className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
-              >
-                <Pencil className="h-3 w-3" /> Precio
-              </button>
-            }
-          />
+          <PaymentAccountHeader summary={summary} payments={payments} />
         )}
+
+        {items.length > 0 && (
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              Valor del mes
+            </h3>
+            <ul className="divide-y divide-white/5">
+              {items.map((item) => (
+                <li key={item.id} className="py-2">
+                  {editingItemId === item.id ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        value={editItemLabel}
+                        onChange={(e) => setEditItemLabel(e.target.value)}
+                        placeholder="Concepto"
+                        aria-label="Concepto de la línea"
+                        className="h-9 min-w-0 flex-1 border-white/10 bg-[#18181b] text-zinc-100"
+                      />
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">$</span>
+                        <Input
+                          value={editItemAmount}
+                          onChange={(e) => setEditItemAmount(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveItem()
+                            if (e.key === "Escape") setEditingItemId(null)
+                          }}
+                          inputMode="decimal"
+                          autoFocus
+                          aria-label="Monto de la línea"
+                          className="h-9 w-28 border-white/10 bg-[#18181b] pl-7 tabular-nums text-zinc-100"
+                        />
+                      </div>
+                      <Button size="sm" onClick={saveItem} disabled={savingItem}>
+                        {savingItem ? "Guardando..." : "Guardar"}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-zinc-400 hover:text-zinc-100" onClick={() => setEditingItemId(null)}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm text-zinc-300">
+                        {item.label || "Sin concepto"}
+                      </span>
+                      <span className="shrink-0 text-sm tabular-nums text-zinc-200">
+                        {formatMoney(item.amountCents)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => startEditItem(item)}
+                        aria-label={`Editar ${item.label || "línea"}`}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item)}
+                        aria-label={`Quitar ${item.label || "línea"}`}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/5 hover:text-red-400"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {items.length > 1 && (
+              <div className="flex items-center justify-between border-t border-white/10 pt-2 text-sm">
+                <span className="text-zinc-400">Total</span>
+                <span className="font-semibold tabular-nums text-zinc-100">{formatMoney(priceCents)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {itemFormOpen ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Input
+              value={itemLabel}
+              onChange={(e) => setItemLabel(e.target.value)}
+              placeholder="Concepto (ej.: Plan mensual, Sesión de fotos)"
+              aria-label="Concepto de la línea nueva"
+              className="h-9 min-w-0 flex-1 border-white/10 bg-[#18181b] text-zinc-100"
+            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">$</span>
+              <Input
+                value={itemAmount}
+                onChange={(e) => setItemAmount(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addItem()
+                  if (e.key === "Escape") setItemFormOpen(false)
+                }}
+                inputMode="decimal"
+                placeholder="600.00"
+                autoFocus
+                aria-label="Monto de la línea nueva"
+                className="h-9 w-28 border-white/10 bg-[#18181b] pl-7 tabular-nums text-zinc-100"
+              />
+            </div>
+            <Button size="sm" onClick={addItem} disabled={savingItem}>
+              {savingItem ? "Guardando..." : "Agregar"}
+            </Button>
+            <Button size="sm" variant="ghost" className="text-zinc-400 hover:text-zinc-100" onClick={() => setItemFormOpen(false)}>
+              Cancelar
+            </Button>
+          </div>
+        ) : (
+          items.length > 0 && (
+            <button
+              type="button"
+              onClick={openItemForm}
+              className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+            >
+              <Plus className="h-3.5 w-3.5" /> Agregar línea
+            </button>
+          )
+        )}
+        <p className="mt-3 text-xs text-zinc-500">
+          Los montos van en dólares (USD). Un descuento se carga como línea en negativo.
+        </p>
       </section>
+
+      <CostsSection
+        planningId={planningId}
+        valueCents={priceCents}
+        costs={costs}
+        onChange={onChange}
+      />
 
       {/* Fechas de cobro: cuotas esperadas que disparan el recordatorio automático */}
       <section className="rounded-xl border border-white/5 bg-[#0c0c0e]">
@@ -562,18 +726,43 @@ export function PaymentsTab({
                 className={`${fieldClass} [color-scheme:dark]`}
               />
               <select
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                aria-label="Medio de pago"
+                value={kind === "PAYMENT" ? method : kind}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Un solo desplegable: los medios de pago son cobros, y las
+                  // retenciones y ajustes no tienen medio porque no hay plata.
+                  if (isPaymentKind(value) && value !== "PAYMENT") {
+                    setKind(value)
+                  } else {
+                    setKind("PAYMENT")
+                    setMethod(value)
+                  }
+                }}
+                aria-label="Medio de pago o tipo de movimiento"
                 className={fieldClass}
               >
-                {paymentMethods.map((m) => (
-                  <option key={m} value={m}>
-                    {paymentMethodLabels[m]}
-                  </option>
-                ))}
+                <optgroup label="Cobro">
+                  {paymentMethods.map((m) => (
+                    <option key={m} value={m}>
+                      {paymentMethodLabels[m]}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="No es plata que entra">
+                  {paymentKinds
+                    .filter((k) => k !== "PAYMENT")
+                    .map((k) => (
+                      <option key={k} value={k}>
+                        {paymentKindLabels[k]}
+                      </option>
+                    ))}
+                </optgroup>
               </select>
             </div>
+
+            {kind !== "PAYMENT" && (
+              <p className="mt-2 text-xs text-sky-300/80">{paymentKindHints[kind]}</p>
+            )}
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <input
@@ -690,7 +879,11 @@ export function PaymentsTab({
                         {formatPaymentDate(payment.paidAt)}
                         <span className="text-zinc-400">
                           {" · "}
-                          {paymentMethodLabels[payment.method] ?? payment.method}
+                          {isCashEntry(payment)
+                            ? paymentMethodLabels[payment.method] ?? payment.method
+                            : isPaymentKind(payment.kind)
+                              ? paymentKindLabels[payment.kind]
+                              : payment.kind}
                         </span>
                       </p>
                       {payment.note && (
@@ -698,18 +891,26 @@ export function PaymentsTab({
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium tabular-nums text-emerald-300">
-                        + {formatMoney(payment.amountCents)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => openReceipt(payment)}
-                        aria-label={`Recibo del cobro de ${formatMoney(payment.amountCents)}`}
-                        title="Ver recibo"
-                        className="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-white/5 hover:text-zinc-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:h-9 max-sm:w-9 max-sm:opacity-100"
+                      <span
+                        className={`text-sm font-medium tabular-nums ${
+                          isCashEntry(payment) ? "text-emerald-300" : "text-sky-300"
+                        }`}
                       >
-                        <FileText className="h-3.5 w-3.5" />
-                      </button>
+                        {isCashEntry(payment) ? "+" : "−"} {formatMoney(payment.amountCents)}
+                      </span>
+                      {/* Sólo lo que se cobró genera recibo: no se le manda un
+                          comprobante de pago a alguien por una retención suya. */}
+                      {isCashEntry(payment) && (
+                        <button
+                          type="button"
+                          onClick={() => openReceipt(payment)}
+                          aria-label={`Recibo del cobro de ${formatMoney(payment.amountCents)}`}
+                          title="Ver recibo"
+                          className="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-all hover:bg-white/5 hover:text-zinc-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500 group-hover:opacity-100 max-sm:h-9 max-sm:w-9 max-sm:opacity-100"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => startEdit(payment)}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { ImageError, normalizeAvatarDataUrl } from "@/lib/image-processing.server"
+import { parseRateCents } from "@/lib/money-input"
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -26,6 +27,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     if (body?.logo !== undefined) {
       data.logo = body.logo ? await normalizeAvatarDataUrl(body.logo) : null
+    }
+    if (body?.planName !== undefined) {
+      data.planName = typeof body.planName === "string" ? body.planName.trim() : ""
+    }
+    if (body?.rateCents !== undefined) {
+      const rate = parseRateCents(body.rateCents)
+      if (rate === null) {
+        return NextResponse.json({ error: "La tarifa no es válida" }, { status: 400 })
+      }
+      data.rateCents = rate
     }
 
     await prisma.client.updateMany({

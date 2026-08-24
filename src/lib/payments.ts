@@ -41,49 +41,95 @@ export function parseAmountToCents(raw: string): number | null {
 
 export type PaymentState = "UNPRICED" | "PENDING" | "PARTIAL" | "PAID"
 
+export type PaymentKind = "PAYMENT" | "WITHHOLDING" | "ADJUSTMENT"
+
+export const paymentKinds = ["PAYMENT", "WITHHOLDING", "ADJUSTMENT"] as const
+
+export const paymentKindLabels: Record<PaymentKind, string> = {
+  PAYMENT: "Cobro",
+  WITHHOLDING: "Retención",
+  ADJUSTMENT: "Ajuste",
+}
+
+/** Explica en la interfaz por qué un movimiento cierra saldo sin ser plata. */
+export const paymentKindHints: Record<PaymentKind, string> = {
+  PAYMENT: "Plata que entró.",
+  WITHHOLDING: "Retención en la fuente o de IVA: cierra saldo pero no entra a la cuenta.",
+  ADJUSTMENT: "Descuento, condonación o corrección acordada.",
+}
+
+export function isPaymentKind(value: unknown): value is PaymentKind {
+  return value === "PAYMENT" || value === "WITHHOLDING" || value === "ADJUSTMENT"
+}
+
 export interface PaymentLike {
   amountCents: number
+  /** Ausente equivale a PAYMENT: así los registros viejos siguen valiendo. */
+  kind?: string | null
 }
 
 export interface PaymentSummary {
   priceCents: number
+  /** Plata que efectivamente entró. Es lo que se muestra como "cobrado". */
   paidCents: number
+  /** Retenciones y ajustes: cierran saldo pero nunca entraron a la cuenta. */
+  offsetCents: number
+  /** Lo que dejó de deberse: cobrado + retenido/ajustado. */
+  settledCents: number
   /** Lo que falta cobrar. Nunca negativo. */
   dueCents: number
-  /** Excedente cobrado por encima del precio. Normalmente 0. */
+  /** Excedente por encima del valor del mes. Normalmente 0. */
   overpaidCents: number
   /** 0–100, recortado. */
   percent: number
   state: PaymentState
-  installments: number
+  /** Cantidad de movimientos registrados (cobros, retenciones y ajustes). */
+  entries: number
 }
 
+/**
+ * El saldo se cierra con lo cobrado **más** las retenciones y ajustes. Sin esa
+ * distinción, una retención quedaba como cobro parcial: el mes seguía "debiendo"
+ * plata que nunca iba a llegar, y el recordatorio automático le reclamaba a un
+ * cliente que ya había pagado completo.
+ */
 export function summarizePayments(priceCents: number, payments: PaymentLike[]): PaymentSummary {
   const price = Math.max(0, Math.round(priceCents || 0))
-  const paid = payments.reduce((sum, p) => sum + Math.round(p.amountCents || 0), 0)
-  const due = Math.max(0, price - paid)
-  // Sin precio acordado no hay excedente que reclamar, sólo cobros sueltos.
-  const overpaid = price === 0 ? 0 : Math.max(0, paid - price)
+
+  let paid = 0
+  let offset = 0
+  for (const entry of payments) {
+    const amount = Math.round(entry.amountCents || 0)
+    if (entry.kind === "WITHHOLDING" || entry.kind === "ADJUSTMENT") offset += amount
+    else paid += amount
+  }
+  const settled = paid + offset
+
+  const due = Math.max(0, price - settled)
+  // Sin valor cargado no hay excedente que reclamar, sólo cobros sueltos.
+  const overpaid = price === 0 ? 0 : Math.max(0, settled - price)
 
   let state: PaymentState
   if (price === 0) state = "UNPRICED"
-  else if (paid <= 0) state = "PENDING"
-  else if (paid < price) state = "PARTIAL"
+  else if (settled <= 0) state = "PENDING"
+  else if (settled < price) state = "PARTIAL"
   else state = "PAID"
 
   return {
     priceCents: price,
     paidCents: paid,
+    offsetCents: offset,
+    settledCents: settled,
     dueCents: due,
     overpaidCents: overpaid,
-    percent: price === 0 ? 0 : Math.min(100, Math.round((paid / price) * 100)),
+    percent: price === 0 ? 0 : Math.min(100, Math.round((settled / price) * 100)),
     state,
-    installments: payments.length,
+    entries: payments.length,
   }
 }
 
 export const paymentStateLabels: Record<PaymentState, string> = {
-  UNPRICED: "Sin precio",
+  UNPRICED: "Sin valor",
   PENDING: "Pendiente",
   PARTIAL: "Pago parcial",
   PAID: "Pagado",

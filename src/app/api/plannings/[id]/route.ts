@@ -44,14 +44,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
     const body = await request.json()
 
-    let priceCents: number | undefined
-    if (body.priceCents !== undefined) {
-      const parsed = Math.round(Number(body.priceCents))
-      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1_000_000_000) {
-        return NextResponse.json({ error: "El precio no es válido" }, { status: 400 })
-      }
-      priceCents = parsed
-    }
+    // `priceCents` ya no se acepta acá: es la suma de las líneas del mes y se
+    // cambia por /items, que es lo único que lo recalcula.
 
     const planning = await prisma.planning.updateMany({
       where: { id, userId: session.user.id },
@@ -64,7 +58,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(body.notes !== undefined ? { notes: body.notes } : {}),
         ...(body.status !== undefined ? { status: body.status } : {}),
         ...(body.clientId !== undefined ? { clientId: body.clientId } : {}),
-        ...(priceCents !== undefined ? { priceCents } : {}),
       },
     })
 

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { createPlanningFromTemplate } from "@/lib/clone-planning.server"
+import { normalizeSelection } from "@/lib/planning-period"
+import { seedItemsFromClientRate } from "@/lib/planning-items.server"
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -23,17 +26,52 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const planning = await prisma.planning.create({
-      data: {
-        title: body.title ?? "Sin título",
-        description: body.description ?? "",
-        period: body.period ?? "",
-        targetAudience: body.targetAudience ?? "",
-        goals: body.goals ?? "",
-        notes: body.notes ?? "",
-        clientId: body.clientId ?? null,
+    // Duplicar un mes anterior: el mes nuevo arranca del esqueleto del pasado.
+    if (typeof body.copyFromId === "string" && body.copyFromId) {
+      const result = await createPlanningFromTemplate({
         userId: session.user.id,
-      },
+        sourceId: body.copyFromId,
+        clientId: body.clientId ?? null,
+        period: body.period ?? "",
+        title: body.title,
+        selection: normalizeSelection(body.copy),
+      })
+      if (!result) {
+        return NextResponse.json({ error: "No encontramos el mes a duplicar" }, { status: 404 })
+      }
+      return NextResponse.json(
+        { id: result.planningId, ideas: result.ideas, installments: result.installments },
+        { status: 201 },
+      )
+    }
+
+    // Se resuelve el cliente contra el usuario: de paso valida que sea suyo y
+    // trae la tarifa con la que se siembra el valor del mes.
+    const client = body.clientId
+      ? await prisma.client.findFirst({
+          where: { id: body.clientId, userId: session.user.id },
+          select: { id: true, planName: true, rateCents: true },
+        })
+      : null
+    if (body.clientId && !client) {
+      return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
+    }
+
+    const planning = await prisma.$transaction(async (tx) => {
+      const created = await tx.planning.create({
+        data: {
+          title: body.title ?? "Sin título",
+          description: body.description ?? "",
+          period: body.period ?? "",
+          targetAudience: body.targetAudience ?? "",
+          goals: body.goals ?? "",
+          notes: body.notes ?? "",
+          clientId: client?.id ?? null,
+          userId: session.user!.id!,
+        },
+      })
+      const priceCents = await seedItemsFromClientRate(tx, created.id, client)
+      return { ...created, priceCents }
     })
     return NextResponse.json(planning, { status: 201 })
   } catch (error) {

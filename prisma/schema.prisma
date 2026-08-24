@@ -49,6 +49,35 @@ enum Priority {
   HIGH
 }
 
+/**
+ * Naturaleza del movimiento. No todo lo que cierra un saldo es plata que entró:
+ * cuando facturas a una empresa te retienen en la fuente y de IVA, así que el
+ * cliente transfiere menos de lo facturado y la diferencia es un comprobante de
+ * retención, no una deuda. Registrarla como cobro parcial dejaba saldo abierto
+ * y le mandaba cobranza a alguien que ya había pagado completo.
+ */
+enum PaymentKind {
+  /** Plata que efectivamente entró. */
+  PAYMENT
+  /** Retención en la fuente o de IVA: cierra saldo, nunca entra a la cuenta. */
+  WITHHOLDING
+  /** Descuento, condonación o corrección acordada. */
+  ADJUSTMENT
+}
+
+/** Categoría del costo, para ver en qué se va la plata de producir el mes. */
+enum CostCategory {
+  /** Editor, camarógrafo, community, cualquier persona del equipo. */
+  TEAM
+  /** Pauta publicitaria. */
+  ADS
+  /** Locación, talento, utilería, viáticos. */
+  PRODUCTION
+  /** Licencias, software, música. */
+  TOOLS
+  OTHER
+}
+
 enum PaymentMethod {
   CASH
   TRANSFER
@@ -80,6 +109,11 @@ model Client {
   email  String
   logo   String?
   userId String
+  /// Nombre del plan contratado ("Plan Crecimiento"). Vacío = sin plan fijo.
+  planName  String @default("")
+  /// Tarifa mensual acordada, en centavos. Siembra el valor de cada mes nuevo
+  /// para no volver a teclear el mismo número doce veces al año.
+  rateCents Int    @default(0)
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   plannings Planning[]
@@ -96,6 +130,14 @@ model Planning {
   targetAudience  String          @default("")
   goals           String          @default("")
   notes           String          @default("")
+  /// Suma cacheada de `costs`, mantenida por `recalcPlanningCost`. Es la otra
+  /// mitad del dinero: sin ella el módulo es una planilla de cobros y no hay
+  /// forma de saber si un cliente deja margen o se come el mes.
+  costCents       Int             @default(0)
+  /// Valor del mes: suma de `items` **más** los costos marcados como
+  /// recobrables. No se escribe a mano: la mantiene `recalcPlanningMoney`
+  /// después de cada cambio. Existe como columna para que el dashboard y los
+  /// recordatorios lean el total sin join.
   priceCents      Int             @default(0)
   clientId        String?
   userId          String
@@ -111,8 +153,57 @@ model Planning {
   storyboards     Storyboard[]
   payments        Payment[]
   installments    PaymentInstallment[]
+  items           PlanningItem[]
+  costs           PlanningCost[]
 
   @@index([userId])
+}
+
+/**
+ * Líneas del valor del mes: los honorarios del plan más los extras que se
+ * acuerdan sobre la marcha (una sesión de fotos, una pieza fuera de paquete).
+ * Guardarlas por separado es lo que permite que dentro de tres meses se sepa
+ * de dónde salió el total, y que el recibo lo pueda desglosar.
+ */
+model PlanningItem {
+  id          String   @id @default(cuid())
+  planningId  String
+  label       String   @default("")
+  amountCents Int
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  planning Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@index([planningId])
+}
+
+/**
+ * Lo que costó producir el mes: el editor, la pauta, el fotógrafo, la música.
+ * `Planning.costCents` es la suma cacheada de estas filas, igual que
+ * `priceCents` lo es de `items`.
+ *
+ * La pauta que le recobras al cliente no necesita marca especial: si la cargas
+ * como línea del valor **y** como costo, entra y sale, y el margen no se mueve.
+ * Que es exactamente lo correcto.
+ */
+model PlanningCost {
+  id          String       @id @default(cuid())
+  planningId  String
+  label       String       @default("")
+  amountCents Int
+  category    CostCategory @default(OTHER)
+  /// Se le recobra al cliente: el costo entra también al valor del mes y sale
+  /// en la factura como línea propia. Suma igual de los dos lados, así que el
+  /// margen no se mueve —que es exactamente lo correcto— y no hay que cargar
+  /// la pauta dos veces a mano.
+  billable    Boolean      @default(false)
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+
+  planning Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@index([planningId])
 }
 
 /**
@@ -265,6 +356,7 @@ model Payment {
   id         String        @id @default(cuid())
   planningId String
   amountCents Int
+  kind       PaymentKind   @default(PAYMENT)
   method     PaymentMethod @default(TRANSFER)
   note       String        @default("")
   paidAt     DateTime      @default(now())

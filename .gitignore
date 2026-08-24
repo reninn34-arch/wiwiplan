@@ -46,3 +46,6 @@ next-env.d.ts
 /.agents/skills/
 /.claude/skills/
 skills-lock.json
+
+# artefactos locales de la skill impeccable
+/.impeccable/

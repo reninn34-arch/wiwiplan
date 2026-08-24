@@ -182,7 +182,23 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   }
 
   y -= 6
-  totalRow("Precio acordado", formatMoney(data.priceCents), 16)
+  // El desglose sólo aparece cuando hay más de una línea: con una sola, el
+  // total ya la dice entera y repetirla es ruido.
+  if (data.items.length > 1) {
+    for (const item of data.items) {
+      page.drawText(item.label || "Sin concepto", {
+        x: totalsLeft,
+        y,
+        size: 8.5,
+        font: regular,
+        color: FAINT,
+      })
+      drawRight(page, formatMoney(item.amountCents), regular, 8.5, totalsX, y, MUTED)
+      y -= 13
+    }
+    y -= 3
+  }
+  totalRow("Valor del mes", formatMoney(data.priceCents), 16)
   totalRow("Total pagado a la fecha", formatMoney(data.paidCents), 20)
 
   const settled = data.dueCents <= 0 && data.priceCents > 0

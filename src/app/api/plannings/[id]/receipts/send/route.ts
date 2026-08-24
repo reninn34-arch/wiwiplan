@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
-import { buildReceiptHtml, receiptNumberFromId } from "@/lib/receipt"
+import { buildReceiptHtml, receiptLines, receiptNumberFromId } from "@/lib/receipt"
 import { buildReceiptPdf } from "@/lib/receipt-pdf"
 import { sendEmail } from "@/lib/email.server"
 import {
@@ -35,6 +35,14 @@ export async function POST(
         period: true,
         title: true,
         priceCents: true,
+        items: {
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+          select: { label: true, amountCents: true },
+        },
+        costs: {
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+          select: { label: true, amountCents: true, billable: true },
+        },
         client: { select: { name: true } },
         payments: { select: { id: true, amountCents: true, method: true, note: true, paidAt: true } },
       },
@@ -69,6 +77,7 @@ export async function POST(
       planTitle: planning.title,
       receiptNumber: receiptNumberFromId(payment.id),
       priceCents: summary.priceCents,
+      items: receiptLines(planning.items, planning.costs),
       paidCents: summary.paidCents,
       dueCents: summary.dueCents,
       payment: {
@@ -89,6 +98,7 @@ export async function POST(
       planTitle: planning.title,
       receiptNumber: receiptNumberFromId(payment.id),
       priceCents: summary.priceCents,
+      items: receiptLines(planning.items, planning.costs),
       paidCents: summary.paidCents,
       dueCents: summary.dueCents,
       payment: {

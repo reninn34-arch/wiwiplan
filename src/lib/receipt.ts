@@ -24,8 +24,10 @@ export interface ReceiptData {
   planTitle: string
   /** Número de comprobante legible (receiptNumberFromId). */
   receiptNumber: string
-  /** Precio total acordado del plan. */
+  /** Valor total del mes. Suma de `items`. */
   priceCents: number
+  /** Líneas que componen el valor del mes: plan, extras, descuentos y lo recobrable. */
+  items: ReceiptLine[]
   /** Total cobrado del plan incluyendo este pago. */
   paidCents: number
   /** Saldo pendiente después de este pago. */
@@ -33,6 +35,29 @@ export interface ReceiptData {
   payment: ReceiptPayment
   /** Aclaración libre que escribe el creador (ej.: incluye deuda anterior). */
   detail: string
+}
+
+export interface ReceiptLine {
+  label: string
+  amountCents: number
+}
+
+/**
+ * Lo que el cliente ve desglosado: las líneas del valor del mes **más** los
+ * costos marcados como recobrables (la pauta, típicamente). Los costos que no
+ * se recobran nunca salen de acá: el editor te cobró $250 es información tuya,
+ * y si apareciera en el documento le estarías mostrando tu margen al cliente.
+ */
+export function receiptLines(
+  items: ReceiptLine[],
+  costs: Array<{ label: string; amountCents: number; billable: boolean }>,
+): ReceiptLine[] {
+  return [
+    ...items.map((i) => ({ label: i.label, amountCents: i.amountCents })),
+    ...costs
+      .filter((c) => c.billable)
+      .map((c) => ({ label: c.label, amountCents: c.amountCents })),
+  ]
 }
 
 /** Número de comprobante legible derivado del id del cobro. */
@@ -165,9 +190,23 @@ export function buildReceiptHtml(data: ReceiptData): string {
   <tr>
     <td style="padding:30px 42px 0;">
       <table role="presentation" align="right" cellpadding="0" cellspacing="0" style="width:280px;">
+        ${
+          // Con una sola línea el desglose es ruido: el total ya la dice entera.
+          data.items.length > 1
+            ? data.items
+                .map(
+                  (item) => `
         <tr>
-          <td style="padding:6px 0;font-size:12px;color:${MUTED};">Precio acordado</td>
-          <td align="right" style="padding:6px 0;font-size:12.5px;color:${INK};">${esc(formatMoney(data.priceCents))}</td>
+          <td style="padding:4px 0;font-size:11.5px;color:${MUTED};">${esc(item.label || "Sin concepto")}</td>
+          <td align="right" style="padding:4px 0;font-size:11.5px;color:${MUTED};">${esc(formatMoney(item.amountCents))}</td>
+        </tr>`,
+                )
+                .join("")
+            : ""
+        }
+        <tr>
+          <td style="padding:6px 0;font-size:12px;color:${MUTED};${data.items.length > 1 ? `border-top:1px solid #e4e4e0;` : ""}">Valor del mes</td>
+          <td align="right" style="padding:6px 0;font-size:12.5px;color:${INK};${data.items.length > 1 ? `border-top:1px solid #e4e4e0;` : ""}">${esc(formatMoney(data.priceCents))}</td>
         </tr>
         <tr>
           <td style="padding:6px 0;font-size:12px;color:${MUTED};">Total pagado a la fecha</td>

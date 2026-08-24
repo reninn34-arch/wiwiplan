@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
-import { PaymentMethod } from "@/generated/prisma/enums"
+import { PaymentMethod, PaymentKind } from "@/generated/prisma/enums"
+import { isPaymentKind } from "@/lib/payments"
 
 const MAX_CENTS = 1_000_000_000
 
@@ -33,7 +34,13 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const data: { amountCents?: number; method?: PaymentMethod; note?: string; paidAt?: Date } = {}
+    const data: {
+      amountCents?: number
+      kind?: PaymentKind
+      method?: PaymentMethod
+      note?: string
+      paidAt?: Date
+    } = {}
 
     if (body.amountCents !== undefined) {
       const amountCents = Math.round(Number(body.amountCents))
@@ -54,6 +61,7 @@ export async function PATCH(
       data.paidAt = paidAt
     }
 
+    if (isPaymentKind(body.kind)) data.kind = body.kind
     if (body.method !== undefined && isValidMethod(body.method)) data.method = body.method
     if (typeof body.note === "string") data.note = body.note.slice(0, 300)
 

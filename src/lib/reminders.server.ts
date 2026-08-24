@@ -1,7 +1,8 @@
 import "server-only"
 import { prisma } from "@/lib/prisma"
-import { sendEmail } from "@/lib/email.server"
+import { sendEmail, SMTP_NOT_CONFIGURED } from "@/lib/email.server"
 import { formatMoney, summarizePayments, type PaymentLike } from "./payments"
+import { formatPeriodLabel } from "./planning-period"
 
 /**
  * Barrido de recordatorios de saldo pendiente. Lo corre el cron diario y
@@ -13,17 +14,7 @@ import { formatMoney, summarizePayments, type PaymentLike } from "./payments"
 
 const THROTTLE_MS = 72 * 60 * 60 * 1000
 
-const months: Record<string, string> = {
-  "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
-  "05": "Mayo", "06": "Junio", "07": "Julio", "08": "Agosto",
-  "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre",
-}
-
-export function periodLabelOf(period: string): string {
-  const parts = period.split("-")
-  if (parts.length === 2) return `${months[parts[1]] ?? parts[1]} ${parts[0]}`
-  return period
-}
+export { formatPeriodLabel as periodLabelOf } from "./planning-period"
 
 function esc(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -34,7 +25,7 @@ function reminderHtml(params: {
   clientName: string
   periodLabel: string
   dueCents: number
-  paidCents: number
+  settledCents: number
   priceCents: number
   overdue: Array<{ label: string; dueDate: Date; amountCents: number }>
 }): string {
@@ -88,12 +79,12 @@ function reminderHtml(params: {
     <td style="padding:22px 36px 0;">
       <table role="presentation" align="right" cellpadding="0" cellspacing="0" style="width:260px;">
         <tr>
-          <td style="padding:5px 0;font-size:12px;color:#63625e;">Precio acordado</td>
+          <td style="padding:5px 0;font-size:12px;color:#63625e;">Valor del mes</td>
           <td align="right" style="padding:5px 0;font-size:12.5px;color:#141414;">${esc(formatMoney(params.priceCents))}</td>
         </tr>
         <tr>
-          <td style="padding:5px 0;font-size:12px;color:#63625e;">Pagado a la fecha</td>
-          <td align="right" style="padding:5px 0;font-size:12.5px;color:#141414;">${esc(formatMoney(params.paidCents))}</td>
+          <td style="padding:5px 0;font-size:12px;color:#63625e;">Cubierto a la fecha</td>
+          <td align="right" style="padding:5px 0;font-size:12.5px;color:#141414;">${esc(formatMoney(params.settledCents))}</td>
         </tr>
         <tr>
           <td style="padding:11px 0 3px;border-top:1px solid #141414;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8a5a00;">Saldo pendiente</td>
@@ -142,7 +133,7 @@ export async function runReminders(userId?: string): Promise<ReminderOutcome> {
       priceCents: true,
       client: { select: { name: true, email: true } },
       user: { select: { name: true, email: true } },
-      payments: { select: { amountCents: true } },
+      payments: { select: { amountCents: true, kind: true } },
       installments: { select: { label: true, amountCents: true, dueDate: true }, orderBy: { dueDate: "asc" } },
     },
   })
@@ -159,7 +150,7 @@ export async function runReminders(userId?: string): Promise<ReminderOutcome> {
     const email = planning.client?.email?.trim()
     if (!email || !planning.client) continue
 
-    const periodLabel = periodLabelOf(planning.period)
+    const periodLabel = formatPeriodLabel(planning.period)
     const result = await sendEmail(
       email,
       `Recordatorio: saldo pendiente — ${periodLabel}`,
@@ -167,7 +158,9 @@ export async function runReminders(userId?: string): Promise<ReminderOutcome> {
         businessName: planning.user.name ?? planning.user.email.split("@")[0],
         clientName: planning.client.name,        periodLabel,
         priceCents: summary.priceCents,
-        paidCents: summary.paidCents,
+        // "Cubierto" y no "pagado": puede incluir retenciones y ajustes, que
+        // cierran saldo sin haber entrado a la cuenta.
+        settledCents: summary.settledCents,
         dueCents: summary.dueCents,
         overdue,
       }),
@@ -179,7 +172,7 @@ export async function runReminders(userId?: string): Promise<ReminderOutcome> {
         where: { id: planning.id },
         data: { reminderSentAt: now },
       })
-    } else if (result.error === "Falta configurar el servidor SMTP. Hacelo en Administración.") {
+    } else if (result.error === SMTP_NOT_CONFIGURED) {
       // Sin SMTP configurado no tiene sentido reintentar el resto ahora mismo.
       outcome.skipped += plannings.length - (outcome.sent + outcome.skipped + outcome.errors)
       break

@@ -1,4 +1,7 @@
 import "server-only"
+
+/** Se compara por referencia desde los recordatorios: no es texto suelto. */
+export const SMTP_NOT_CONFIGURED = "Falta configurar el servidor SMTP. Configúralo en Administración."
 import nodemailer from "nodemailer"
 import { prisma } from "@/lib/prisma"
 
@@ -101,7 +104,7 @@ export async function sendEmail(
 ): Promise<{ ok: boolean; error?: string }> {
   const config = await getSmtpConfig()
   if (!isConfigured(config)) {
-    return { ok: false, error: "Falta configurar el servidor SMTP. Hacelo en Administración." }
+    return { ok: false, error: SMTP_NOT_CONFIGURED }
   }
 
   try {

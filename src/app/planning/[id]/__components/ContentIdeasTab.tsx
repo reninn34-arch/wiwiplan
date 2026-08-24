@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useRef, useCallback, useEffect, useSyncExternalStore, type ClipboardEvent } from "react"
+import { formatDayLabel, formatDayShort } from "@/lib/calendar"
 import {
   Plus, Trash2, ExternalLink, GripVertical, X, Play, Search, Table2, MessageSquare,
   ArrowUp, LayoutGrid, CheckCircle2, Circle, ChevronDown, MoreHorizontal, Pencil,
@@ -89,10 +90,12 @@ function PlatformIcon({ platform }: { platform: string }) {
   return <Globe size={14} className="text-zinc-500" />
 }
 
-function formatDate(d: string | null) {
-  if (!d) return ""
-  return new Date(d).toLocaleDateString("es-EC", { day: "2-digit", month: "2-digit" })
-}
+/**
+ * La entrega es una fecha de calendario, no un instante: se guarda como
+ * medianoche UTC, así que formatearla con la zona local la corría un día para
+ * atrás en Ecuador (UTC-5). `formatDayShort` la lee por sus componentes UTC.
+ */
+const formatDate = formatDayShort
 
 /** Etiqueta legible del encabezado de grupo (los datos guardan IDEA, HIGH, etc.). */
 function groupLabel(groupBy: string, key: string) {
@@ -265,6 +268,8 @@ interface Props {
   storyboards: Array<{ id: string; title: string }>
   /** Idea a resaltar al entrar (?idea= desde Pendientes o notificaciones). */
   focusIdeaId?: string | null
+  /** Avisa hacia arriba para que el calendario vea las fechas editadas acá. */
+  onIdeasChange?: (ideas: Idea[]) => void
 }
 
 function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, storyboards, onEdit, cols, highlighted }: {
@@ -427,7 +432,7 @@ function SortableRow({ idea, updateIdea, deleteIdea, onStatusChange, search, sto
 
 const emptySubscribe = () => () => {}
 
-export function ContentIdeasTab({ planningId, ideas: initial, storyboards, focusIdeaId }: Props) {
+export function ContentIdeasTab({ planningId, ideas: initial, storyboards, focusIdeaId, onIdeasChange }: Props) {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
 
   // Deep-link: resalta temporalmente la idea pedida y limpia el query param.
@@ -444,6 +449,21 @@ export function ContentIdeasTab({ planningId, ideas: initial, storyboards, focus
   }, [focusIdeaId])
 
   const [ideas, setIdeas] = useState(initial)
+
+  // Un solo aviso hacia arriba en vez de uno por cada camino que toca `ideas`:
+  // así el calendario ve las fechas que se editaron acá, en la tabla.
+  const notifyRef = useRef(onIdeasChange)
+  useEffect(() => {
+    notifyRef.current = onIdeasChange
+  }, [onIdeasChange])
+  const firstRender = useRef(true)
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    notifyRef.current?.(ideas)
+  }, [ideas])
   const [showForm, setShowForm] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newDescription, setNewDescription] = useState("")
@@ -1059,7 +1079,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
                   )}
                   {idea.dueDate && (
                     <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-1 text-zinc-400">
-                      📅 {new Date(idea.dueDate).toLocaleDateString("es-EC")}
+                      📅 {formatDayLabel(idea.dueDate)}
                     </span>
                   )}
                 </div>

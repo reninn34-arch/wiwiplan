@@ -30,6 +30,14 @@ export default async function PlanningDetailPage({ params }: Props) {
         orderBy: { dueDate: "asc" },
         select: { id: true, label: true, amountCents: true, dueDate: true },
       },
+      items: {
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        select: { id: true, label: true, amountCents: true, order: true },
+      },
+      costs: {
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        select: { id: true, label: true, amountCents: true, category: true, billable: true, order: true },
+      },
       storyboards: {
         orderBy: { createdAt: "desc" },
         select: { id: true, title: true, createdAt: true },

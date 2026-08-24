@@ -79,6 +79,7 @@ export default async function SharePage({ params }: Props) {
     payments: shareLink.planning.payments.map((p) => ({
       id: p.id,
       amountCents: p.amountCents,
+      kind: p.kind,
       method: p.method,
       note: p.note,
       paidAt: p.paidAt.toISOString(),

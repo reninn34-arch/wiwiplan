@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { PaymentMethod } from "@/generated/prisma/enums"
+import { isPaymentKind } from "@/lib/payments"
 
 const MAX_CENTS = 1_000_000_000 // 10M USD, tope de cordura
 
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       data: {
         planningId: id,
         amountCents,
+        kind: isPaymentKind(body.kind) ? body.kind : "PAYMENT",
         method: isValidMethod(body.method) ? body.method : PaymentMethod.TRANSFER,
         note: typeof body.note === "string" ? body.note.slice(0, 300) : "",
         paidAt,

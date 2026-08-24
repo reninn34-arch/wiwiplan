@@ -3,12 +3,14 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera, Settings } from "lucide-react"
+import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera, Settings, Wallet } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { ClientLogo } from "@/components/ClientLogo"
 import { paymentDotStyles } from "@/components/payments/PaymentStatus"
-import { formatMoney, summarizePayments } from "@/lib/payments"
+import { formatMoney, parseAmountToCents, summarizePayments } from "@/lib/payments"
+import { formatPeriodLabel } from "@/lib/planning-period"
+import { formatDayLabel } from "@/lib/calendar"
 import { compressAvatar } from "@/lib/compress-image"
 import { Input } from "@/components/ui/input"
 import { NotificationBell } from "@/components/NotificationBell"
@@ -33,10 +35,7 @@ function formatPeriodShort(p: string) {
 }
 
 function formatPeriod(p: string) {
-  if (!p) return ""
-  const parts = p.split("-")
-  if (parts.length === 2) return `${months[parts[1]] ?? parts[1]} ${parts[0]}`
-  return p
+  return p ? formatPeriodLabel(p) : ""
 }
 
 const statusColors: Record<string, string> = {
@@ -141,6 +140,9 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const [newClientName, setNewClientName] = useState("")
   const [newClientEmail, setNewClientEmail] = useState("")
   const [newClientLogo, setNewClientLogo] = useState<string | null>(null)
+  // Tarifa del cliente: el contrato. Cada mes nuevo nace con este valor puesto.
+  const [newClientPlan, setNewClientPlan] = useState("")
+  const [newClientRate, setNewClientRate] = useState("")
   const [clients, setClients] = useState(initialClients)
   const [expandedClient, setExpandedClient] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -153,6 +155,13 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
   const [showMonthDialog, setShowMonthDialog] = useState(false)
   const [monthClientId, setMonthClientId] = useState("")
   const [monthPeriod, setMonthPeriod] = useState("")
+  // Duplicar mes anterior: "" arranca en blanco.
+  const [copyFromId, setCopyFromId] = useState("")
+  const [copyIdeas, setCopyIdeas] = useState(true)
+  const [copyPricing, setCopyPricing] = useState(true)
+  const [copyCosts, setCopyCosts] = useState(true)
+  const [copyNotes, setCopyNotes] = useState(true)
+  const [creatingMonth, setCreatingMonth] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -166,10 +175,21 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
 
   const createClient = async () => {
     if (!newClientName.trim()) return
+    const rateCents = newClientRate.trim() ? parseAmountToCents(newClientRate) : 0
+    if (rateCents === null || rateCents < 0) {
+      toast.error("Escribe una tarifa válida, por ejemplo 600")
+      return
+    }
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newClientName, email: newClientEmail.trim(), logo: newClientLogo }),
+      body: JSON.stringify({
+        name: newClientName,
+        email: newClientEmail.trim(),
+        logo: newClientLogo,
+        planName: newClientPlan.trim(),
+        rateCents,
+      }),
     })
     if (res.ok) {
       const client = await res.json()
@@ -177,28 +197,64 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
       setNewClientName("")
       setNewClientEmail("")
       setNewClientLogo(null)
+      setNewClientPlan("")
+      setNewClientRate("")
       setShowClientForm(false)
       setExpandedClient(client.id)
+    } else {
+      toast.error("No se pudo crear el cliente")
     }
   }
 
-  const createMonth = async (clientId: string, period: string) => {
+  /**
+   * `copy` viaja explícito y no sale del estado del diálogo: así ningún otro
+   * botón de "agregar mes" arrastra por accidente un molde que quedó elegido.
+   */
+  const createMonth = async (
+    clientId: string,
+    period: string,
+    copy: { fromId: string; ideas: boolean; pricing: boolean; costs: boolean; notes: boolean } | null,
+  ) => {
+    setCreatingMonth(true)
     const res = await fetch("/api/plannings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "", clientId, period }),
+      body: JSON.stringify({
+        title: "",
+        clientId,
+        period,
+        ...(copy
+          ? {
+              copyFromId: copy.fromId,
+              copy: { ideas: copy.ideas, pricing: copy.pricing, costs: copy.costs, notes: copy.notes },
+            }
+          : {}),
+      }),
     })
+    setCreatingMonth(false)
     if (res.ok) {
       const data = await res.json()
+      if (copy && data.ideas > 0) {
+        toast.success(`Mes creado con ${data.ideas} ${data.ideas === 1 ? "idea copiada" : "ideas copiadas"}`)
+      }
       router.push(`/planning/${data.id}`)
       return true
     }
     if (res.status === 409) {
       toast.error("Ese cliente ya tiene un mes con ese período")
+    } else if (res.status === 404) {
+      toast.error("No encontramos el mes a duplicar")
     } else {
       toast.error("No se pudo crear el mes")
     }
     return false
+  }
+
+  /** El mes más reciente del cliente: el candidato natural a duplicar. */
+  const latestMonthOf = (clientId: string) => {
+    const plans = initial.filter((p) => p.client?.id === clientId)
+    if (plans.length === 0) return ""
+    return [...plans].sort(sortByPeriod)[0].id
   }
 
   /** Si el cliente ya tiene el mes corriente, propone el siguiente. */
@@ -211,10 +267,11 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`
   }
 
-  const openMonthDialog = () => {
-    const clientId = monthClientId || clients[0]?.id || ""
+  const openMonthDialog = (forClientId?: string, forPeriod?: string) => {
+    const clientId = forClientId || monthClientId || clients[0]?.id || ""
     setMonthClientId(clientId)
-    setMonthPeriod(suggestPeriod(clientId))
+    setMonthPeriod(forPeriod ?? suggestPeriod(clientId))
+    setCopyFromId(latestMonthOf(clientId))
     setShowMonthDialog(true)
   }
 
@@ -300,6 +357,20 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
     !!monthClientId && !!monthPeriod && initial.some((p) => p.client?.id === monthClientId && p.period === monthPeriod)
   const yearOpts = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1]
 
+  // Meses que se pueden usar de molde. Primero los del cliente elegido, pero se
+  // permite copiar de otro cliente: un esqueleto que funciona sirve para varios.
+  const copySources = initial
+    .filter((p) => !(p.client?.id === monthClientId && p.period === monthPeriod))
+    .sort((a, b) => {
+      const own = (p: Planning) => (p.client?.id === monthClientId ? 0 : 1)
+      return own(a) - own(b) || sortByPeriod(a, b)
+    })
+  const copySource = copySources.find((p) => p.id === copyFromId) ?? null
+  const copyToggleClass = (on: boolean) =>
+    `rounded-md px-2.5 py-1.5 text-xs transition-colors ${
+      on ? "bg-white/10 text-zinc-200 ring-1 ring-inset ring-white/20" : "text-zinc-500 hover:text-zinc-300"
+    }`
+
   const metricCardClass = (active: boolean) =>
     `rounded-lg border px-4 py-3 text-left transition-colors ${
       active ? "border-white/25 bg-white/[0.07]" : "border-white/5 bg-[#0c0c0e] hover:bg-white/[0.02]"
@@ -372,7 +443,28 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               onChange={(e) => setNewClientEmail(e.target.value)}
               className="h-10 w-full sm:h-9 sm:min-w-[12rem] sm:flex-1"
             />
+            <Input
+              placeholder="Plan (opcional, ej.: Plan Crecimiento)"
+              value={newClientPlan}
+              onChange={(e) => setNewClientPlan(e.target.value)}
+              className="h-10 w-full sm:h-9 sm:min-w-[12rem] sm:flex-1"
+            />
+            <div className="relative w-full sm:w-36">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">$</span>
+              <Input
+                placeholder="600.00"
+                inputMode="decimal"
+                aria-label="Tarifa mensual del cliente"
+                value={newClientRate}
+                onChange={(e) => setNewClientRate(e.target.value)}
+                className="h-10 w-full pl-7 tabular-nums sm:h-9"
+              />
+            </div>
             <Button className="h-10 w-full sm:w-auto" onClick={createClient}>Crear cliente</Button>
+            <p className="w-full text-xs text-zinc-500">
+              La tarifa mensual es el contrato: cada mes nuevo de este cliente ya nace con ese valor
+              puesto, y no hay que volver a teclearlo.
+            </p>
           </div>
         </div>
       )}
@@ -428,7 +520,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
             {sectionLabel} <span className="text-sm font-normal text-zinc-500">({visibleActive.length})</span>
           </h2>
           {clients.length > 0 && (
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={openMonthDialog}>
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openMonthDialog()}>
               <Plus className="h-3 w-3" /> Nuevo mes
             </Button>
           )}
@@ -495,7 +587,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                     </span>
                     {idea.dueDate && (
                       <span className="rounded bg-white/5 px-1.5 py-0.5 text-zinc-400">
-                        📅 {new Date(idea.dueDate).toLocaleDateString("es-EC")}
+                        📅 {formatDayLabel(idea.dueDate)}
                       </span>
                     )}
                   </div>
@@ -538,7 +630,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                       <span className={`text-xs font-semibold ${idea.priority === "HIGH" ? "text-rose-400" : idea.priority === "MEDIUM" ? "text-amber-400" : "text-zinc-400"}`}>{idea.priority === "HIGH" ? "Alta" : idea.priority === "MEDIUM" ? "Media" : "Baja"}</span>
                     </td>
                     <td className="px-3 py-2 text-xs text-zinc-400">
-                      {idea.dueDate ? new Date(idea.dueDate).toLocaleDateString("es-EC") : "—"}
+                      {idea.dueDate ? formatDayLabel(idea.dueDate) : "—"}
                     </td>
                     <td className="px-3 py-2 text-center text-xs text-zinc-400">
                       {idea._count.comments > 0 && <MessageSquare className="h-3 w-3 inline-block" />}
@@ -613,9 +705,19 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
               </button>
               {isExpanded && (
                 <div className="border-t border-white/5 p-4">
-                  <div className="mb-3">
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => createMonth(client.id, defaultPeriod)}>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openMonthDialog(client.id, defaultPeriod)}>
                       <Plus className="h-3 w-3" /> Agregar {formatPeriod(defaultPeriod)}
+                    </Button>
+                    {/* Va acá y no en el encabezado: ese ya es un botón entero y
+                        no se puede anidar otro adentro. */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() => router.push(`/clients/${client.id}`)}
+                    >
+                      <Wallet className="h-3 w-3" /> Estado de cuenta
                     </Button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -672,6 +774,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 onChange={(e) => {
                   setMonthClientId(e.target.value)
                   setMonthPeriod(suggestPeriod(e.target.value))
+                  setCopyFromId(latestMonthOf(e.target.value))
                 }}
                 className="h-10 w-full rounded-lg border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 focus:outline-none"
               >
@@ -699,6 +802,49 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                   ))}
                 </select>
               </div>
+              {copySources.length > 0 && (
+                <div className="rounded-lg border border-white/5 bg-[#0a0a0c] p-3">
+                  <label htmlFor="copy-from" className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                    Duplicar de
+                  </label>
+                  <select
+                    id="copy-from"
+                    value={copyFromId}
+                    onChange={(e) => setCopyFromId(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 focus:outline-none"
+                  >
+                    <option value="">Empezar en blanco</option>
+                    {copySources.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.client?.id === monthClientId ? "" : `${p.client?.name ?? "Sin cliente"} · `}
+                        {formatPeriod(p.period) || p.title} — {p._count.contentIdeas} ideas
+                      </option>
+                    ))}
+                  </select>
+                  {copySource && (
+                    <>
+                      <div className="mt-2.5 flex flex-wrap gap-1">
+                        <button type="button" onClick={() => setCopyIdeas(!copyIdeas)} className={copyToggleClass(copyIdeas)}>
+                          Ideas
+                        </button>
+                        <button type="button" onClick={() => setCopyPricing(!copyPricing)} className={copyToggleClass(copyPricing)}>
+                          Precio y cuotas
+                        </button>
+                        <button type="button" onClick={() => setCopyCosts(!copyCosts)} className={copyToggleClass(copyCosts)}>
+                          Costos
+                        </button>
+                        <button type="button" onClick={() => setCopyNotes(!copyNotes)} className={copyToggleClass(copyNotes)}>
+                          Notas del plan
+                        </button>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                        Las ideas se copian como ideas nuevas, sin comentarios, imágenes ni estado de producción.
+                        Los cobros registrados y los storyboards no se copian.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
               {monthDuplicate && (
                 <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300 ring-1 ring-inset ring-amber-400/25">
                   Ese cliente ya tiene un mes con este período.
@@ -708,13 +854,25 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 <Button variant="ghost" className="min-h-10" onClick={() => setShowMonthDialog(false)}>Cancelar</Button>
                 <Button
                   className="min-h-10 bg-brand text-white hover:bg-[#d0424a]"
-                  disabled={monthDuplicate || !monthClientId}
+                  disabled={monthDuplicate || !monthClientId || creatingMonth}
                   onClick={async () => {
-                    const created = await createMonth(monthClientId, monthPeriod)
+                    const created = await createMonth(
+                      monthClientId,
+                      monthPeriod,
+                      copySource
+                        ? {
+                            fromId: copySource.id,
+                            ideas: copyIdeas,
+                            pricing: copyPricing,
+                            costs: copyCosts,
+                            notes: copyNotes,
+                          }
+                        : null,
+                    )
                     if (created) setShowMonthDialog(false)
                   }}
                 >
-                  Crear mes
+                  {creatingMonth ? "Creando…" : copySource ? "Crear y duplicar" : "Crear mes"}
                 </Button>
               </div>
             </div>
