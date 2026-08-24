@@ -440,7 +440,8 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                 key={c.id}
                 type="button"
                 onClick={() => setClientChip(c.id)}
-                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                aria-pressed={clientChip === c.id}
+                className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3.5 text-xs font-medium transition-colors ${
                   clientChip === c.id
                     ? "border-white/20 bg-white/10 text-zinc-100"
                     : "border-white/5 text-zinc-400 hover:border-white/15 hover:text-zinc-200"
@@ -470,7 +471,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
 
       {pendingIdeas.length > 0 && (
         <section className="mb-8">
-          <button type="button" onClick={togglePend} className="mb-3 flex w-full items-center gap-2 text-left text-lg font-semibold text-zinc-200 hover:text-white">
+          <button type="button" onClick={togglePend} aria-expanded={pendOpen ?? false} className="mb-3 flex min-h-11 w-full items-center gap-2 text-left text-lg font-semibold text-zinc-200 hover:text-white">
             <ArrowUp className="h-4 w-4 shrink-0 text-rose-400" />
             <span>Pendientes ({pendingIdeas.length})</span>
             <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-zinc-500 transition-transform ${pendOpen ?? false ? "" : "-rotate-90"}`} />

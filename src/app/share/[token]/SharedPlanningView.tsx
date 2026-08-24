@@ -122,7 +122,7 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
       <div className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium text-zinc-200">{idea.title}</p>
-          <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400">{ideaStatusLabels[idea.status]}</span>
+          <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-zinc-300">{ideaStatusLabels[idea.status]}</span>
         </div>
 
         {idea.description && <p className="text-xs text-zinc-400">{idea.description}</p>}
@@ -146,12 +146,12 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
           ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
             <img src={idea.referenceEmbed} alt={idea.title} className="h-16 w-16 rounded object-cover bg-white/[0.03] cursor-pointer hover:opacity-80" onClick={() => onPreviewImage(idea.referenceEmbed)} />
           ) : idea.referenceUrl ? (
-            <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-white underline">
-              <ExternalLink className="h-3 w-3" /> {platformLabel(idea.platform)}
+            <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="-ml-2 inline-flex min-h-10 items-center gap-1.5 rounded-md px-2 text-white underline transition-colors hover:bg-white/5">
+              <ExternalLink className="h-4 w-4" /> {platformLabel(idea.platform)}
             </a>
           ) : idea.storyboard ? (
-            <button type="button" onClick={() => document.getElementById(`sb-${idea.storyboard!.id}`)?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-0.5 text-zinc-400 hover:bg-white/10">
-              <Layout className="h-3 w-3" /> {idea.storyboard.title}
+            <button type="button" onClick={() => document.getElementById(`sb-${idea.storyboard!.id}`)?.scrollIntoView({ behavior: "smooth" })} className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-white/5 px-2.5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white">
+              <Layout className="h-4 w-4" /> {idea.storyboard.title}
             </button>
           ) : null}
         </div>
@@ -171,9 +171,14 @@ function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPrev
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-1 border-t border-white/5">
-          <button type="button" onClick={() => setOpen(!open)} className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white">
-            <MessageSquare className="h-3 w-3" />
+        <div className="flex items-center justify-between border-t border-white/5">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <MessageSquare className="h-4 w-4" />
             {comments.length} {comments.length === 1 ? "comentario" : "comentarios"}
           </button>
         </div>
@@ -282,8 +287,14 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
           <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400">{ideaStatusLabels[idea.status]}</span>
         </td>
         <td className="px-3 py-2 text-center">
-          <button type="button" onClick={() => setOpen(!open)} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-            <MessageSquare className="h-3 w-3" />
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-label={`${comments.length} comentarios`}
+            aria-expanded={open}
+            className="inline-flex min-h-9 min-w-9 items-center justify-center gap-1 rounded-md px-2 text-xs text-primary transition-colors hover:bg-white/5 hover:underline"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
             <span>{comments.length}</span>
           </button>
         </td>

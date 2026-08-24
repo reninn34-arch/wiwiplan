@@ -147,7 +147,8 @@ export function SettingsClient() {
                   key={preset.label}
                   type="button"
                   onClick={() => setDraft((d) => ({ ...d, host: preset.host, port: preset.port }))}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  aria-pressed={draft.host === preset.host}
+                  className={`inline-flex min-h-9 items-center rounded-full border px-3.5 text-xs font-medium transition-colors ${
                     draft.host === preset.host
                       ? "border-white/25 bg-white/10 text-zinc-100"
                       : "border-white/10 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
@@ -223,7 +224,7 @@ export function SettingsClient() {
                     type="button"
                     onClick={() => setShowPass((v) => !v)}
                     aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-zinc-500 hover:text-zinc-200"
+                    className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
                   >
                     {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>

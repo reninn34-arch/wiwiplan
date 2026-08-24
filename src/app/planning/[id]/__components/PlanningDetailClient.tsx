@@ -224,7 +224,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="flex min-w-0 items-center gap-1.5 truncate text-zinc-300 transition-colors hover:text-white"
+              className="-mx-1 flex min-h-10 min-w-0 items-center gap-1.5 truncate rounded-md px-1 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
             >
               {planning.client ? (
                 <ClientLogo clientId={planning.client.id} name={planning.client.name} size={20} />

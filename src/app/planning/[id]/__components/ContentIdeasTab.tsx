@@ -1066,7 +1066,7 @@ const [editStoryboardId, setEditStoryboardId] = useState("")
 
                 <div className="text-xs">
                   {idea.referenceUrl ? (
-                    <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-white/70 hover:text-white">
+                    <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="-ml-2 inline-flex min-h-10 items-center gap-1.5 rounded-md px-2 text-white/70 transition-colors hover:bg-white/5 hover:text-white">
                       <ExternalLink size={10} />
                       {idea.referenceEmbed ? platformLabel(idea.platform) : idea.referenceUrl.length > 30 ? idea.referenceUrl.slice(0, 30) + "…" : idea.referenceUrl}
                     </a>

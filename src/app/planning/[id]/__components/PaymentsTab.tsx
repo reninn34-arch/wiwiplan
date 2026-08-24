@@ -388,7 +388,7 @@ export function PaymentsTab({
               <button
                 type="button"
                 onClick={openPriceEditor}
-                className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
               >
                 <Pencil className="h-3 w-3" /> Precio
               </button>
