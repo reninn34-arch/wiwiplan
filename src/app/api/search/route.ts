@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { SEARCH_MIN_LENGTH, type SearchHit } from "@/lib/search"
+import { formatPeriodLabel, periodQueryPatterns } from "@/lib/planning-period"
 
 /**
  * Búsqueda global. Responde "¿en qué mes hicimos ese carrusel de precios?",
@@ -48,6 +49,11 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id
     const like = { contains: q, mode: "insensitive" as const }
 
+    // "agosto" no está guardado en ninguna parte: el mes se guarda como
+    // `2026-08` y el nombre es sólo formato de pantalla. Se traduce, si no
+    // buscar lo que la interfaz muestra no encontraría nada.
+    const periodPatterns = periodQueryPatterns(q)
+
     const [clients, plannings, ideas] = await Promise.all([
       prisma.client.findMany({
         where: {
@@ -64,6 +70,7 @@ export async function GET(request: NextRequest) {
           OR: [
             { title: like },
             { period: like },
+            ...periodPatterns.map((pattern) => ({ period: { contains: pattern } })),
             { description: like },
             { goals: like },
             { notes: like },
@@ -115,8 +122,8 @@ export async function GET(request: NextRequest) {
       ...plannings.map((p) => ({
         kind: "planning" as const,
         id: p.id,
-        title: p.title || p.period || "Sin título",
-        subtitle: [p.client?.name, p.period].filter(Boolean).join(" · "),
+        title: p.title || formatPeriodLabel(p.period) || "Sin título",
+        subtitle: [p.client?.name, formatPeriodLabel(p.period)].filter(Boolean).join(" · "),
         excerpt: firstExcerpt(q, p.description, p.goals, p.notes, p.targetAudience),
         href: `/planning/${p.id}`,
       })),
@@ -124,7 +131,7 @@ export async function GET(request: NextRequest) {
         kind: "idea" as const,
         id: i.id,
         title: i.title || "Sin título",
-        subtitle: [i.planning.client?.name, i.planning.period || i.planning.title, i.pilar]
+        subtitle: [i.planning.client?.name, formatPeriodLabel(i.planning.period) || i.planning.title, i.pilar]
           .filter(Boolean)
           .join(" · "),
         excerpt: firstExcerpt(q, i.description, i.pilar),

@@ -60,3 +60,65 @@ export function formatPeriodLabel(period: string): string {
   if (parts.length === 2) return `${MONTH_NAMES[parts[1]] ?? parts[1]} ${parts[0]}`
   return period
 }
+
+/** Nombre y abreviaturas de cada mes, en el orden del período. */
+const MONTH_TOKENS: string[][] = [
+  ["enero", "ene"],
+  ["febrero", "feb"],
+  ["marzo", "mar"],
+  ["abril", "abr"],
+  ["mayo", "may"],
+  ["junio", "jun"],
+  ["julio", "jul"],
+  ["agosto", "ago"],
+  ["septiembre", "setiembre", "sep", "set"],
+  ["octubre", "oct"],
+  ["noviembre", "nov"],
+  ["diciembre", "dic"],
+]
+
+/** Minúsculas y sin tildes, para que "Setiembre" y "setiembre" den lo mismo. */
+function normalize(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+}
+
+/**
+ * Traduce lo que la persona escribe a los períodos que buscar. Los meses se
+ * guardan como `2026-08`, pero en toda la interfaz se leen como "Agosto 2026":
+ * quien busca escribe el nombre, no el número, así que buscar el texto crudo no
+ * encontraba nada.
+ *
+ * - `agosto` → `-08` (agosto de cualquier año)
+ * - `agosto 2026` → `2026-08`
+ * - `2026` → `2026-`
+ *
+ * Devuelve vacío si no hay nada parecido a un mes o un año, para no ensuciar la
+ * búsqueda normal.
+ */
+export function periodQueryPatterns(query: string): string[] {
+  const tokens = normalize(query).split(/[^a-z0-9]+/).filter(Boolean)
+  if (tokens.length === 0) return []
+
+  const months = new Set<string>()
+  let year = ""
+
+  for (const token of tokens) {
+    if (/^\d{4}$/.test(token)) {
+      year = token
+      continue
+    }
+    // Desde tres letras: "ago" alcanza, pero una sola letra engancharía todo.
+    if (token.length < 3) continue
+    MONTH_TOKENS.forEach((names, index) => {
+      if (names.some((name) => name.startsWith(token))) {
+        months.add(String(index + 1).padStart(2, "0"))
+      }
+    })
+  }
+
+  if (months.size === 0) return year ? [`${year}-`] : []
+  return [...months].map((month) => (year ? `${year}-${month}` : `-${month}`))
+}
