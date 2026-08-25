@@ -142,7 +142,15 @@ export function AgendaClient({ pieces }: Props) {
                       <li key={piece.id}>
                         <button
                           type="button"
-                          onClick={() => router.push(`/planning/${piece.planningId}?idea=${piece.id}`)}
+                          onClick={() =>
+                            router.push(
+                              // Con redes elegidas, lo que uno quiere desde la
+                              // agenda es publicarla, no revisar el mes entero.
+                              piece.targets.length > 0
+                                ? `/publicar/${piece.id}`
+                                : `/planning/${piece.planningId}?idea=${piece.id}`,
+                            )
+                          }
                           className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
                         >
                           <span

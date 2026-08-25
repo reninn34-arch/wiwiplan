@@ -174,3 +174,16 @@ export function publishMomentUtc(dueDate: string | null, publishTime: string): D
 
   return new Date(Date.UTC(year, month - 1, day, hours - APP_UTC_OFFSET_HOURS, minutes))
 }
+
+/**
+ * A dónde mandar a la persona para publicar. Se usan direcciones https y no
+ * esquemas propios (`instagram://`): en el teléfono el sistema las abre en la
+ * app igual, y en la computadora al menos abren la web en vez de no hacer nada.
+ */
+export const networkOpenUrls: Record<SocialNetwork, string> = {
+  INSTAGRAM: "https://www.instagram.com/",
+  FACEBOOK: "https://www.facebook.com/",
+  TIKTOK: "https://www.tiktok.com/upload",
+  YOUTUBE: "https://studio.youtube.com/",
+  LINKEDIN: "https://www.linkedin.com/feed/",
+}

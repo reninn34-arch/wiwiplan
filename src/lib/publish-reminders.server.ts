@@ -81,7 +81,9 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
       const result = await pushToUser(idea.planning.userId, {
         title: `Toca publicar: ${idea.title || "una pieza"}`,
         body: `${idea.planning.client?.name ?? "Sin cliente"} — ${summary.sentence}`,
-        url: `/planning/${idea.planningId}?idea=${idea.id}`,
+        // A la pantalla de publicar: cuando suena el aviso lo único que hace
+        // falta es el copy, abrir la red y decir que ya salió.
+        url: `/publicar/${idea.id}`,
         tag: `publicar-${idea.id}`,
       })
 

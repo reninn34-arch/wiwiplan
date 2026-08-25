@@ -309,6 +309,10 @@ model ContentIdea {
   pilar           String       @default("")
   postType        PostType     @default(OTHER)
   platform        IdeaPlatform @default(OTHER)
+  /// El texto que va en la publicación. Distinto de `description`, que es el
+  /// brief —de qué trata la pieza—: el copy suele escribirse después, cerca de
+  /// la fecha, y es lo que se copia y pega en la red.
+  caption         String       @default("")
   referenceUrl    String       @default("")
   referenceEmbed  String       @default("")
   status          IdeaStatus   @default(IDEA)
