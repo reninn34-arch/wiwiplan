@@ -15,6 +15,18 @@ import { runPublishReminders } from "@/lib/publish-reminders.server"
  * una consulta barata; ese costo no justifica la configuración extra.
  */
 export async function GET() {
+  return sweep()
+}
+
+/**
+ * QStash entrega sus mensajes con POST: mismo barrido, otro verbo. Sin esto,
+ * cada despertar puntual rebotaba con 405 y la cita exacta nunca sonaba.
+ */
+export async function POST() {
+  return sweep()
+}
+
+async function sweep() {
   // Con sesión, sólo las piezas propias (es el "Revisar ahora" de la agenda);
   // sin sesión, barrido global: el caso del reloj externo y del cron de Vercel.
   const session = await auth()
