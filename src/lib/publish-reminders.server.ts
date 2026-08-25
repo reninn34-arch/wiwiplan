@@ -54,7 +54,11 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
     where: {
       ...(userId ? { planning: { userId } } : {}),
       notifiedAt: null,
-      NOT: { dueDate: null, publishTime: "" },
+      // Dos condiciones separadas a propósito: `NOT: { a, b }` en Prisma niega
+      // la conjunción —NOT(a Y b)— así que juntas dejaban pasar piezas con día
+      // pero sin hora, y al revés. Se necesita que estén las dos.
+      NOT: { dueDate: null },
+      publishTime: { not: "" },
       targets: { some: { publishedAt: null } },
     },
     select: {
