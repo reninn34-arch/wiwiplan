@@ -6,6 +6,8 @@ import { publicAppUrl } from "@/lib/app-url"
 import {
   MEDIA_ALLOWED_TYPES,
   MEDIA_MAX_VIDEO_BYTES,
+  blobEnvNames,
+  blobToken,
   kindOfContentType,
   mediaPrefix,
   storageConfigured,
@@ -25,8 +27,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
   if (!storageConfigured()) {
+    // Decir qué se encontró y qué no: "falta configurar" a secas deja a quien
+    // configura sin saber si puso mal el nombre, el entorno o el valor.
+    const found = blobEnvNames()
+    console.error("[media] Sin token de almacenamiento. Variables vistas:", found)
     return NextResponse.json(
-      { error: "Falta configurar el almacenamiento de archivos (BLOB_READ_WRITE_TOKEN)" },
+      {
+        error:
+          found.length > 0
+            ? `El almacenamiento no tiene token utilizable. Variables encontradas: ${found.join(", ")}`
+            : "Falta BLOB_READ_WRITE_TOKEN en las variables del proyecto. Conecta el store de Blob al proyecto en Vercel y vuelve a desplegar.",
+      },
       { status: 503 },
     )
   }
@@ -37,6 +48,8 @@ export async function POST(request: NextRequest) {
     const result = await handleUpload({
       request,
       body,
+      // Explícito porque el nombre de la variable puede no ser el estándar.
+      token: blobToken(),
       onBeforeGenerateToken: async (pathname) => {
         // `pathname` llega del navegador, así que la pieza se saca de ahí y se
         // comprueba contra la sesión: nadie puede subir al espacio de otro.

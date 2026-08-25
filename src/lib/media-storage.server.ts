@@ -51,7 +51,7 @@ export function belongsToIdea(pathname: string, ideaId: string): boolean {
 /** Borra el archivo del almacenamiento. Nunca lanza: la fila ya se fue. */
 export async function deleteStoredMedia(url: string): Promise<void> {
   try {
-    await del(url)
+    await del(url, { token: blobToken() })
   } catch (error) {
     // Un archivo huérfano cuesta centavos; romper el borrado de la pieza por
     // eso cuesta más. Queda en el log para poder limpiarlo si se acumula.
@@ -59,6 +59,33 @@ export async function deleteStoredMedia(url: string): Promise<void> {
   }
 }
 
+/**
+ * El permiso de escritura del almacenamiento.
+ *
+ * Lo normal es `BLOB_READ_WRITE_TOKEN`, pero Vercel le pone prefijo cuando hay
+ * más de un store —`MISTIENDA_READ_WRITE_TOKEN`— y entonces el nombre estándar
+ * no existe. Buscar por el sufijo evita que todo falle por cómo se llame.
+ */
+export function blobToken(): string | undefined {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN
+
+  for (const [name, value] of Object.entries(process.env)) {
+    if (name.endsWith("_READ_WRITE_TOKEN") && value) return value
+  }
+  return undefined
+}
+
 export function storageConfigured(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN)
+  return Boolean(blobToken())
+}
+
+/**
+ * Los **nombres** de las variables que parecen del almacenamiento. Sin valores:
+ * sirve para decirle a quien configura si el token está con otro nombre, en vez
+ * de dejarlo adivinando por qué no funciona.
+ */
+export function blobEnvNames(): string[] {
+  return Object.keys(process.env).filter(
+    (name) => name.includes("BLOB") || name.endsWith("_READ_WRITE_TOKEN"),
+  )
 }
