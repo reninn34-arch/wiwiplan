@@ -117,6 +117,7 @@ interface PlanningData {
     dueDate: string | null
     publishTime: string
     targets: Array<{ accountId: string; publishedAt: string | null }>
+    media: Array<{ id: string; url: string; kind: string; contentType: string; sizeBytes: number; order: number }>
     storyboardId: string | null
     storyboard: { id: string; title: string } | null
     contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
@@ -447,6 +448,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
                         dueDate: moved.dueDate,
                         publishTime: moved.publishTime,
                         targets: moved.targets,
+                        media: moved.media,
                       }
                     : idea
                 }),

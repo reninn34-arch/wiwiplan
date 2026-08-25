@@ -34,6 +34,10 @@ export default async function PlanningDetailPage({ params }: Props) {
           comments: { orderBy: { createdAt: "asc" } },
           images: { orderBy: { order: "asc" }, select: { id: true, order: true } },
           targets: { select: { accountId: true, publishedAt: true } },
+          media: {
+            orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+            select: { id: true, url: true, kind: true, contentType: true, sizeBytes: true, order: true },
+          },
           storyboard: true,
         },
       },

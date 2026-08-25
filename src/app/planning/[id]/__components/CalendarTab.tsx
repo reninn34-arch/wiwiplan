@@ -12,7 +12,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core"
 import { toast } from "sonner"
-import { CalendarDays, CircleAlert } from "lucide-react"
+import { CalendarDays, CircleAlert, Paperclip } from "lucide-react"
 import {
   WEEKDAY_LABELS,
   buildMonthGrid,
@@ -24,6 +24,7 @@ import {
 import { formatPeriodLabel } from "@/lib/planning-period"
 import { networkColors, type SocialNetwork } from "@/lib/social"
 import { SchedulePanel, type ScheduleAccount } from "./SchedulePanel"
+import type { MediaAssetRow } from "@/components/MediaUploader"
 
 export interface CalendarIdea {
   id: string
@@ -33,6 +34,7 @@ export interface CalendarIdea {
   dueDate: string | null
   publishTime: string
   targets: Array<{ accountId: string; publishedAt: string | null }>
+  media: MediaAssetRow[]
 }
 
 interface Props {
@@ -102,10 +104,13 @@ function IdeaChip({
           {idea.title || "Sin título"}
         </span>
       </span>
-      {(idea.publishTime || idea.targets.length > 0) && (
+      {(idea.publishTime || idea.targets.length > 0 || idea.media.length > 0) && (
         <span className="mt-0.5 flex items-center gap-1 pl-3">
           {idea.publishTime && (
             <span className="shrink-0 text-[10px] tabular-nums text-zinc-500">{idea.publishTime}</span>
+          )}
+          {idea.media.length > 0 && (
+            <Paperclip className="h-2.5 w-2.5 shrink-0 text-zinc-500" aria-hidden />
           )}
           {idea.targets.map((target) => (
             <span
@@ -295,6 +300,8 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
             piece={openPiece}
             accounts={accounts}
             onChange={(updates) =>
+              // Sólo se pisan las claves que vinieron: guardar la hora no puede
+              // borrar los archivos, ni subir un archivo borrar las redes.
               onChange(ideas.map((i) => (i.id === openPiece.id ? { ...i, ...updates } : i)))
             }
             onMove={() => {

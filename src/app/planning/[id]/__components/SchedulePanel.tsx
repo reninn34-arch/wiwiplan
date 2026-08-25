@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { CalendarDays, Check, CircleCheck, Move, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { MediaUploader, type MediaAssetRow } from "@/components/MediaUploader"
 import { dayKeyOf } from "@/lib/calendar"
 import {
   describePublication,
@@ -29,13 +30,19 @@ export interface SchedulePiece {
   dueDate: string | null
   publishTime: string
   targets: Array<{ accountId: string; publishedAt: string | null }>
+  media: MediaAssetRow[]
 }
 
 interface Props {
   planningId: string
   piece: SchedulePiece
   accounts: ScheduleAccount[]
-  onChange: (updates: { dueDate: string | null; publishTime: string; targets: SchedulePiece["targets"] }) => void
+  onChange: (updates: {
+    dueDate?: string | null
+    publishTime?: string
+    targets?: SchedulePiece["targets"]
+    media?: MediaAssetRow[]
+  }) => void
   onMove: () => void
   onClose: () => void
 }
@@ -127,6 +134,15 @@ export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, o
         >
           <X className="h-4 w-4" />
         </button>
+      </div>
+
+      {/* ── Qué se publica ── */}
+      <div className="mt-4">
+        <MediaUploader
+          ideaId={piece.id}
+          media={piece.media}
+          onChange={(media) => onChange({ media })}
+        />
       </div>
 
       {/* ── A qué hora ── */}

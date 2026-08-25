@@ -259,6 +259,8 @@ interface Idea {
   publishTime: string
   /** A qué redes del cliente sale, y si ya salió en cada una. */
   targets: Array<{ accountId: string; publishedAt: string | null }>
+  /** El archivo que se publica. Distinto de `images`, que son referencias. */
+  media: Array<{ id: string; url: string; kind: string; contentType: string; sizeBytes: number; order: number }>
   storyboardId: string | null
   storyboard: { id: string; title: string } | null
   contentIdeaTags: { tag: TagItem }[]
