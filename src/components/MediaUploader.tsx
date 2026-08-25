@@ -85,6 +85,17 @@ export function MediaUploader({ ideaId, media, onChange }: Props) {
       // sin esa diferencia no hay forma de arreglar nada.
       console.error("[media] Falló la subida:", error)
       const detail = error instanceof Error ? error.message : ""
+
+      // El almacenamiento privado rechaza la subida pública con un mensaje que
+      // no dice qué hacer. Y tiene que ser público: Meta descarga el archivo de
+      // esa URL, así que un store privado hace imposible publicar solo.
+      if (detail.includes("private store") || detail.includes("private access")) {
+        toast.error(
+          "El almacenamiento está configurado como privado. Tiene que ser público para que las redes puedan descargar el archivo.",
+        )
+        return
+      }
+
       toast.error(detail ? `No se pudo subir: ${detail}` : "No se pudo subir el archivo")
     } finally {
       setProgress(null)
