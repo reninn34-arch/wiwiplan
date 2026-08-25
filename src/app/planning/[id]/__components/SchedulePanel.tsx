@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { CalendarDays, Check, Move, X } from "lucide-react"
+import { CalendarDays, Check, CircleCheck, Move, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { dayKeyOf } from "@/lib/calendar"
 import {
-  describeSchedule,
+  describePublication,
   networkColors,
   networkLabels,
+  joinWithY,
   publishModeLabels,
   type PublishMode,
   type SocialNetwork,
@@ -47,8 +48,24 @@ const QUICK_TIMES = ["08:00", "12:00", "18:00", "20:00"]
  */
 export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, onClose }: Props) {
   const [saving, setSaving] = useState(false)
+  // Confirmación visible después de guardar: sin esto uno toca, no pasa nada
+  // aparente, y queda la duda de si se guardó.
+  const [justSaved, setJustSaved] = useState(false)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+  }, [])
+
   const selected = new Set(piece.targets.map((t) => t.accountId))
   const publishedBy = new Map(piece.targets.map((t) => [t.accountId, t.publishedAt]))
+
+  const accountName = (id: string) => {
+    const account = accounts.find((a) => a.id === id)
+    if (!account) return ""
+    return networkLabels[account.network as SocialNetwork] ?? account.network
+  }
+  const chosenNetworks = piece.targets.map((t) => accountName(t.accountId)).filter(Boolean)
+  const summary = describePublication(piece.dueDate, piece.publishTime, chosenNetworks)
 
   const save = async (payload: { publishTime?: string; accountIds?: string[] }) => {
     setSaving(true)
@@ -65,6 +82,10 @@ export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, o
     }
     const data = await res.json()
     onChange({ dueDate: data.dueDate, publishTime: data.publishTime, targets: data.targets })
+
+    setJustSaved(true)
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+    savedTimer.current = setTimeout(() => setJustSaved(false), 2500)
   }
 
   const toggleAccount = (accountId: string) => {
@@ -81,10 +102,20 @@ export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, o
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-zinc-100">{piece.title || "Sin título"}</p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400">
-            <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
-            {describeSchedule(piece.dueDate, piece.publishTime)}
+          <p
+            className={`mt-1 flex items-start gap-1.5 text-sm ${
+              summary.ready ? "text-emerald-300" : "text-zinc-300"
+            }`}
+            aria-live="polite"
+          >
+            <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>{summary.sentence}</span>
           </p>
+          {summary.missing.length > 0 && (
+            <p className="mt-1 text-xs text-amber-300">
+              Falta {joinWithY(summary.missing)}.
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -176,16 +207,19 @@ export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, o
         )}
       </div>
 
-      {!hasDay && (
-        <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300 ring-1 ring-inset ring-amber-400/25">
-          Todavía no tiene día. Arrástrala a uno del calendario, o usa el botón de abajo.
-        </p>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" className="h-9 text-xs" onClick={onMove}>
           <Move className="h-3.5 w-3.5" /> {hasDay ? "Mover de día" : "Ponerle día"}
         </Button>
+        <span
+          className={`flex items-center gap-1.5 text-xs text-emerald-300 transition-opacity ${
+            justSaved ? "opacity-100" : "opacity-0"
+          }`}
+          aria-live="polite"
+        >
+          <CircleCheck className="h-3.5 w-3.5" aria-hidden />
+          Guardado
+        </span>
       </div>
     </div>
   )

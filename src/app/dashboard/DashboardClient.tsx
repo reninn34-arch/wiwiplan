@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera, Settings, Wallet } from "lucide-react"
+import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera, Settings } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { ClientLogo } from "@/components/ClientLogo"
@@ -724,7 +724,7 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
                       className="h-8 text-xs"
                       onClick={() => router.push(`/clients/${client.id}`)}
                     >
-                      <Wallet className="h-3 w-3" /> Estado de cuenta
+                      <Building2 className="h-3 w-3" /> Ficha de {client.name.split(" ")[0]}
                     </Button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

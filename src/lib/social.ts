@@ -101,3 +101,53 @@ export function describeSchedule(dueDate: string | null, publishTime: string): s
 export function shortSchedule(publishTime: string): string {
   return formatTime(publishTime)
 }
+
+export interface PublicationSummary {
+  /** La frase completa, para leerla y verificar de un vistazo. */
+  sentence: string
+  /** Lo que falta para que salga. Vacío = está lista. */
+  missing: string[]
+  ready: boolean
+}
+
+/**
+ * Lo que la persona necesita leer para quedarse tranquila: una frase entera que
+ * dice qué va a pasar, y qué falta si algo falta.
+ *
+ * Mostrar los campos por separado obliga a armar la frase en la cabeza, y ahí
+ * es donde entra la duda de "¿lo programé bien?". La frase completa se verifica
+ * sola: si dice lo que querías, está bien.
+ */
+export function describePublication(
+  dueDate: string | null,
+  publishTime: string,
+  networks: string[],
+): PublicationSummary {
+  const key = dayKeyOf(dueDate)
+  const time = formatTime(publishTime)
+
+  const missing: string[] = []
+  if (!key) missing.push("el día")
+  if (!time) missing.push("la hora")
+  if (networks.length === 0) missing.push("dónde sale")
+
+  if (!key) {
+    return { sentence: "Todavía no tiene día", missing, ready: false }
+  }
+
+  const [year, month, day] = key.split("-").map(Number)
+  const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()].toLowerCase()
+
+  let sentence = `Sale el ${weekday} ${day} de ${MONTHS[month - 1]}`
+  if (time) sentence += ` a las ${time}`
+  if (networks.length > 0) sentence += ` en ${joinWithY(networks)}`
+
+  return { sentence, missing, ready: missing.length === 0 }
+}
+
+/** "Instagram, TikTok y Facebook" — como se dice, no separado por comas a secas. */
+export function joinWithY(values: string[]): string {
+  if (values.length === 0) return ""
+  if (values.length === 1) return values[0]
+  return `${values.slice(0, -1).join(", ")} y ${values[values.length - 1]}`
+}
