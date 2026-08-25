@@ -1,6 +1,6 @@
 import "server-only"
 import { prisma } from "@/lib/prisma"
-import { pushToUser } from "@/lib/push.server"
+import { pushConfigured, pushToUser } from "@/lib/push.server"
 import {
   describePublication,
   networkLabels,
@@ -26,13 +26,29 @@ const MAX_LATE_HOURS = 12
 
 export interface PublishReminderOutcome {
   notified: number
-  skipped: number
+  /** Encontradas, pero su hora todavía no llegó o quedó muy atrás. */
+  notDue: number
+  /** Les tocaba, pero no había ningún dispositivo al que avisar. */
+  noDevices: number
   errors: number
+  /** Presente sólo si el servidor no tiene llaves: sin ellas no sale nada. */
+  pushDisabled?: true
 }
 
 export async function runPublishReminders(userId?: string): Promise<PublishReminderOutcome> {
   const now = new Date()
-  const outcome: PublishReminderOutcome = { notified: 0, skipped: 0, errors: 0 }
+  const outcome: PublishReminderOutcome = { notified: 0, notDue: 0, noDevices: 0, errors: 0 }
+
+  // Sin llaves no hay envío posible, y callarlo deja un "no pasó nada" sin
+  // explicación. Mejor decirlo antes de recorrer nada.
+  if (!pushConfigured()) {
+    console.error(
+      "[push] Faltan NEXT_PUBLIC_VAPID_PUBLIC_KEY o VAPID_PRIVATE_KEY: " +
+        "el barrido no puede enviar ningún aviso.",
+    )
+    outcome.pushDisabled = true
+    return outcome
+  }
 
   const candidates = await prisma.contentIdea.findMany({
     where: {
@@ -58,13 +74,13 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
   for (const idea of candidates) {
     const moment = publishMomentUtc(idea.dueDate?.toISOString() ?? null, idea.publishTime)
     if (!moment) {
-      outcome.skipped += 1
+      outcome.notDue += 1
       continue
     }
 
     const lateHours = (now.getTime() - moment.getTime()) / 3_600_000
     if (lateHours < 0 || lateHours > MAX_LATE_HOURS) {
-      outcome.skipped += 1
+      outcome.notDue += 1
       continue
     }
 
@@ -87,6 +103,13 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
         tag: `publicar-${idea.id}`,
       })
 
+      if (result.dropped > 0) {
+        console.warn(`[push] ${result.dropped} suscripción(es) revocadas, limpiadas.`)
+      }
+      if (result.errors > 0) {
+        console.error(`[push] ${result.errors} envío(s) fallaron para "${idea.title}".`)
+      }
+
       if (result.sent > 0) {
         // Sólo se marca si alguien lo recibió: si no había ningún dispositivo
         // conectado, conviene volver a intentarlo en la próxima corrida.
@@ -96,7 +119,9 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
         })
         outcome.notified += 1
       } else {
-        outcome.skipped += 1
+        // Le tocaba y no había a quién avisar: ningún dispositivo conectado, o
+        // todos revocados. No se marca, para reintentar en la próxima corrida.
+        outcome.noDevices += 1
       }
     } catch (error) {
       console.error("Error avisando de una publicación:", error)
