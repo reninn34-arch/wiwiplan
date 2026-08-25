@@ -65,6 +65,12 @@ enum PaymentKind {
   ADJUSTMENT
 }
 
+/** Qué clase de archivo es. Cada red trata el video distinto de la imagen. */
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
 /** Redes donde se publica. Distinta de `IdeaPlatform`, que describe de dónde
  * viene una referencia; ésta dice a dónde sale la pieza. */
 enum SocialNetwork {
@@ -335,11 +341,42 @@ model ContentIdea {
   contentIdeaTags ContentIdeaTag[]
   comments Comment[]
   images ContentIdeaImage[]
+  media MediaAsset[]
   targets IdeaTarget[]
   storyboard Storyboard? @relation(fields: [storyboardId], references: [id])
   storyboardId String?
 
   @@index([planningId])
+}
+
+/**
+ * El archivo final que se va a publicar. Distinto de `ContentIdeaImage`, que
+ * son referencias para reconocer la pieza: esto es lo que sale al aire.
+ *
+ * Vive en almacenamiento de objetos y no en la base por dos razones. Un reel
+ * de 80MB en Postgres no es viable, y sobre todo: Meta **no recibe el archivo**,
+ * le das una URL pública y él la descarga. Sin una URL así no hay publicación
+ * automática posible.
+ */
+model MediaAsset {
+  id          String    @id @default(cuid())
+  ideaId      String
+  /// URL pública. Es la que se le pasa a Meta para que descargue el archivo.
+  url         String
+  /// Ruta dentro del almacenamiento, necesaria para poder borrarlo después.
+  /// Única a propósito: registrar el archivo es idempotente, así da igual si lo
+  /// confirma el navegador o el aviso del almacenamiento —o los dos.
+  pathname    String    @unique
+  kind        MediaKind
+  contentType String
+  sizeBytes   Int
+  /// Orden dentro del carrusel. Para una pieza de un solo archivo siempre es 0.
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  idea ContentIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId])
 }
 
 model ContentIdeaImage {

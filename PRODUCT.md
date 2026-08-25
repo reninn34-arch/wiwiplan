@@ -64,7 +64,9 @@ Las cuatro apuestas donde tiene que ganarle a Notion, confirmadas por el usuario
 ## Capabilities and Constraints
 
 - Next.js 16 (App Router, React 19), Tailwind v4, Prisma 7 + PostgreSQL, NextAuth v5 con credenciales, Radix primitives, dnd-kit, TipTap, sonner. PWA instalable (manifest + service worker), orientación vertical.
-- Las imágenes se comprimen en el cliente y se sirven por URL desde la API; hay recompresión de originales ya hecha.
+- Las imágenes de **referencia** se comprimen en el cliente y se sirven por URL desde la API; hay recompresión de originales ya hecha.
+- El **archivo que se publica** es otra cosa y vive en almacenamiento de objetos (`MediaAsset`), no en la base: un reel de 80MB en Postgres no es viable, y sobre todo Meta no recibe el archivo —le das una URL pública y él la descarga—. Sin esa URL no hay publicación automática posible.
+- La subida **no pasa por la API**: una función sin servidor acepta cuerpos de unos 4.5MB, así que el navegador sube directo al almacenamiento con un permiso firmado, y sólo el registro vuelve por la API. El registro es idempotente por `pathname` porque llega por dos caminos: el aviso del almacenamiento (que no alcanza a localhost) y la confirmación del navegador.
 - Todo el contenido de la interfaz está en **español latino** (tuteo ecuatoriano: "Agrega", "Carga", "Tócalo").
 - Datos por usuario: cada consulta filtra por `userId`. No hay compartición entre cuentas.
 - **Decisión abierta:** el nombre "WiwiPlan" puede cambiar; el usuario lo dejó libre. Ningún trabajo debe asumir un nombre nuevo sin confirmarlo con él.
