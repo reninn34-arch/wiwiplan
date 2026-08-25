@@ -80,28 +80,6 @@ export function formatTime(value: string): string {
   return `${display}:${minutes} ${suffix}`
 }
 
-/**
- * La frase que resume cuándo sale una pieza, en el idioma de todos los días:
- * "Martes 15 de agosto a las 9:00 am". Es el texto que se repite en el
- * calendario, en la agenda y en el aviso, así que vive en un solo lugar.
- */
-export function describeSchedule(dueDate: string | null, publishTime: string): string {
-  const key = dayKeyOf(dueDate)
-  if (!key) return "Sin fecha"
-
-  const [year, month, day] = key.split("-").map(Number)
-  const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()]
-  const date = `${weekday} ${day} de ${MONTHS[month - 1]}`
-
-  const time = formatTime(publishTime)
-  return time ? `${date} a las ${time}` : `${date}, sin hora`
-}
-
-/** Versión corta para las fichas del calendario: "9:00 am" o vacío. */
-export function shortSchedule(publishTime: string): string {
-  return formatTime(publishTime)
-}
-
 export interface PublicationSummary {
   /** La frase completa, para leerla y verificar de un vistazo. */
   sentence: string

@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { CalendarDays, Check, CircleCheck, Move, X } from "lucide-react"
+import { CalendarDays, Check, CircleCheck, Move, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { dayKeyOf } from "@/lib/calendar"
 import {
@@ -47,6 +48,7 @@ const QUICK_TIMES = ["08:00", "12:00", "18:00", "20:00"]
  * está pensando "esto sale el martes", y no escondido en un formulario aparte.
  */
 export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, onClose }: Props) {
+  const router = useRouter()
   const [saving, setSaving] = useState(false)
   // Confirmación visible después de guardar: sin esto uno toca, no pasa nada
   // aparente, y queda la duda de si se guardó.
@@ -211,6 +213,16 @@ export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, o
         <Button size="sm" variant="outline" className="h-9 text-xs" onClick={onMove}>
           <Move className="h-3.5 w-3.5" /> {hasDay ? "Mover de día" : "Ponerle día"}
         </Button>
+        {piece.targets.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs"
+            onClick={() => router.push(`/publicar/${piece.id}`)}
+          >
+            <Send className="h-3.5 w-3.5" /> Publicar ahora
+          </Button>
+        )}
         <span
           className={`flex items-center gap-1.5 text-xs text-emerald-300 transition-opacity ${
             justSaved ? "opacity-100" : "opacity-0"

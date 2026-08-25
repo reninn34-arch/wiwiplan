@@ -68,6 +68,9 @@ function IdeaChip({
   onOpen: () => void
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: idea.id })
+  // Ya salió en todas sus redes: se lee distinto para no confundirla con lo que
+  // todavía está pendiente.
+  const published = idea.targets.length > 0 && idea.targets.every((t) => t.publishedAt !== null)
 
   return (
     <div
@@ -95,7 +98,9 @@ function IdeaChip({
     >
       <span className="flex items-center gap-1.5">
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDot[idea.status] ?? "bg-zinc-600"}`} aria-hidden />
-        <span className="truncate">{idea.title || "Sin título"}</span>
+        <span className={`truncate ${published ? "text-zinc-500 line-through" : ""}`}>
+          {idea.title || "Sin título"}
+        </span>
       </span>
       {(idea.publishTime || idea.targets.length > 0) && (
         <span className="mt-0.5 flex items-center gap-1 pl-3">
@@ -106,7 +111,11 @@ function IdeaChip({
             <span
               key={target.accountId}
               className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: networkColorsById.get(target.accountId) ?? "#52525b" }}
+              style={{
+                backgroundColor: target.publishedAt
+                  ? "#34d399"
+                  : networkColorsById.get(target.accountId) ?? "#52525b",
+              }}
               aria-hidden
             />
           ))}

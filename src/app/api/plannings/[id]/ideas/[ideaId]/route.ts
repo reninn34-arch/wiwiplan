@@ -44,7 +44,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(body.pilar !== undefined ? { pilar: body.pilar } : {}),
         ...(body.priority !== undefined ? { priority: body.priority } : {}),
         ...(body.storyboardId !== undefined ? { storyboardId: body.storyboardId || null } : {}),
-        ...(body.dueDate !== undefined ? { dueDate: body.dueDate ? new Date(body.dueDate) : null } : {}),
+        ...(body.dueDate !== undefined
+          ? {
+              dueDate: body.dueDate ? new Date(body.dueDate) : null,
+              // Mover de día es una cita nueva: el aviso vuelve a quedar
+              // pendiente, como al reprogramar desde el panel.
+              notifiedAt: null,
+            }
+          : {}),
       },
     })
     if (idea.count === 0) {

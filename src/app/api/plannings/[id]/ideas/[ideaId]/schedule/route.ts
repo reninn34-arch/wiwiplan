@@ -87,6 +87,10 @@ export async function PUT(
           data: {
             ...(publishTime !== undefined ? { publishTime } : {}),
             ...(dueDate !== undefined ? { dueDate } : {}),
+            // Cambiar el día o la hora es una cita nueva, así que el aviso
+            // vuelve a estar pendiente. Sin esto, una pieza que ya se avisó y
+            // se corrió a mañana no volvía a avisar nunca.
+            notifiedAt: null,
           },
         })
       }
