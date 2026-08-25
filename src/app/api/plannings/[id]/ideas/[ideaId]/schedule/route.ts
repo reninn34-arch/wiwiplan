@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
-import { isValidTime } from "@/lib/social"
+import { isValidTime, publishMomentUtc } from "@/lib/social"
+import { schedulePublishSweep } from "@/lib/publish-schedule.server"
 
 /**
  * Cuándo y dónde sale una pieza, en una sola operación. Va aparte del PUT
@@ -129,6 +130,15 @@ export async function PUT(
     if (!result) {
       return NextResponse.json({ error: "No encontrada" }, { status: 404 })
     }
+
+    // La hora justa: aparte de los relojes periódicos, se agenda un despertar
+    // para el instante exacto de esta pieza. Va después de la transacción y
+    // falla en silencio a propósito — la pieza ya está guardada.
+    const moment = publishMomentUtc(
+      result.dueDate?.toISOString() ?? null,
+      result.publishTime,
+    )
+    if (moment) await schedulePublishSweep(moment)
 
     return NextResponse.json({
       id: result.id,

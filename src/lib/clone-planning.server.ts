@@ -1,6 +1,8 @@
 import "server-only"
 import { prisma } from "@/lib/prisma"
 import { moveToPeriod, type CloneSelection } from "@/lib/planning-period"
+import { publishMomentUtc } from "@/lib/social"
+import { schedulePublishSweep } from "@/lib/publish-schedule.server"
 
 /**
  * Duplicar el mes anterior. El 70% de un plan mensual es el esqueleto del mes
@@ -52,7 +54,11 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
   })
   if (!source) return null
 
-  return prisma.$transaction(
+  // Día/hora resultantes de las ideas clonadas: para agendar su cita exacta
+  // después, fuera de la transacción.
+  const clonedSchedules: { dueDate: Date | null; publishTime: string }[] = []
+
+  const result = await prisma.$transaction(
     async (tx) => {
       const planning = await tx.planning.create({
         data: {
@@ -104,6 +110,7 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
       let ideas = 0
       if (selection.ideas) {
         for (const idea of source.contentIdeas) {
+          const dueDate = idea.dueDate ? moveToPeriod(idea.dueDate, period) : null
           await tx.contentIdea.create({
             data: {
               planningId: planning.id,
@@ -120,7 +127,7 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
               // Estado arranca de cero: la idea se vuelve a trabajar. El día se
               // corre al mes destino y la hora se conserva, porque la cadencia
               // —"los martes a las 9"— es justamente lo que se está copiando.
-              dueDate: idea.dueDate ? moveToPeriod(idea.dueDate, period) : null,
+              dueDate,
               publishTime: idea.publishTime,
               contentIdeaTags: {
                 create: idea.contentIdeaTags.map((t) => ({ tagId: t.tagId })),
@@ -130,6 +137,7 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
                 : {}),
             },
           })
+          clonedSchedules.push({ dueDate, publishTime: idea.publishTime })
           ideas += 1
         }
       }
@@ -154,4 +162,16 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
     },
     { timeout: 20000 },
   )
+
+  // La cita exacta de cada pieza clonada se agenda fuera de la transacción:
+  // si QStash falla, el mes ya quedó creado y los relojes periódicos cubren.
+  for (const schedule of clonedSchedules) {
+    const moment = publishMomentUtc(
+      schedule.dueDate?.toISOString() ?? null,
+      schedule.publishTime,
+    )
+    if (moment) await schedulePublishSweep(moment)
+  }
+
+  return result
 }
