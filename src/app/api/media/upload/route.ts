@@ -48,8 +48,9 @@ export async function POST(request: NextRequest) {
     const result = await handleUpload({
       request,
       body,
-      // Explícito porque el nombre de la variable puede no ser el estándar.
-      token: blobToken(),
+      // Sólo si lo tenemos: sin token el SDK resuelve las credenciales solo
+      // cuando corre dentro de Vercel con el store conectado.
+      ...(blobToken() ? { token: blobToken() } : {}),
       onBeforeGenerateToken: async (pathname) => {
         // `pathname` llega del navegador, así que la pieza se saca de ahí y se
         // comprueba contra la sesión: nadie puede subir al espacio de otro.

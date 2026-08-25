@@ -51,7 +51,8 @@ export function belongsToIdea(pathname: string, ideaId: string): boolean {
 /** Borra el archivo del almacenamiento. Nunca lanza: la fila ya se fue. */
 export async function deleteStoredMedia(url: string): Promise<void> {
   try {
-    await del(url, { token: blobToken() })
+    const token = blobToken()
+    await del(url, token ? { token } : undefined)
   } catch (error) {
     // Un archivo huérfano cuesta centavos; romper el borrado de la pieza por
     // eso cuesta más. Queda en el log para poder limpiarlo si se acumula.
@@ -75,8 +76,19 @@ export function blobToken(): string | undefined {
   return undefined
 }
 
+/**
+ * Si hay alguna posibilidad de que el almacenamiento funcione.
+ *
+ * No exige el token: la integración nueva de Vercel deja al SDK autenticarse
+ * solo, y ahí sólo aparecen `BLOB_STORE_ID` y la llave del webhook. Comprobar
+ * el token de más bloqueaba una configuración perfectamente válida.
+ *
+ * La regla que aprendimos: adivinar si algo va a fallar sale peor que dejarlo
+ * fallar y contar bien el error. Sólo se corta cuando no hay **ninguna** señal
+ * de almacenamiento configurado.
+ */
 export function storageConfigured(): boolean {
-  return Boolean(blobToken())
+  return Boolean(blobToken() || process.env.BLOB_STORE_ID || process.env.VERCEL)
 }
 
 /**
