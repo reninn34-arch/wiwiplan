@@ -26,7 +26,16 @@ jobs:
       - name: Revisar si toca avisar de alguna pieza
         run: |
           if [ -z "${{ secrets.APP_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "Faltan los secretos APP_URL o CRON_SECRET en el repositorio."
+            echo "Faltan secretos y sin ellos no se puede avisar de nada."
+            echo ""
+            echo "Se cargan en: Settings -> Secrets and variables -> Actions"
+            echo "  (pestaña 'Secrets', no 'Variables')"
+            echo ""
+            echo "  APP_URL      https://wiwiplan.vercel.app"
+            echo "  CRON_SECRET  el mismo valor que está en las variables de Vercel"
+            echo ""
+            echo "Hasta entonces esto va a fallar cada 15 minutos. Si necesitas"
+            echo "silenciarlo mientras tanto, desactiva el workflow desde Actions."
             exit 1
           fi
 
