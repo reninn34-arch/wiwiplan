@@ -5,10 +5,8 @@
 # mira qué piezas ya llegaron a su hora y manda el aviso al teléfono, con la app
 # cerrada o abierta, que es el punto de todo el sistema.
 #
-# Para que funcione hay que cargar dos secretos en el repositorio
-# (Settings -> Secrets and variables -> Actions):
-#   APP_URL      https://wiwiplan.vercel.app
-#   CRON_SECRET  el mismo valor que está en las variables de Vercel
+# No lleva secretos ni configuración en el repositorio: la URL es pública y el
+# endpoint va abierto a propósito (repetir el barrido es idempotente).
 name: Avisos de publicación
 
 on:
@@ -25,24 +23,9 @@ jobs:
     steps:
       - name: Revisar si toca avisar de alguna pieza
         run: |
-          if [ -z "${{ secrets.APP_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "Faltan secretos y sin ellos no se puede avisar de nada."
-            echo ""
-            echo "Se cargan en: Settings -> Secrets and variables -> Actions"
-            echo "  (pestaña 'Secrets', no 'Variables')"
-            echo ""
-            echo "  APP_URL      https://wiwiplan.vercel.app"
-            echo "  CRON_SECRET  el mismo valor que está en las variables de Vercel"
-            echo ""
-            echo "Hasta entonces esto va a fallar cada 15 minutos. Si necesitas"
-            echo "silenciarlo mientras tanto, desactiva el workflow desde Actions."
-            exit 1
-          fi
-
           respuesta=$(curl --silent --show-error --fail-with-body \
             --max-time 60 \
-            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/publish-reminders/run")
+            "https://wiwiplan.vercel.app/api/publish-reminders/run")
 
           echo "$respuesta"
 
