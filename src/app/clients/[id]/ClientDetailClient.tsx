@@ -13,9 +13,11 @@ import { PaymentLedger, paymentDotStyles, type PaymentRecord } from "@/component
 import { formatMoney, formatPaymentDate, parseAmountToCents } from "@/lib/payments"
 import { formatPeriodLabel } from "@/lib/planning-period"
 import type { ClientAccount } from "@/lib/client-account"
+import { AccountsSection, type ClientAccountRow } from "./AccountsSection"
 
 interface Props {
   client: { id: string; name: string; email: string; planName: string; rateCents: number }
+  accounts: ClientAccountRow[]
   account: ClientAccount
   ideaCounts: Record<string, number>
   recentEntries: Array<PaymentRecord & { planningId: string; period: string }>
@@ -37,8 +39,9 @@ const statusColors: Record<string, string> = {
   PUBLISHED: "bg-purple-500/10 text-purple-400",
 }
 
-export function ClientDetailClient({ client, account, ideaCounts, recentEntries }: Props) {
+export function ClientDetailClient({ client, accounts: initialAccounts, account, ideaCounts, recentEntries }: Props) {
   const router = useRouter()
+  const [accounts, setAccounts] = useState(initialAccounts)
   const [editingPlan, setEditingPlan] = useState(false)
   const [planName, setPlanName] = useState(client.planName)
   const [rate, setRate] = useState(client.rateCents > 0 ? (client.rateCents / 100).toFixed(2) : "")
@@ -176,6 +179,8 @@ export function ClientDetailClient({ client, account, ideaCounts, recentEntries 
             </p>
           )}
         </section>
+
+        <AccountsSection clientId={client.id} accounts={accounts} onChange={setAccounts} />
 
         {/* Estado de cuenta: la deuda es del cliente, no del mes. */}
         <section className="mb-6">

@@ -22,6 +22,10 @@ export default async function ClientDetailPage({ params }: Props) {
       email: true,
       planName: true,
       rateCents: true,
+      accounts: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, network: true, handle: true, mode: true },
+      },
       plannings: {
         orderBy: { period: "desc" },
         select: {
@@ -81,6 +85,7 @@ export default async function ClientDetailPage({ params }: Props) {
         rateCents: client.rateCents,
       }}
       account={account}
+      accounts={client.accounts}
       ideaCounts={Object.fromEntries(client.plannings.map((p) => [p.id, p._count.contentIdeas]))}
       recentEntries={recentEntries}
     />

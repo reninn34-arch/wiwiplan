@@ -65,6 +65,29 @@ enum PaymentKind {
   ADJUSTMENT
 }
 
+/** Redes donde se publica. Distinta de `IdeaPlatform`, que describe de dónde
+ * viene una referencia; ésta dice a dónde sale la pieza. */
+enum SocialNetwork {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  YOUTUBE
+  LINKEDIN
+}
+
+/**
+ * Cómo sale una publicación en esa cuenta. Es la decisión que parte el trabajo
+ * en dos carriles, y depende de algo que no controlamos: Instagram sólo deja
+ * publicar por API en cuentas Business/Creator. En las personales no hay forma
+ * legítima de que un servidor publique, así que ahí siempre avisa y publicas tú.
+ */
+enum PublishMode {
+  /// Te avisa a la hora y publicas de un toque. Funciona con cualquier cuenta.
+  ASSISTED
+  /// Sale sola. Necesita cuenta Business/Creator conectada.
+  AUTOMATIC
+}
+
 /** Categoría del costo, para ver en qué se va la plata de producir el mes. */
 enum CostCategory {
   /** Editor, camarógrafo, community, cualquier persona del equipo. */
@@ -115,10 +138,51 @@ model Client {
   /// para no volver a teclear el mismo número doce veces al año.
   rateCents Int    @default(0)
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   plannings Planning[]
+  accounts  ClientAccount[]
 
   @@index([userId])
+}
+
+/**
+ * Las redes de un cliente. Se cargan una vez y después cada pieza sólo elige
+ * entre ellas, en vez de repetir la lista completa de redes cada vez.
+ *
+ * Una cuenta por red y por cliente: mantiene el modelo entendible —la red está
+ * puesta o no está— a cambio de no soportar dos cuentas de la misma red, que
+ * hoy no hace falta.
+ */
+model ClientAccount {
+  id        String        @id @default(cuid())
+  clientId  String
+  network   SocialNetwork
+  /// El usuario sin la arroba: "kibou".
+  handle    String        @default("")
+  mode      PublishMode   @default(ASSISTED)
+  createdAt DateTime      @default(now())
+
+  client  Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  targets IdeaTarget[]
+
+  @@unique([clientId, network])
+  @@index([clientId])
+}
+
+/**
+ * A qué redes sale una pieza. `publishedAt` se marca por red, porque una pieza
+ * puede haber salido ya en Instagram y seguir pendiente en TikTok.
+ */
+model IdeaTarget {
+  ideaId      String
+  accountId   String
+  publishedAt DateTime?
+
+  idea    ContentIdea   @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  account ClientAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([ideaId, accountId])
+  @@index([accountId])
 }
 
 model Planning {
@@ -249,7 +313,12 @@ model ContentIdea {
   status          IdeaStatus   @default(IDEA)
   priority        Priority     @default(MEDIUM)
   order           Int          @default(0)
+  /// El día en que sale. El calendario del mes se arma con esto.
   dueDate         DateTime?
+  /// La hora del reloj, "09:00". Aparte de la fecha a propósito: el día es un
+  /// día de calendario y la hora es hora local, así ninguna zona horaria puede
+  /// correr una publicación al día anterior.
+  publishTime     String       @default("")
   createdAt       DateTime     @default(now())
 
   planning Planning      @relation(fields: [planningId], references: [id], onDelete: Cascade)
@@ -258,6 +327,7 @@ model ContentIdea {
   contentIdeaTags ContentIdeaTag[]
   comments Comment[]
   images ContentIdeaImage[]
+  targets IdeaTarget[]
   storyboard Storyboard? @relation(fields: [storyboardId], references: [id])
   storyboardId String?
 
