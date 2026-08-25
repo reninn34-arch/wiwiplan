@@ -21,11 +21,19 @@ function ensureConfigured(): boolean {
   const privateKey = process.env.VAPID_PRIVATE_KEY
   if (!publicKey || !privateKey) return false
 
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "mailto:soporte@wiwiplan.app",
-    publicKey,
-    privateKey,
-  )
+  // El "subject" es el contacto que el servicio de push usa para avisarte si
+  // tus envíos causan problemas. Sin él sigue funcionando, pero si algún día
+  // Google o Apple necesitan escribirte, no tienen a dónde: prefieren bloquear
+  // a un remitente que no responde. Por eso el respaldo avisa en vez de callar.
+  const subject = process.env.VAPID_SUBJECT
+  if (!subject) {
+    console.warn(
+      "[push] VAPID_SUBJECT no está configurado: se usa un contacto de relleno. " +
+        "Pon tu correo como mailto:tu@correo.com para que el servicio de push pueda avisarte.",
+    )
+  }
+
+  webpush.setVapidDetails(subject || "mailto:sin-configurar@example.com", publicKey, privateKey)
   configured = true
   return true
 }
