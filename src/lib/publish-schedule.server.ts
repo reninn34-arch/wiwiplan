@@ -4,11 +4,11 @@ import { Client } from "@upstash/qstash"
 /**
  * La cita exacta de cada pieza.
  *
- * El reloj de 15 minutos (GitHub Actions) garantiza que ningún aviso llegue
- * con más de ese margen de retraso, pero "toca publicar a las 9:00" sonaba
- * 9:07. Para la hora justa, cada vez que se programa una pieza se agenda en
- * QStash un mensaje que despierta el barrido justo a esa hora; los relojes
- * periódicos quedan como red de seguridad por si un mensaje se pierde.
+ * Los relojes periódicos garantizan que ningún aviso se pierda, pero llegan
+ * cuando les toca a ellos: "toca publicar a las 9:00" sonaba 9:07. Para la hora
+ * justa, cada vez que se programa una pieza se agenda en QStash un mensaje que
+ * despierta el barrido exactamente a esa hora; los periódicos quedan como red
+ * de seguridad por si un mensaje se pierde.
  *
  * Va en archivo aparte porque es otra responsabilidad: este decide CUÁNDO
  * despertar; `publish-reminders.server.ts` decide A QUIÉN avisar.
@@ -52,8 +52,8 @@ export async function schedulePublishSweep(atUtc: Date): Promise<void> {
     await client.publishJSON({
       url: `${appUrl()}/api/publish-reminders/run`,
       notBefore,
-      // Reintenta poco a propósito: si el despertar falla, igual lo agarra el
-      // ping de 15 minutos, y cada barrido es idempotente (`notifiedAt`).
+      // Reintenta poco a propósito: si el despertar falla, igual lo agarran
+      // los relojes periódicos, y cada barrido es idempotente (`notifiedAt`).
       retries: 2,
       timeout: 30,
     })

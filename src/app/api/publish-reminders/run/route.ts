@@ -3,16 +3,19 @@ import { auth } from "@/lib/auth"
 import { runPublishReminders } from "@/lib/publish-reminders.server"
 
 /**
- * Barrido de avisos de publicación. Lo disparan el ping externo cada 15
- * minutos, el cron diario de Vercel como red de seguridad, o un usuario
- * logueado desde el botón "Revisar ahora" de la agenda.
+ * Barrido de avisos de publicación. Lo despiertan la cita exacta de QStash
+ * —agendada pieza por pieza—, el cron diario de Vercel y el reloj interno del
+ * proceso como redes de seguridad, o un usuario logueado desde el botón
+ * "Revisar ahora" de la agenda.
  *
  * Va abierto a propósito, y no es un descuido: el push sólo llega a los
  * dispositivos del dueño de cada pieza, y repetir el barrido es idempotente —
- * `notifiedAt` impide dobles avisos—. Pedir un secreto acá obligaba a cargarlo
- * también en el repositorio de GitHub para el ping externo, y sin eso el reloj
- * se caía en silencio. Lo único que un secreto evitaría es que alguien repita
- * una consulta barata; ese costo no justifica la configuración extra.
+ * `notifiedAt` impide dobles avisos—. Lo único que un secreto evitaría es que
+ * alguien repita una consulta barata.
+ *
+ * Si algún día conviene cerrarlo, QStash firma sus entregas y `Receiver` del
+ * mismo paquete valida la firma sin tener que repartir secretos por ningún
+ * lado: es la puerta que dejó abierta quitar el ping de GitHub.
  */
 export async function GET() {
   return sweep()

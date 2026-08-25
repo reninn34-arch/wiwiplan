@@ -12,8 +12,8 @@ import { runPublishReminders } from "@/lib/publish-reminders.server"
  * No funciona en Vercel, y no por cómo esté escrito: las funciones sin servidor
  * se prenden con cada petición y se apagan al responder, así que entre una y
  * otra no queda nada corriendo que pueda contar el tiempo. Por eso se apaga
- * solo ahí y el reloj lo pone GitHub Actions. El código de los avisos es el
- * mismo en los dos casos; lo único que cambia es quién toca el timbre.
+ * solo ahí y el timbre lo toca QStash. El código de los avisos es el mismo en
+ * los dos casos; lo único que cambia es quién despierta al barrido.
  */
 
 const INTERVAL_MS = 60_000

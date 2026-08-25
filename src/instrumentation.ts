@@ -8,8 +8,8 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return
 
   // En Vercel cada petición prende y apaga una función: no hay proceso que
-  // pueda contar el tiempo, así que el intervalo no serviría de nada y el reloj
-  // lo pone GitHub Actions.
+  // pueda contar el tiempo, así que el intervalo no serviría de nada. Allí la
+  // hora justa la pone la cita de QStash, con el cron diario como respaldo.
   if (process.env.VERCEL) return
 
   // Durante `next build` no hay servidor que atender.

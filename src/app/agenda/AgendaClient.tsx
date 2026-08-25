@@ -63,10 +63,10 @@ export function AgendaClient({ pieces }: Props) {
   /**
    * Con la agenda abierta se revisa sola, al entrar y cada cinco minutos.
    *
-   * En producción el reloj es el ping externo, pero en desarrollo no corre
-   * ninguno: sin esto uno programa una hora, espera, y no pasa nada nunca, sin
-   * ninguna pista de por qué. Y aun con el ping andando, esto tapa el hueco de
-   * que el ping se caiga justo cuando estás mirando la pantalla.
+   * En producción la hora justa la pone la cita de QStash, pero esto tapa el
+   * hueco de que una cita se pierda justo cuando estás mirando la pantalla, y
+   * en desarrollo sirve para no quedarse esperando un aviso que nadie va a
+   * disparar.
    */
   useEffect(() => {
     let cancelled = false
