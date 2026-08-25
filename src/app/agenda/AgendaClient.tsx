@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, CalendarClock, Check } from "lucide-react"
@@ -30,30 +30,57 @@ export function AgendaClient({ pieces }: Props) {
   const [checking, setChecking] = useState(false)
 
   /**
-   * Dispara el barrido a mano. En producción lo hace el cron cada 15 minutos,
-   * pero en desarrollo no corre ninguno: sin este botón no hay forma de probar
-   * que el aviso sale, y "no me llegó nada" queda sin explicación.
+   * Dispara el barrido. `silent` es la revisión automática de la agenda abierta;
+   * con voz es el botón, que además confirma cuando no había nada que avisar.
    */
-  const checkNow = async () => {
-    setChecking(true)
+  const runSweep = useCallback(async (silent: boolean) => {
     try {
       const res = await fetch("/api/publish-reminders/run")
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(data.error ?? "No se pudo revisar")
+        if (!silent) toast.error(data.error ?? "No se pudo revisar")
         return
       }
-      toast.success(
-        data.notified > 0
-          ? `Avisamos de ${data.notified} ${data.notified === 1 ? "pieza" : "piezas"}.`
-          : "Revisado: por ahora no hay ninguna que ya haya llegado a su hora.",
-      )
+      if (data.notified > 0) {
+        toast.success(
+          `Avisamos de ${data.notified} ${data.notified === 1 ? "pieza" : "piezas"}.`,
+        )
+        router.refresh()
+      } else if (!silent) {
+        toast.success("Revisado: por ahora no hay ninguna que ya haya llegado a su hora.")
+      }
     } catch {
-      toast.error("No se pudo revisar")
-    } finally {
-      setChecking(false)
+      if (!silent) toast.error("No se pudo revisar")
     }
+  }, [router])
+
+  const checkNow = async () => {
+    setChecking(true)
+    await runSweep(false)
+    setChecking(false)
   }
+
+  /**
+   * Con la agenda abierta se revisa sola, al entrar y cada cinco minutos.
+   *
+   * En producción el reloj es el ping externo, pero en desarrollo no corre
+   * ninguno: sin esto uno programa una hora, espera, y no pasa nada nunca, sin
+   * ninguna pista de por qué. Y aun con el ping andando, esto tapa el hueco de
+   * que el ping se caiga justo cuando estás mirando la pantalla.
+   */
+  useEffect(() => {
+    let cancelled = false
+    const tick = () => {
+      if (!cancelled && document.visibilityState === "visible") void runSweep(true)
+    }
+    const first = setTimeout(tick, 1500)
+    const timer = setInterval(tick, 5 * 60 * 1000)
+    return () => {
+      cancelled = true
+      clearTimeout(first)
+      clearInterval(timer)
+    }
+  }, [runSweep])
 
   const today = useMemo(() => todayKey(), [])
   const visible = useMemo(
