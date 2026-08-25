@@ -40,7 +40,10 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
     include: {
       contentIdeas: {
         orderBy: { order: "asc" },
-        include: { contentIdeaTags: { select: { tagId: true } } },
+        include: {
+          contentIdeaTags: { select: { tagId: true } },
+          targets: { select: { accountId: true } },
+        },
       },
       installments: { orderBy: { dueDate: "asc" } },
       items: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
@@ -94,6 +97,10 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
         })
       }
 
+      // Las redes elegidas sólo viajan si el mes nuevo es del mismo cliente:
+      // apuntar a la cuenta de otro cliente publicaría en el perfil equivocado.
+      const sameClient = clientId !== null && clientId === source.clientId
+
       let ideas = 0
       if (selection.ideas) {
         for (const idea of source.contentIdeas) {
@@ -110,11 +117,17 @@ export async function createPlanningFromTemplate(params: CloneParams): Promise<C
               referenceEmbed: idea.referenceEmbed,
               priority: idea.priority,
               order: idea.order,
-              // Estado y entrega arrancan de cero: la idea se vuelve a trabajar.
+              // Estado arranca de cero: la idea se vuelve a trabajar. El día se
+              // corre al mes destino y la hora se conserva, porque la cadencia
+              // —"los martes a las 9"— es justamente lo que se está copiando.
               dueDate: idea.dueDate ? moveToPeriod(idea.dueDate, period) : null,
+              publishTime: idea.publishTime,
               contentIdeaTags: {
                 create: idea.contentIdeaTags.map((t) => ({ tagId: t.tagId })),
               },
+              ...(sameClient && idea.targets.length > 0
+                ? { targets: { create: idea.targets.map((t) => ({ accountId: t.accountId })) } }
+                : {}),
             },
           })
           ideas += 1

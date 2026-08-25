@@ -96,7 +96,12 @@ interface PlanningData {
   costs: Array<{ id: string; label: string; amountCents: number; category: string; billable: boolean; order: number }>
   createdAt: string
   updatedAt: string
-  client: { id: string; name: string; email: string } | null
+  client: {
+    id: string
+    name: string
+    email: string
+    accounts: Array<{ id: string; network: string; handle: string; mode: string }>
+  } | null
   contentIdeas: Array<{
     id: string
     title: string
@@ -110,6 +115,8 @@ interface PlanningData {
     priority: string
     order: number
     dueDate: string | null
+    publishTime: string
+    targets: Array<{ accountId: string; publishedAt: string | null }>
     storyboardId: string | null
     storyboard: { id: string; title: string } | null
     contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
@@ -427,13 +434,21 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             planningId={planning.id}
             period={planning.period}
             ideas={planning.contentIdeas}
+            accounts={planning.client?.accounts ?? []}
             onChange={(next) =>
               // Se recomponen las ideas completas: el calendario sólo conoce
-              // las cuatro columnas que dibuja, no la idea entera.
+              // las columnas que dibuja, no la idea entera.
               updatePlanning({
                 contentIdeas: planning.contentIdeas.map((idea) => {
                   const moved = next.find((n) => n.id === idea.id)
-                  return moved ? { ...idea, dueDate: moved.dueDate } : idea
+                  return moved
+                    ? {
+                        ...idea,
+                        dueDate: moved.dueDate,
+                        publishTime: moved.publishTime,
+                        targets: moved.targets,
+                      }
+                    : idea
                 }),
               })
             }

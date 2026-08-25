@@ -253,7 +253,12 @@ interface Idea {
   status: string
   priority: string
   order: number
+  /** El día en que sale. */
   dueDate: string | null
+  /** La hora del reloj, "09:00". Vacío quiere decir que aún no tiene hora. */
+  publishTime: string
+  /** A qué redes del cliente sale, y si ya salió en cada una. */
+  targets: Array<{ accountId: string; publishedAt: string | null }>
   storyboardId: string | null
   storyboard: { id: string; title: string } | null
   contentIdeaTags: { tag: TagItem }[]

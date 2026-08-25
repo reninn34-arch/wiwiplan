@@ -16,13 +16,24 @@ export default async function PlanningDetailPage({ params }: Props) {
   const planning = await prisma.planning.findFirst({
     where: { id, userId: session.user.id },
     include: {
-      client: { select: { id: true, name: true, email: true } },
+      client: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          accounts: {
+            orderBy: { createdAt: "asc" },
+            select: { id: true, network: true, handle: true, mode: true },
+          },
+        },
+      },
       contentIdeas: {
         orderBy: { order: "asc" },
         include: {
           contentIdeaTags: { include: { tag: true } },
           comments: { orderBy: { createdAt: "asc" } },
           images: { orderBy: { order: "asc" }, select: { id: true, order: true } },
+          targets: { select: { accountId: true, publishedAt: true } },
           storyboard: true,
         },
       },
@@ -57,6 +68,10 @@ export default async function PlanningDetailPage({ params }: Props) {
       ...i,
       dueDate: i.dueDate?.toISOString() ?? null,
       createdAt: i.createdAt.toISOString(),
+      targets: i.targets.map((t) => ({
+        accountId: t.accountId,
+        publishedAt: t.publishedAt?.toISOString() ?? null,
+      })),
       comments: i.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
     })),
     shareLinks: planning.shareLinks.map((l) => ({

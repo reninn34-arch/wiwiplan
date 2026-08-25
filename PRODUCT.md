@@ -58,6 +58,7 @@ Las cuatro apuestas donde tiene que ganarle a Notion, confirmadas por el usuario
 - Todo el contenido de la interfaz está en **español latino** (tuteo ecuatoriano: "Agrega", "Carga", "Tócalo").
 - Datos por usuario: cada consulta filtra por `userId`. No hay compartición entre cuentas.
 - **Decisión abierta:** el nombre "WiwiPlan" puede cambiar; el usuario lo dejó libre. Ningún trabajo debe asumir un nombre nuevo sin confirmarlo con él.
+- Tocar una pieza en el calendario abre **cuándo y dónde sale**: la hora (con atajos a las horas típicas) y en qué redes del cliente. Vive ahí y no en un formulario aparte, porque es mirando el calendario cuando uno piensa "esto sale el martes". Las fichas muestran la hora y un punto del color de cada red.
 - La pestaña **Calendario** muestra el mes como rejilla de publicaciones: las piezas se arrastran a un día (o se tocan y luego se toca el día, que es lo que funciona en el celular), se ven los huecos —días sin nada— y los choques —dos piezas el mismo día—. Las fechas de entrega son **fechas de calendario**, no instantes: se leen por sus componentes UTC para que no se corran un día.
 
 ## Brand Commitments
