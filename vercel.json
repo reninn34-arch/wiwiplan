@@ -3,6 +3,10 @@
     {
       "path": "/api/reminders/run",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/publish-reminders/run",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

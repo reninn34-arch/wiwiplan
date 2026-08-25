@@ -49,6 +49,9 @@ Las cuatro apuestas donde tiene que ganarle a Notion, confirmadas por el usuario
 - El día y la hora de publicación viven separados a propósito: `dueDate` es un día de calendario y `publishTime` es hora de reloj (`"09:00"`), así ninguna zona horaria corre una publicación al día anterior.
 - En pantalla nunca aparece el vocabulario interno: se lee "Te avisamos" y "Sale sola", y la frase completa es "Sábado 15 de agosto a las 9:00 am".
 - La **agenda** (`/agenda`) cruza todos los clientes y responde "¿qué me toca hoy?", que con seis clientes en paralelo no se contesta abriendo seis meses. Agrupa en Se pasaron / Hoy / Mañana / Esta semana / Más adelante / Sin fecha. Una pieza cuyo día pasó sólo aparece como atrasada si **no** salió en todas sus redes.
+- **Avisos de publicación**: cuando llega la hora de una pieza que todavía no salió, llega un aviso push al teléfono. Se activan por dispositivo desde la agenda —el permiso lo da el navegador, no la app—, y en iPhone sólo existen con la app instalada en la pantalla de inicio, cosa que la pantalla dice en vez de dejar que alguien lo descubra tocando.
+- El barrido avisa una sola vez por pieza (`notifiedAt`) y nunca de algo atrasado más de 12 horas: despertar a alguien por una publicación de hace tres semanas no ayuda. Sólo marca como avisada si algún dispositivo la recibió, para reintentar si no había ninguno conectado.
+- Ecuador es UTC-5 sin horario de verano, así que el instante real de publicación se calcula con un desplazamiento fijo (`APP_UTC_OFFSET_HOURS`). Si algún día hay clientes en otra zona, eso pasa a ser un dato del usuario.
 - Las notificaciones avisan al creador cuando el cliente comenta o aprueba.
 - **Pendiente y deliberado:** el recordatorio automático de saldo sólo se dispara si el plan tiene cuotas cargadas y vencidas. Ampliarlo haría salir cobranza automática a clientes reales sin que el usuario la revise, así que es una decisión suya, no un arreglo técnico.
 

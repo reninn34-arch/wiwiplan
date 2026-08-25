@@ -124,6 +124,7 @@ model User {
   storyboards  Storyboard[]
   tags         Tag[]
   notifications Notification[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Client {
@@ -319,6 +320,9 @@ model ContentIdea {
   /// día de calendario y la hora es hora local, así ninguna zona horaria puede
   /// correr una publicación al día anterior.
   publishTime     String       @default("")
+  /// Cuándo se avisó que llegaba su hora. Existe para que el barrido no vuelva
+  /// a avisar de lo mismo cada vez que corre.
+  notifiedAt      DateTime?
   createdAt       DateTime     @default(now())
 
   planning Planning      @relation(fields: [planningId], references: [id], onDelete: Cascade)
@@ -405,6 +409,29 @@ model StoryboardPanel {
   storyboard Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
 
   @@index([storyboardId])
+}
+
+/**
+ * Un dispositivo al que avisar. Se guarda una fila por navegador que dio
+ * permiso: el mismo usuario en el teléfono y en la computadora son dos.
+ *
+ * El `endpoint` lo emite el navegador y es la dirección a la que se manda el
+ * aviso; cuando el navegador lo revoca, el envío responde 404 o 410 y la fila
+ * se borra sola.
+ */
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  /// Para que la persona reconozca cuál es cuál al desconectarlos.
+  label     String   @default("")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Notification {

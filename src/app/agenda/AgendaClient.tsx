@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, CalendarClock, Check } from "lucide-react"
 import { GlobalSearch } from "@/components/GlobalSearch"
 import { NotificationBell } from "@/components/NotificationBell"
+import { PushToggle } from "@/components/PushToggle"
 import { buildAgenda, bucketHints, bucketLabels, isFullyPublished, type AgendaPiece } from "@/lib/agenda"
 import { todayKey } from "@/lib/calendar"
 import { formatTime, networkColors, networkLabels, type SocialNetwork } from "@/lib/social"
@@ -71,6 +72,10 @@ export function AgendaClient({ pieces }: Props) {
               {showDone ? "Ocultar publicadas" : `Ver publicadas (${doneCount})`}
             </button>
           )}
+        </div>
+
+        <div className="mb-5">
+          <PushToggle />
         </div>
 
         {groups.length === 0 ? (

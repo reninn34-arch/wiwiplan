@@ -55,3 +55,50 @@ self.addEventListener("fetch", (e) => {
     })(),
   )
 })
+
+/**
+ * Avisos de publicación. Llegan aunque la app esté cerrada; al tocarlos, si ya
+ * hay una ventana abierta se reusa en vez de abrir otra, que es lo que espera
+ * cualquiera que tenga la app en la pantalla de inicio.
+ */
+self.addEventListener("push", (event) => {
+  let payload = {}
+  try {
+    payload = event.data ? event.data.json() : {}
+  } catch {
+    payload = {}
+  }
+
+  const title = payload.title || "Toca publicar"
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: payload.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: payload.tag || "wiwiplan-publicar",
+      // Sin esto, dos avisos con la misma etiqueta se reemplazan en silencio y
+      // el segundo pasa desapercibido.
+      renotify: Boolean(payload.tag),
+      data: { url: payload.url || "/agenda" },
+    }),
+  )
+})
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || "/agenda"
+
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      for (const client of all) {
+        if (client.url.includes(self.location.origin)) {
+          await client.focus()
+          if ("navigate" in client) await client.navigate(target)
+          return
+        }
+      }
+      await self.clients.openWindow(target)
+    })(),
+  )
+})

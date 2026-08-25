@@ -151,3 +151,26 @@ export function joinWithY(values: string[]): string {
   if (values.length === 1) return values[0]
   return `${values.slice(0, -1).join(", ")} y ${values[values.length - 1]}`
 }
+
+/**
+ * Ecuador está en UTC-5 todo el año, sin horario de verano. Por eso alcanza con
+ * un desplazamiento fijo: "las 9 del martes" siempre son las 14:00 UTC de ese
+ * martes. Si alguna vez hay clientes en otra zona, esto pasa a ser un dato del
+ * usuario en vez de una constante.
+ */
+export const APP_UTC_OFFSET_HOURS = -5
+
+/**
+ * El instante real en que toca publicar, a partir del día de calendario y la
+ * hora de reloj. `null` si falta alguno de los dos: sin día o sin hora no hay
+ * momento al que avisar.
+ */
+export function publishMomentUtc(dueDate: string | null, publishTime: string): Date | null {
+  const key = dayKeyOf(dueDate)
+  if (!key || !isValidTime(publishTime)) return null
+
+  const [year, month, day] = key.split("-").map(Number)
+  const [hours, minutes] = publishTime.trim().split(":").map(Number)
+
+  return new Date(Date.UTC(year, month - 1, day, hours - APP_UTC_OFFSET_HOURS, minutes))
+}
