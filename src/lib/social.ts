@@ -70,14 +70,37 @@ export function isValidTime(value: string): boolean {
   return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
 }
 
-/** `"09:00"` → `"9:00 am"`. Se lee más rápido que el formato de 24 horas. */
+/**
+ * `"00:58"` → `"00:58"`. El reloj tal cual se escribió, para las columnas y las
+ * fichas donde el espacio manda.
+ *
+ * Antes acá había formato de 12 horas y `00:58` se leía `12:58 am`: correcto,
+ * pero uno escribe una cosa y lee otra, y a medianoche eso confunde de verdad.
+ * En los lugares apretados gana coincidir con lo que se tecleó.
+ */
 export function formatTime(value: string): string {
   if (!isValidTime(value)) return ""
   const [rawHours, minutes] = value.trim().split(":")
+  return `${rawHours.padStart(2, "0")}:${minutes}`
+}
+
+/**
+ * `"00:58"` → `"12:58 de la madrugada"`. Como se dice en voz alta, para la
+ * frase que la persona lee para verificar. El momento del día es lo que quita
+ * toda duda: nadie confunde "de la madrugada" con "de la tarde".
+ */
+export function formatTimeSpoken(value: string): string {
+  if (!isValidTime(value)) return ""
+  const [rawHours, minutes] = value.trim().split(":")
   const hours = Number(rawHours)
-  const suffix = hours < 12 ? "am" : "pm"
+
+  if (hours === 0 && minutes === "00") return "medianoche"
+  if (hours === 12 && minutes === "00") return "mediodía"
+
+  const moment =
+    hours < 6 ? "de la madrugada" : hours < 12 ? "de la mañana" : hours < 19 ? "de la tarde" : "de la noche"
   const display = hours % 12 === 0 ? 12 : hours % 12
-  return `${display}:${minutes} ${suffix}`
+  return `${display}:${minutes} ${moment}`
 }
 
 export interface PublicationSummary {
@@ -102,11 +125,11 @@ export function describePublication(
   networks: string[],
 ): PublicationSummary {
   const key = dayKeyOf(dueDate)
-  const time = formatTime(publishTime)
+  const spoken = formatTimeSpoken(publishTime)
 
   const missing: string[] = []
   if (!key) missing.push("el día")
-  if (!time) missing.push("la hora")
+  if (!spoken) missing.push("la hora")
   if (networks.length === 0) missing.push("dónde sale")
 
   if (!key) {
@@ -117,7 +140,10 @@ export function describePublication(
   const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()].toLowerCase()
 
   let sentence = `Sale el ${weekday} ${day} de ${MONTHS[month - 1]}`
-  if (time) sentence += ` a las ${time}`
+  // "a las medianoche" no se dice; "a medianoche" y "al mediodía", sí.
+  if (spoken === "medianoche") sentence += " a medianoche"
+  else if (spoken === "mediodía") sentence += " al mediodía"
+  else if (spoken) sentence += ` a las ${spoken}`
   if (networks.length > 0) sentence += ` en ${joinWithY(networks)}`
 
   return { sentence, missing, ready: missing.length === 0 }
