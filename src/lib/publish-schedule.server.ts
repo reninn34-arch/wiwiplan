@@ -1,5 +1,6 @@
 import "server-only"
 import { Client } from "@upstash/qstash"
+import { publicAppUrl } from "@/lib/app-url"
 
 /**
  * La cita exacta de cada pieza.
@@ -16,11 +17,7 @@ import { Client } from "@upstash/qstash"
 
 /** URL pública de la app: es a donde QStash tiene que poder llamar. */
 function appUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  }
-  return "https://wiwiplan.vercel.app"
+  return publicAppUrl() ?? "https://wiwiplan.vercel.app"
 }
 
 /**

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { publicAppUrl } from "@/lib/app-url"
 import {
   MEDIA_ALLOWED_TYPES,
   MEDIA_MAX_VIDEO_BYTES,
@@ -48,12 +49,19 @@ export async function POST(request: NextRequest) {
           throw new Error("Esa pieza no es tuya")
         }
 
+        // El almacenamiento avisa cuando termina, pero sólo si puede
+        // alcanzarnos: contra localhost no hay a dónde llamar. Se manda la URL
+        // sólo cuando existe una pública; si no, el registro queda en manos de
+        // la confirmación del navegador, que funciona en los dos casos.
+        const base = publicAppUrl()
+
         return {
           allowedContentTypes: MEDIA_ALLOWED_TYPES,
           // El tope fino por tipo se aplica al registrar: acá sólo se corta lo
           // absurdo, porque el tipo real no se conoce hasta que sube.
           maximumSizeInBytes: MEDIA_MAX_VIDEO_BYTES,
           addRandomSuffix: true,
+          ...(base ? { callbackUrl: `${base}/api/media/upload` } : {}),
           tokenPayload: JSON.stringify({ ideaId }),
         }
       },

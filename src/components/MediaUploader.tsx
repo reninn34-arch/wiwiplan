@@ -80,12 +80,12 @@ export function MediaUploader({ ideaId, media, onChange }: Props) {
       onChange([...media, (await res.json()) as MediaAssetRow])
       toast.success("Archivo listo para publicar.")
     } catch (error) {
-      console.error(error)
-      toast.error(
-        error instanceof Error && error.message.includes("BLOB_READ_WRITE_TOKEN")
-          ? "Falta configurar el almacenamiento en el servidor"
-          : "No se pudo subir el archivo",
-      )
+      // El mensaje real y no uno genérico: "no se pudo subir" no distingue
+      // entre falta de token, tipo rechazado, archivo enorme o red caída, y
+      // sin esa diferencia no hay forma de arreglar nada.
+      console.error("[media] Falló la subida:", error)
+      const detail = error instanceof Error ? error.message : ""
+      toast.error(detail ? `No se pudo subir: ${detail}` : "No se pudo subir el archivo")
     } finally {
       setProgress(null)
     }
