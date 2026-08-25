@@ -1,4 +1,4 @@
-const CACHE = "wiwiplan-v2"
+const CACHE = "wiwiplan-v3"
 
 self.addEventListener("install", () => {
   self.skipWaiting()
