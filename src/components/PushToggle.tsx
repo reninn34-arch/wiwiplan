@@ -112,6 +112,28 @@ export function PushToggle() {
     }
   }
 
+  /**
+   * Prueba inmediata. "Activé los avisos y no llegó nada" tiene tres causas
+   * posibles —el permiso, las llaves del servidor, o que nada haya llegado a su
+   * hora todavía— y sin este botón no hay forma de distinguirlas.
+   */
+  const sendTest = async () => {
+    setBusy(true)
+    try {
+      const res = await fetch("/api/push/test", { method: "POST" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error ?? "No se pudo enviar la prueba")
+        return
+      }
+      toast.success("Enviado. Debería llegarte en un segundo.")
+    } catch {
+      toast.error("No se pudo enviar la prueba")
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const turnOff = async () => {
     setBusy(true)
     try {
@@ -196,18 +218,30 @@ export function PushToggle() {
               : "Actívalos y te avisamos en este dispositivo cuando toque publicar."}
           </span>
         </p>
-        <button
-          type="button"
-          onClick={on ? turnOff : turnOn}
-          disabled={busy}
-          className={`shrink-0 rounded-md px-3 py-2 text-xs transition-colors disabled:opacity-50 ${
-            on
-              ? "text-zinc-400 ring-1 ring-inset ring-white/10 hover:text-zinc-200"
-              : "bg-brand text-white hover:bg-[#d0424a]"
-          }`}
-        >
-          {busy ? "Un momento…" : on ? "Desactivar" : "Activar avisos"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {on && (
+            <button
+              type="button"
+              onClick={sendTest}
+              disabled={busy}
+              className="rounded-md px-3 py-2 text-xs text-zinc-300 ring-1 ring-inset ring-white/15 transition-colors hover:text-white disabled:opacity-50"
+            >
+              Probar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={on ? turnOff : turnOn}
+            disabled={busy}
+            className={`rounded-md px-3 py-2 text-xs transition-colors disabled:opacity-50 ${
+              on
+                ? "text-zinc-500 ring-1 ring-inset ring-white/10 hover:text-zinc-300"
+                : "bg-brand text-white hover:bg-[#d0424a]"
+            }`}
+          >
+            {busy ? "Un momento…" : on ? "Desactivar" : "Activar avisos"}
+          </button>
+        </div>
       </div>
     </div>
   )

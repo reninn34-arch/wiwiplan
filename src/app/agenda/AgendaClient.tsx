@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, CalendarClock, Check } from "lucide-react"
 import { GlobalSearch } from "@/components/GlobalSearch"
@@ -26,6 +27,33 @@ const bucketTone: Record<string, string> = {
 export function AgendaClient({ pieces }: Props) {
   const router = useRouter()
   const [showDone, setShowDone] = useState(false)
+  const [checking, setChecking] = useState(false)
+
+  /**
+   * Dispara el barrido a mano. En producción lo hace el cron cada 15 minutos,
+   * pero en desarrollo no corre ninguno: sin este botón no hay forma de probar
+   * que el aviso sale, y "no me llegó nada" queda sin explicación.
+   */
+  const checkNow = async () => {
+    setChecking(true)
+    try {
+      const res = await fetch("/api/publish-reminders/run")
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error ?? "No se pudo revisar")
+        return
+      }
+      toast.success(
+        data.notified > 0
+          ? `Avisamos de ${data.notified} ${data.notified === 1 ? "pieza" : "piezas"}.`
+          : "Revisado: por ahora no hay ninguna que ya haya llegado a su hora.",
+      )
+    } catch {
+      toast.error("No se pudo revisar")
+    } finally {
+      setChecking(false)
+    }
+  }
 
   const today = useMemo(() => todayKey(), [])
   const visible = useMemo(
@@ -74,8 +102,16 @@ export function AgendaClient({ pieces }: Props) {
           )}
         </div>
 
-        <div className="mb-5">
+        <div className="mb-5 space-y-2">
           <PushToggle />
+          <button
+            type="button"
+            onClick={checkNow}
+            disabled={checking}
+            className="text-xs text-zinc-500 underline underline-offset-2 transition-colors hover:text-zinc-300 disabled:opacity-50"
+          >
+            {checking ? "Revisando…" : "Revisar ahora si toca avisar de algo"}
+          </button>
         </div>
 
         {groups.length === 0 ? (
