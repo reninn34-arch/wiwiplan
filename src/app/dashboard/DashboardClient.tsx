@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera, Settings } from "lucide-react"
+import { Plus, LogOut, Lightbulb, Layout, MessageSquare, Calendar, ArrowUp, ChevronRight, ChevronDown, Building2, Camera, Settings, CalendarClock } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { ClientLogo } from "@/components/ClientLogo"
@@ -398,6 +398,15 @@ export function DashboardClient({ plannings: initial, clients: initialClients, p
             <span className="sm:hidden">Cliente</span>
           </Button>
           <GlobalSearch />
+          <button
+            type="button"
+            onClick={() => router.push("/agenda")}
+            aria-label="Ver la agenda"
+            title="Qué sale y cuándo"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <CalendarClock className="h-4 w-4" />
+          </button>
           <NotificationBell />
           <Link
             href="/settings"
