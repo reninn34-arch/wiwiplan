@@ -21,16 +21,25 @@ export async function PUT(
     const { id, accountId } = await params
     const body = await request.json()
 
-    // El modo automático exige una cuenta Business conectada por OAuth, que
-    // todavía no existe. Aceptarlo acá dejaría publicaciones que nunca salen.
     if (body?.mode !== undefined && !isPublishMode(body.mode)) {
       return NextResponse.json({ error: "Ese modo no existe" }, { status: 400 })
     }
+
+    // El modo automático sólo se acepta con la cuenta realmente conectada. La
+    // comprobación se quedó desde antes de que existiera el publicador, y sigue
+    // valiendo por otra razón: prometer que algo sale solo cuando no hay token
+    // deja publicaciones que nunca salen y nadie sabe por qué.
     if (body?.mode === "AUTOMATIC") {
-      return NextResponse.json(
-        { error: "Todavía no se puede publicar solo: falta conectar la cuenta" },
-        { status: 400 },
-      )
+      const conectada = await prisma.clientAccount.findFirst({
+        where: { ...ownedWhere(accountId, id, session.user.id), NOT: { externalId: null } },
+        select: { accessToken: true },
+      })
+      if (!conectada?.accessToken) {
+        return NextResponse.json(
+          { error: "Conecta la cuenta antes de ponerla en automático" },
+          { status: 400 },
+        )
+      }
     }
 
     const updated = await prisma.clientAccount.updateMany({

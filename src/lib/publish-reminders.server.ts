@@ -1,6 +1,7 @@
 import "server-only"
 import { prisma } from "@/lib/prisma"
 import { pushConfigured, pushToUser } from "@/lib/push.server"
+import { publishTarget } from "@/lib/auto-publish.server"
 import {
   describePublication,
   networkLabels,
@@ -25,6 +26,10 @@ import {
 const MAX_LATE_HOURS = 12
 
 export interface PublishReminderOutcome {
+  /** Salieron solas, por el carril automático. */
+  published: number
+  /** Meta todavía las está procesando; se retoman en la corrida siguiente. */
+  processing: number
   notified: number
   /** Encontradas, pero su hora todavía no llegó o quedó muy atrás. */
   notDue: number
@@ -37,7 +42,14 @@ export interface PublishReminderOutcome {
 
 export async function runPublishReminders(userId?: string): Promise<PublishReminderOutcome> {
   const now = new Date()
-  const outcome: PublishReminderOutcome = { notified: 0, notDue: 0, noDevices: 0, errors: 0 }
+  const outcome: PublishReminderOutcome = {
+    published: 0,
+    processing: 0,
+    notified: 0,
+    notDue: 0,
+    noDevices: 0,
+    errors: 0,
+  }
 
   // Sin llaves no hay envío posible, y callarlo deja un "no pasó nada" sin
   // explicación. Mejor decirlo antes de recorrer nada.
@@ -70,7 +82,12 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
       planning: { select: { userId: true, client: { select: { name: true } } } },
       targets: {
         where: { publishedAt: null },
-        select: { account: { select: { network: true } } },
+        select: {
+          accountId: true,
+          containerId: true,
+          attempts: true,
+          account: { select: { network: true, mode: true, externalId: true } },
+        },
       },
     },
   })
@@ -88,7 +105,41 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
       continue
     }
 
-    const networks = idea.targets.map(
+    // Primero lo que sale solo. Lo que no se pueda publicar cae al aviso, que
+    // es la red de seguridad: una publicación que no salió y nadie avisó es
+    // peor que no haberla prometido automática.
+    const pendientes: typeof idea.targets = []
+    for (const target of idea.targets) {
+      const automatica = target.account.mode === "AUTOMATIC" && target.account.externalId
+      if (!automatica) {
+        pendientes.push(target)
+        continue
+      }
+
+      const resultado = await publishTarget({
+        ideaId: idea.id,
+        accountId: target.accountId,
+        containerId: target.containerId,
+        attempts: target.attempts,
+      })
+
+      if (resultado === "published") outcome.published += 1
+      else if (resultado === "processing") outcome.processing += 1
+      else pendientes.push(target)
+    }
+
+    // Todo salió solo: no hay nada que avisar.
+    if (pendientes.length === 0) {
+      if (outcome.processing === 0) {
+        await prisma.contentIdea.update({
+          where: { id: idea.id },
+          data: { notifiedAt: now },
+        })
+      }
+      continue
+    }
+
+    const networks = pendientes.map(
       (t) => networkLabels[t.account.network as SocialNetwork] ?? t.account.network,
     )
     const summary = describePublication(

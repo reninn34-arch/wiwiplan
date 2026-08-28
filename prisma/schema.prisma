@@ -200,6 +200,18 @@ model IdeaTarget {
   accountId   String
   publishedAt DateTime?
 
+  // ── Estado de la publicación automática ──
+  /// Id del contenedor en Meta mientras procesa. Un reel no se publica de una:
+  /// se crea el contenedor, Meta lo procesa, y recién ahí se publica. Guardarlo
+  /// permite retomar en la siguiente corrida si la función se queda sin tiempo.
+  containerId   String?
+  /// Id de la publicación ya creada en la red.
+  externalPostId String?
+  attempts      Int       @default(0)
+  attemptedAt   DateTime?
+  /// El último error, para poder decir por qué no salió en vez de callarlo.
+  lastError     String?
+
   idea    ContentIdea   @relation(fields: [ideaId], references: [id], onDelete: Cascade)
   account ClientAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
