@@ -293,13 +293,24 @@ export function AccountsSection({ clientId, accounts, onChange }: Props) {
                     {publishModeLabels[mode]}
                   </button>
                 ) : (
-                  <span
-                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] text-zinc-300"
+                  // Sin conectar, esta marca no cambia nada. Pero se ve igual
+                  // que el interruptor de las conectadas, así que tocarla y que
+                  // no pase nada deja a cualquiera pensando que está roto:
+                  // mejor que responda diciendo qué falta.
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toast.info(
+                        "Conecta la cuenta primero. Sin conexión no hay con qué publicar, así que te avisamos y publicas tú.",
+                        { duration: 7000 },
+                      )
+                    }
+                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] text-zinc-400"
                     title={publishModeHints[mode]}
                   >
                     <Bell className="h-3 w-3" aria-hidden />
                     {publishModeLabels[mode]}
-                  </span>
+                  </button>
                 )}
 
                 {/* Sólo Meta por ahora: las demás redes no tienen conexión. */}
