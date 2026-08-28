@@ -82,13 +82,30 @@ export function verifyState(state: string): { accountId: string; userId: string 
   }
 }
 
+/**
+ * La URL a la que se manda a autorizar.
+ *
+ * Meta tiene dos formas y no son intercambiables:
+ *
+ * - **Inicio de sesión con Facebook para empresas** no acepta permisos sueltos.
+ *   Espera el id de una *configuración* que se arma en el panel, con los
+ *   permisos y los activos ya elegidos ahí dentro. Mandarle `scope` devuelve
+ *   "Invalid Scopes" aunque los nombres sean correctos.
+ * - **Inicio de sesión clásico** sí recibe la lista de permisos.
+ *
+ * Se elige por `META_CONFIG_ID`: si está, manda la configuración; si no, los
+ * permisos. Cuál te toca depende de cómo quedó creada la app, y no hay forma de
+ * saberlo desde el código.
+ */
 export function authorizeUrl(state: string): string {
+  const configId = process.env.META_CONFIG_ID
+
   const params = new URLSearchParams({
     client_id: process.env.META_APP_ID ?? "",
     redirect_uri: metaRedirectUri(),
-    scope: META_SCOPES,
     response_type: "code",
     state,
+    ...(configId ? { config_id: configId } : { scope: META_SCOPES }),
   })
   return `https://www.facebook.com/v21.0/dialog/oauth?${params}`
 }
