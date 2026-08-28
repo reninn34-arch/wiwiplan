@@ -16,13 +16,28 @@ import { publicAppUrl } from "@/lib/app-url"
 
 const GRAPH = "https://graph.facebook.com/v21.0"
 
-/** Lo mínimo para publicar. Pedir de más es la causa más común de rechazo. */
-export const META_SCOPES = [
+/**
+ * Los permisos que se piden al autorizar. Lo mínimo para publicar: pedir de más
+ * es la causa más común de que Meta rechace la revisión.
+ *
+ * Configurable por `META_SCOPES` a propósito. Meta tiene dos caminos vivos con
+ * nombres distintos —el clásico por página de Facebook y el nuevo de Instagram
+ * directo— y cuál acepta tu app depende de los productos que le agregaste. Un
+ * "Invalid Scopes" no se arregla con código, se arregla probando el juego
+ * correcto, y eso no debería costar un despliegue cada vez.
+ */
+const SCOPES_POR_DEFECTO = [
   "instagram_basic",
   "instagram_content_publish",
   "pages_show_list",
   "pages_read_engagement",
-].join(",")
+]
+
+export const META_SCOPES = (process.env.META_SCOPES || SCOPES_POR_DEFECTO.join(","))
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .join(",")
 
 export function metaConfigured(): boolean {
   return Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET)
