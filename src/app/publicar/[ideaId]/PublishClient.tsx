@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowLeft, Check, Copy, ExternalLink, PartyPopper } from "lucide-react"
+import { ArrowLeft, Check, Copy, ExternalLink, PartyPopper, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { describePublication, networkColors, networkLabels, networkOpenUrls, type SocialNetwork } from "@/lib/social"
 import { formatPeriodLabel } from "@/lib/planning-period"
@@ -81,6 +81,37 @@ export function PublishClient({ piece }: { piece: Piece }) {
       return
     }
     setSavedCaption(caption)
+  }
+
+  /**
+   * Publica ahora por la API, sin esperar a la hora. Es la forma de probar el
+   * carril automático, y de reintentar a mano una pieza que falló.
+   */
+  const publicarAhora = async (target: Target) => {
+    setBusy(true)
+    const res = await fetch(`/api/plannings/${piece.planningId}/ideas/${piece.id}/publish-now`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId: target.accountId }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setBusy(false)
+
+    if (!res.ok) {
+      toast.error(data.error ?? "No se pudo publicar", { duration: 10000 })
+      return
+    }
+    if (data.estado === "procesando") {
+      toast.success(data.mensaje ?? "Meta está procesando el archivo.", { duration: 8000 })
+      return
+    }
+    toast.success("Publicada.")
+    setTargets((prev) =>
+      prev.map((t) =>
+        t.accountId === target.accountId ? { ...t, publishedAt: new Date().toISOString() } : t,
+      ),
+    )
+    router.refresh()
   }
 
   const togglePublished = async (target: Target) => {
@@ -228,21 +259,36 @@ export function PublishClient({ piece }: { piece: Piece }) {
                     )}
                   </span>
 
-                  {!published && (
-                    <a
-                      href={networkOpenUrls[network] ?? "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-xs text-zinc-300 ring-1 ring-inset ring-white/15 transition-colors hover:text-white"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" /> Abrir
-                    </a>
-                  )}
+                  {!published &&
+                    (target.mode === "AUTOMATIC" ? (
+                      <button
+                        type="button"
+                        onClick={() => publicarAhora(target)}
+                        disabled={busy}
+                        className="inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-xs text-emerald-300 ring-1 ring-inset ring-emerald-400/30 transition-colors hover:text-emerald-200 disabled:opacity-50"
+                      >
+                        <Zap className="h-3.5 w-3.5" /> Publicar ahora
+                      </button>
+                    ) : (
+                      <a
+                        href={networkOpenUrls[network] ?? "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-xs text-zinc-300 ring-1 ring-inset ring-white/15 transition-colors hover:text-white"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" /> Abrir
+                      </a>
+                    ))}
 
                   <button
                     type="button"
                     onClick={() => togglePublished(target)}
-                    disabled={busy}
+                    disabled={busy || (target.mode === "AUTOMATIC" && !published)}
+                    title={
+                      target.mode === "AUTOMATIC" && !published
+                        ? "Esta cuenta publica sola: la marca el sistema al salir"
+                        : undefined
+                    }
                     className={`inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-xs transition-colors disabled:opacity-50 ${
                       published
                         ? "text-emerald-300 ring-1 ring-inset ring-emerald-400/30 hover:text-emerald-200"

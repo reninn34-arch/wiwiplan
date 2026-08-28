@@ -122,6 +122,30 @@ export function AccountsSection({ clientId, accounts, onChange }: Props) {
     router.refresh()
   }
 
+  /**
+   * Cambia entre "Sale sola" y "Te avisamos". Sólo tiene sentido en cuentas
+   * conectadas: sin token no hay con qué publicar, y la API lo rechaza.
+   */
+  const cambiarModo = async (account: ClientAccountRow) => {
+    const nuevo = account.mode === "AUTOMATIC" ? "ASSISTED" : "AUTOMATIC"
+    const res = await fetch(`/api/clients/${clientId}/accounts/${account.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: nuevo }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? "No se pudo cambiar")
+      return
+    }
+    onChange(accounts.map((a) => (a.id === account.id ? { ...a, mode: nuevo } : a)))
+    toast.success(
+      nuevo === "AUTOMATIC"
+        ? "Listo. Esta cuenta va a publicar sola a la hora programada."
+        : "Vuelve a avisarte para que publiques tú.",
+    )
+  }
+
   const desconectar = async (account: ClientAccountRow) => {
     if (!confirm("¿Desconectar esta cuenta? Deja de poder publicar sola y vuelve a avisarte.")) return
     const res = await fetch(`/api/clients/${clientId}/accounts/${account.id}/disconnect`, {
@@ -247,13 +271,27 @@ export function AccountsSection({ clientId, accounts, onChange }: Props) {
                   })()}
                 </span>
                 {account.connectedAt ? (
-                  <span
-                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-300 ring-1 ring-inset ring-emerald-400/25"
-                    title={`Conectada${account.externalName ? ` como @${account.externalName}` : ""}`}
+                  <button
+                    type="button"
+                    onClick={() => cambiarModo(account)}
+                    title={
+                      mode === "AUTOMATIC"
+                        ? "Sale sola a la hora programada. Tócalo para volver a que te avise."
+                        : "Conectada, pero te avisa en vez de publicar. Tócalo para que salga sola."
+                    }
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] ring-1 ring-inset transition-colors ${
+                      mode === "AUTOMATIC"
+                        ? "bg-emerald-500/10 text-emerald-300 ring-emerald-400/25 hover:bg-emerald-500/20"
+                        : "bg-white/[0.06] text-zinc-300 ring-white/10 hover:bg-white/10"
+                    }`}
                   >
-                    <Zap className="h-3 w-3" aria-hidden />
-                    Conectada
-                  </span>
+                    {mode === "AUTOMATIC" ? (
+                      <Zap className="h-3 w-3" aria-hidden />
+                    ) : (
+                      <Bell className="h-3 w-3" aria-hidden />
+                    )}
+                    {publishModeLabels[mode]}
+                  </button>
                 ) : (
                   <span
                     className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] text-zinc-300"
