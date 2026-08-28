@@ -169,6 +169,21 @@ model ClientAccount {
   mode      PublishMode   @default(ASSISTED)
   createdAt DateTime      @default(now())
 
+  // ── Conexión con la red, cuando la hay ──
+  /// Id de la cuenta en la red (el de Instagram Business, por ejemplo). Es con
+  /// lo que se publica, y no cambia aunque el cliente se cambie el usuario.
+  externalId      String?
+  /// El usuario tal como lo reporta la red al conectar. Sólo para reconocerla.
+  externalName    String?
+  /// La página de Facebook a la que cuelga la cuenta de Instagram.
+  pageId          String?
+  /// Token de acceso, **cifrado**. Da permiso para publicar en la cuenta de
+  /// otra persona, así que no puede quedar legible en la base.
+  accessToken     String?
+  /// Cuándo caduca. Los de Meta duran ~60 días y hay que renovarlos antes.
+  tokenExpiresAt  DateTime?
+  connectedAt     DateTime?
+
   client  Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   targets IdeaTarget[]
 
