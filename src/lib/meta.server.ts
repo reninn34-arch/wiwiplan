@@ -171,6 +171,33 @@ export interface ConnectableAccount {
  * todos sus clientes desde su propio Facebook, así que una sola autorización
  * puede traer seis cuentas y hay que elegir cuál es la de este cliente.
  */
+export interface PagesDiagnostic {
+  /** Páginas que administra quien autorizó. */
+  pages: number
+  /** De esas, cuántas tienen una cuenta de Instagram vinculada. */
+  withInstagram: number
+}
+
+/**
+ * Cuántas páginas devolvió la autorización y cuántas sirven. Distingue las dos
+ * causas de "no apareció ninguna cuenta", que se arreglan en lugares distintos:
+ * cero páginas es un problema de a quién administras; páginas sin Instagram es
+ * un problema de vinculación en cada cuenta.
+ */
+export async function diagnosePages(userToken: string): Promise<PagesDiagnostic> {
+  const data = await graph<{
+    data: Array<{ instagram_business_account?: { id: string } }>
+  }>("/me/accounts", {
+    access_token: userToken,
+    fields: "id,instagram_business_account{id}",
+    limit: "100",
+  })
+  return {
+    pages: data.data.length,
+    withInstagram: data.data.filter((p) => p.instagram_business_account?.id).length,
+  }
+}
+
 export async function listConnectableAccounts(userToken: string): Promise<ConnectableAccount[]> {
   const data = await graph<{
     data: Array<{

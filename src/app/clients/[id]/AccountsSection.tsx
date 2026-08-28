@@ -74,9 +74,12 @@ export function AccountsSection({ clientId, accounts, onChange }: Props) {
     const detalle = params.get("detalle")
     if (estado === "lista") toast.success("Cuenta conectada. Ya puede publicar sola.")
     else if (estado === "sin-cuentas") {
+      const paginas = Number(params.get("paginas") ?? "0")
       toast.error(
-        "No apareció ninguna cuenta. Tiene que ser Instagram Business o Creator, vinculada a una página de Facebook que tú administres.",
-        { duration: 9000 },
+        paginas === 0
+          ? "Esa cuenta de Facebook no administra ninguna página. Autoriza con la cuenta que sí administra las páginas de tus clientes."
+          : `Administras ${paginas} ${paginas === 1 ? "página" : "páginas"}, pero ninguna tiene Instagram vinculado. El Instagram tiene que ser Business o Creator y estar vinculado a la página desde la configuración de Instagram.`,
+        { duration: 12000 },
       )
     } else if (estado === "cancelada") toast.error(detalle ?? "Se canceló la conexión")
     else if (estado === "invalida") toast.error("El enlace de conexión venció. Prueba de nuevo.")

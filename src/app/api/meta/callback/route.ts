@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { seal } from "@/lib/secret-box.server"
 import {
+  diagnosePages,
   exchangeCode,
   listConnectableAccounts,
   longLivedToken,
@@ -47,10 +48,16 @@ export async function GET(request: NextRequest) {
     const available = await listConnectableAccounts(token)
 
     if (available.length === 0) {
-      // El caso más frecuente y el que más confunde: la cuenta es personal, o
-      // no está vinculada a una página. Decirlo con esas palabras evita media
-      // hora de buscar el error en el lugar equivocado.
-      return backTo(request, { conexion: "sin-cuentas", cliente: account.clientId })
+      // El caso más frecuente y el que más confunde. Se cuentan las páginas
+      // para distinguir las dos causas, que se arreglan en sitios distintos:
+      // sin páginas es a quién administras; páginas sin Instagram es la
+      // vinculación de cada cuenta.
+      const diag = await diagnosePages(token).catch(() => ({ pages: 0, withInstagram: 0 }))
+      return backTo(request, {
+        conexion: "sin-cuentas",
+        cliente: account.clientId,
+        paginas: String(diag.pages),
+      })
     }
 
     // Una sola candidata: no hay nada que elegir, se conecta y listo.
