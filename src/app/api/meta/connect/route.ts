@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
-import { authorizeUrl, metaConfigured, signState } from "@/lib/meta.server"
+import { authorizeUrl, metaConfigured, metaRedirectUri, signState } from "@/lib/meta.server"
 
 /**
  * Arranca la autorización de Meta para una red concreta de un cliente.
@@ -17,6 +17,18 @@ export async function GET(request: NextRequest) {
       { error: "Faltan META_APP_ID y META_APP_SECRET en las variables del proyecto" },
       { status: 503 },
     )
+  }
+
+  // Meta compara la URI de retorno carácter por carácter y, cuando no coincide,
+  // dice "URL bloqueada" sin decir cuál esperaba. Con `?ver=1` se ve la que
+  // mandamos, para poder copiarla exacta en vez de escribirla de memoria.
+  if (request.nextUrl.searchParams.get("ver")) {
+    return NextResponse.json({
+      redirectUri: metaRedirectUri(),
+      usaConfiguracion: Boolean(process.env.META_CONFIG_ID),
+      appIdPresente: Boolean(process.env.META_APP_ID),
+      secretPresente: Boolean(process.env.META_APP_SECRET),
+    })
   }
 
   const accountId = request.nextUrl.searchParams.get("accountId") ?? ""
