@@ -2,8 +2,6 @@
 Genera los iconos de la app a partir del isotipo.
 
 El arte es blanco sobre transparente, así que el fondo lo pone este script.
-Se usa el mismo negro que la superficie de la app para que el icono, el splash
-de instalación y la pantalla no se vean como tres negros distintos.
 
 El original vive en el repositorio a propósito: si el icono tuviera que salir
 de la carpeta de Descargas de alguien, dejaría de poder regenerarse.
@@ -11,8 +9,10 @@ de la carpeta de Descargas de alguien, dejaría de poder regenerarse.
 import os
 from PIL import Image, ImageDraw
 
-# El mismo #09090b de la interfaz. Negro puro se vería más oscuro que la app.
-FONDO = (9, 9, 11, 255)
+# Rojo Pinterest #E60023. Más brillante y saturado que el rojo de marca
+# (#c42c33): elegido a propósito para que el icono resalte en la pantalla de
+# inicio, donde compite con decenas de otros.
+FONDO = (230, 0, 35, 255)
 ORIGEN = os.path.join("public", "brand", "isotipo.png")
 
 src = Image.open(ORIGEN).convert("RGBA")
