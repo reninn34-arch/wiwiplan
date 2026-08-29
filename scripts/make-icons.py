@@ -40,16 +40,19 @@ def compose(size: int, art_ratio: float, rounded: bool) -> Image.Image:
 
 os.makedirs("public/icons", exist_ok=True)
 
-# El isotipo es más ancho que alto, así que ocupa menos proporción que un arte
-# cuadrado para no quedar pegado a los bordes.
-master = compose(512, 0.72, rounded=True)
+# El isotipo mide casi el doble de ancho que de alto, así que al ajustarlo por
+# el ancho el alto queda a la mitad. Por eso ocupa casi todo el lienzo: con
+# proporciones que en un arte cuadrado serían excesivas, acá se ve pequeño.
+master = compose(512, 0.90, rounded=True)
 master.save("public/icons/icon-512.png")
-compose(192, 0.72, rounded=True).save("public/icons/icon-192.png")
-compose(180, 0.72, rounded=True).save("public/icons/apple-touch-icon.png")
+compose(192, 0.90, rounded=True).save("public/icons/icon-192.png")
+compose(180, 0.90, rounded=True).save("public/icons/apple-touch-icon.png")
 
-# Maskable: sangrado completo sin esquinas. El arte va más chico porque Android
-# recorta hasta un 20% de cada lado según la forma del lanzador.
-compose(512, 0.52, rounded=False).save("public/icons/icon-maskable-512.png")
+# Maskable: sangrado completo sin esquinas. Android recorta con la forma que
+# use el lanzador, y lo único garantizado es el círculo central del 80%. Para un
+# arte de esta proporción, la diagonal cabe en ese círculo hasta un ancho de
+# 0.70; 0.68 deja un margen para que ningún recorte se coma los extremos.
+compose(512, 0.68, rounded=False).save("public/icons/icon-maskable-512.png")
 
 master.resize((256, 256), Image.LANCZOS).save(
     "public/icons/favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)]
