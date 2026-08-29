@@ -1,4 +1,7 @@
-const CACHE = "wiwiplan-v3"
+// Subir esta versión purga la caché anterior al activarse. Hay que hacerlo con
+// cada cambio de iconos o de manifiesto, o el teléfono sigue mostrando los de
+// antes por mucho que se despliegue.
+const CACHE = "wiwiplan-v4"
 
 self.addEventListener("install", () => {
   self.skipWaiting()
@@ -28,11 +31,16 @@ self.addEventListener("fetch", (e) => {
   // Las APIs jamás se cachean: los datos tienen que ser siempre frescos.
   if (url.pathname.startsWith("/api/")) return
 
+  // La identidad de la app nunca se cachea. Los iconos y el manifiesto cambian
+  // poquísimo, pero cuando cambian hay que verlos ya: cachearlos ahorraba unos
+  // kilobytes y a cambio dejaba el icono viejo pegado aunque se reinstalara.
+  if (url.pathname.startsWith("/icons/") || url.pathname.endsWith(".webmanifest")) return
+
   // Sólo assets estáticos se sirven cache-first; páginas y rutas dinámicas
   // van siempre a la red para no ver contenido viejo tras un deploy.
   const isStatic =
     url.pathname.startsWith("/_next/static/") ||
-    /\.(?:svg|png|jpg|jpeg|gif|ico|webp|css|js|woff2?|webmanifest)$/.test(url.pathname)
+    /\.(?:svg|png|jpg|jpeg|gif|ico|webp|css|js|woff2?)$/.test(url.pathname)
   if (!isStatic) return
 
   e.respondWith(
