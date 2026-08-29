@@ -88,7 +88,9 @@ Las cuatro apuestas donde tiene que ganarle a Notion, confirmadas por el usuario
 Identidad WIWI Estudio (definida por el usuario en agosto 2026):
 - Color de marca: rojo #c42c33; blanco roto #fbf9fa para arte e isotipo; negro para texto de documentos.
 - Tipografía original: Myriad Pro (PDF del logo); la app usa la sans del sistema como aproximación.
-- Ícono de app y splash de instalación: el gato de WIWI sobre rojo `#E60023`, con el arte completo en `public/brand/icono-app.png` y los tamaños regenerados por `scripts/make-icons.py`. El arte ya trae su fondo, así que el script sólo redimensiona; el splash usa el rojo exacto del archivo para que el icono se funda con él en vez de flotar encima. La versión de `CACHE` en `public/sw.js` sube con cada cambio de icono, o el teléfono sigue mostrando el anterior.
+- Ícono de app, splash de instalación y vista previa al compartir: el gato de WIWI sobre rojo `#E60023`, con el arte completo en `public/brand/icono-app.png` y todo lo demás regenerado por `scripts/make-icons.py`. El script **aplana sobre rojo opaco**: el arte de origen trae las esquinas recortadas en alfa, y esa transparencia se veía como una muesca en el icono y como un borde vacío al compartir el enlace. Nada sale con canal alfa, y el rojo se lee del propio archivo para que icono, splash y previsualización no puedan desincronizarse. Las esquinas las redondea cada sistema con su forma; hacerlo acá sólo devolvía la transparencia.
+- `public/icons/og.png` (1200x630, opaca) es lo que ven WhatsApp, Facebook e iMessage, declarada en `openGraph`/`twitter` del layout. Sin declararla, cada app inventaba la vista previa y terminaba agarrando el icono cuadrado. Necesita `metadataBase`, porque quien lee el enlace está fuera y sólo entiende direcciones absolutas.
+- La versión de `CACHE` en `public/sw.js` sube con cada cambio de icono, o el teléfono sigue mostrando el anterior.
 - Superficie general: se mantiene el dark (#09090b sobre zinc); el rojo se reserva para acciones primarias y estados activos.
 
 ## Evidence on Hand

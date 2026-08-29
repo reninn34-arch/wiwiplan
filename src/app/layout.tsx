@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "sonner"
+import { publicAppUrl } from "@/lib/app-url"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -13,10 +14,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+const TITULO = "WiwiPlan - Planificaciones"
+const DESCRIPCION = "Crea y comparte planificaciones con tus clientes"
+
 export const metadata: Metadata = {
-  title: "WiwiPlan - Planificaciones",
-  description: "Crea y comparte planificaciones con tus clientes",
+  // Quien lee el enlace —WhatsApp, Facebook, iMessage— vive fuera y necesita
+  // direcciones absolutas. Sin esta base, Next serviría "/icons/og.png" tal
+  // cual y ningún lector sabría desde dónde bajarla.
+  metadataBase: new URL(publicAppUrl() ?? "http://localhost:3000"),
+  title: TITULO,
+  description: DESCRIPCION,
   manifest: "/manifest.webmanifest",
+  // Sin esto, cada app inventa la vista previa por su cuenta y termina
+  // agarrando el icono: cuadrado, con esquinas recortadas, sin llenar el
+  // recuadro. og.png es opaca y de 1200x630, la proporción que esperan.
+  openGraph: {
+    type: "website",
+    siteName: "WiwiPlan",
+    title: TITULO,
+    description: DESCRIPCION,
+    locale: "es_EC",
+    images: [{ url: "/icons/og.png", width: 1200, height: 630, alt: "WiwiPlan" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITULO,
+    description: DESCRIPCION,
+    images: ["/icons/og.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

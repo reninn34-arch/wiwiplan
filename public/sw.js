@@ -1,7 +1,7 @@
 // Subir esta versión purga la caché anterior al activarse. Hay que hacerlo con
 // cada cambio de iconos o de manifiesto, o el teléfono sigue mostrando los de
 // antes por mucho que se despliegue.
-const CACHE = "wiwiplan-v5"
+const CACHE = "wiwiplan-v6"
 
 self.addEventListener("install", () => {
   self.skipWaiting()
