@@ -1,40 +1,58 @@
+"""
+Genera los iconos de la app a partir del isotipo.
+
+El arte es blanco sobre transparente, así que el fondo lo pone este script.
+Se usa el mismo negro que la superficie de la app para que el icono, el splash
+de instalación y la pantalla no se vean como tres negros distintos.
+
+El original vive en el repositorio a propósito: si el icono tuviera que salir
+de la carpeta de Descargas de alguien, dejaría de poder regenerarse.
+"""
+import os
 from PIL import Image, ImageDraw
 
-BRAND = (196, 44, 51, 255)  # #c42c33
+# El mismo #09090b de la interfaz. Negro puro se vería más oscuro que la app.
+FONDO = (9, 9, 11, 255)
+ORIGEN = os.path.join("public", "brand", "isotipo.png")
 
-src = Image.open(r"C:\Users\Alex\Downloads\Recurso 2@4x-8.png").convert("RGBA")
-bbox = src.getbbox()
-art = src.crop(bbox)
+src = Image.open(ORIGEN).convert("RGBA")
+art = src.crop(src.getbbox())
 print("arte recortado:", art.size)
 
+
 def compose(size: int, art_ratio: float, rounded: bool) -> Image.Image:
-    canvas = Image.new("RGBA", (size, size), BRAND)
+    canvas = Image.new("RGBA", (size, size), FONDO)
     inner = int(size * art_ratio)
     ratio = min(inner / art.width, inner / art.height)
-    scaled = art.resize((max(1, round(art.width * ratio)), max(1, round(art.height * ratio))), Image.LANCZOS)
+    scaled = art.resize(
+        (max(1, round(art.width * ratio)), max(1, round(art.height * ratio))),
+        Image.LANCZOS,
+    )
     canvas.alpha_composite(scaled, ((size - scaled.width) // 2, (size - scaled.height) // 2))
     if rounded:
         mask = Image.new("L", (size, size), 0)
-        d = ImageDraw.Draw(mask)
-        d.rounded_rectangle([0, 0, size - 1, size - 1], radius=int(size * 0.2), fill=255)
+        ImageDraw.Draw(mask).rounded_rectangle(
+            [0, 0, size - 1, size - 1], radius=int(size * 0.2), fill=255
+        )
         canvas.putalpha(mask)
     return canvas
 
-import os
+
 os.makedirs("public/icons", exist_ok=True)
 
-master = compose(512, 0.80, rounded=True)
+# El isotipo es más ancho que alto, así que ocupa menos proporción que un arte
+# cuadrado para no quedar pegado a los bordes.
+master = compose(512, 0.72, rounded=True)
 master.save("public/icons/icon-512.png")
-compose(192, 0.80, rounded=True).save("public/icons/icon-192.png")
-compose(180, 0.80, rounded=True).save("public/icons/apple-touch-icon.png")
+compose(192, 0.72, rounded=True).save("public/icons/icon-192.png")
+compose(180, 0.72, rounded=True).save("public/icons/apple-touch-icon.png")
 
-# Maskable: sangrado completo sin esquinas, arte más chico por la zona segura.
-compose(512, 0.58, rounded=False).save("public/icons/icon-maskable-512.png")
+# Maskable: sangrado completo sin esquinas. El arte va más chico porque Android
+# recorta hasta un 20% de cada lado según la forma del lanzador.
+compose(512, 0.52, rounded=False).save("public/icons/icon-maskable-512.png")
 
-# Favicon multi-tamaño
-ico_sizes = [(16, 16), (32, 32), (48, 48)]
 master.resize((256, 256), Image.LANCZOS).save(
-    "public/icons/favicon.ico", sizes=ico_sizes
+    "public/icons/favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)]
 )
 master.resize((32, 32), Image.LANCZOS).save("public/icons/icon-32.png")
-print("iconos generados:", os.listdir("public/icons"))
+print("iconos generados:", sorted(os.listdir("public/icons")))

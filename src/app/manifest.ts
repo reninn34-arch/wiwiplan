@@ -7,8 +7,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Crea y comparte planificaciones con tus clientes",
     start_url: "/",
     display: "standalone",
-    // Splash de instalación: fondo del rojo de marca con el logo blanco encima.
-    background_color: "#c42c33",
+    // Splash de instalación: el mismo negro del icono y de la interfaz. Con el
+    // rojo anterior, abrir la app era un salto de rojo a negro en cada arranque.
+    background_color: "#09090b",
     theme_color: "#09090b",
     orientation: "portrait",
     icons: [
