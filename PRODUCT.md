@@ -88,7 +88,7 @@ Las cuatro apuestas donde tiene que ganarle a Notion, confirmadas por el usuario
 Identidad WIWI Estudio (definida por el usuario en agosto 2026):
 - Color de marca: rojo #c42c33; blanco roto #fbf9fa para arte e isotipo; negro para texto de documentos.
 - Tipografía original: Myriad Pro (PDF del logo); la app usa la sans del sistema como aproximación.
-- Ícono de app: isotipo blanco sobre rojo Pinterest `#E60023` (`public/icons`), con variante maskable de sangrado completo. El original vive en `public/brand/isotipo.png` y los tamaños se regeneran con `scripts/make-icons.py`. El icono usa un rojo más saturado que el `--brand` de la interfaz a propósito: en la pantalla de inicio compite con decenas de iconos, dentro de la app el rojo sólo acompaña.
+- Ícono de app y splash de instalación: isotipo blanco sobre rojo Pinterest `#E60023` (`public/icons`, `background_color` del manifiesto). El splash comparte el rojo del icono a propósito: con el fondo en negro, el icono se veía como un recuadro pegado encima en vez de fundido, con variante maskable de sangrado completo. El original vive en `public/brand/isotipo.png` y los tamaños se regeneran con `scripts/make-icons.py`. El icono usa un rojo más saturado que el `--brand` de la interfaz a propósito: en la pantalla de inicio compite con decenas de iconos, dentro de la app el rojo sólo acompaña.
 - Superficie general: se mantiene el dark (#09090b sobre zinc); el rojo se reserva para acciones primarias y estados activos.
 
 ## Evidence on Hand
