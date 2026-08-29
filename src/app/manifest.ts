@@ -7,8 +7,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Crea y comparte planificaciones con tus clientes",
     start_url: "/",
     display: "standalone",
-    // Splash de instalación: el mismo rojo del icono, para que el icono no se
-    // vea como un recuadro pegado sobre otro fondo, sino fundido con él.
+    // Splash de instalación: el rojo exacto del arte del icono, tomado del
+    // propio archivo. Así el icono no se ve como un recuadro pegado sobre otro
+    // fondo, sino fundido con él.
     background_color: "#E60023",
     theme_color: "#09090b",
     orientation: "portrait",
