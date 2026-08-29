@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 })
 
 const TITULO = "WiwiPlan - Planificaciones"
+const OG_IMAGEN = "/icons/og.png?v=2"
 const DESCRIPCION = "Crea y comparte planificaciones con tus clientes"
 
 export const metadata: Metadata = {
@@ -28,19 +29,23 @@ export const metadata: Metadata = {
   // Sin esto, cada app inventa la vista previa por su cuenta y termina
   // agarrando el icono: cuadrado, con esquinas recortadas, sin llenar el
   // recuadro. og.png es opaca y de 1200x630, la proporción que esperan.
+  //
+  // El `?v=` no es decoración: WhatsApp y Facebook guardan la previsualización
+  // de cada enlace durante días, así que cambiar el archivo no basta para que
+  // la vuelvan a bajar. Subir el número les da una dirección que no conocen.
   openGraph: {
     type: "website",
     siteName: "WiwiPlan",
     title: TITULO,
     description: DESCRIPCION,
     locale: "es_EC",
-    images: [{ url: "/icons/og.png", width: 1200, height: 630, alt: "WiwiPlan" }],
+    images: [{ url: OG_IMAGEN, width: 1200, height: 630, alt: "WiwiPlan" }],
   },
   twitter: {
     card: "summary_large_image",
     title: TITULO,
     description: DESCRIPCION,
-    images: ["/icons/og.png"],
+    images: [OG_IMAGEN],
   },
   appleWebApp: {
     capable: true,

@@ -12,7 +12,7 @@ El original vive en el repositorio a propósito: si saliera de la carpeta de
 Descargas de alguien, dejaría de poder regenerarse.
 """
 import os
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 ORIGEN = os.path.join("public", "brand", "icono-app.png")
 
@@ -59,18 +59,67 @@ master.resize((256, 256), Image.LANCZOS).save(
 master.resize((32, 32), Image.LANCZOS).save("public/icons/icon-32.png")
 
 # ── La imagen que ven WhatsApp, Facebook y compañía al compartir el enlace ──
-# 1200x630 es la proporción que esperan (1.91:1). El arte es cuadrado, así que
-# no se estira: se recorta la cabeza —desde encima de las orejas hasta abajo—,
-# se escala a la altura completa y se centra sobre rojo, que llena los lados.
+# 1200x630 es la proporción que esperan (1.91:1). Lleva el nombre además del
+# gato: en una lista de chats, un enlace que sólo enseña el dibujo no dice de
+# qué app es, y quien lo recibe suele ser un cliente que nunca la ha visto.
 OG = (1200, 630)
-RECORTE_SUPERIOR = int(alto * 0.235)  # deja aire sobre las orejas
+MARGEN = 84
 
-cabeza = src.crop((0, RECORTE_SUPERIOR, ancho, alto))
-escala = OG[1] / cabeza.height
-cabeza = cabeza.resize((round(cabeza.width * escala), OG[1]), Image.LANCZOS)
+# La tipografía se busca entre varias porque el script se corre a mano y no
+# siempre desde la misma máquina; si no hay ninguna, el nombre se omite antes
+# que romper la generación de todo lo demás.
+FUENTES = ["seguibl.ttf", "ariblk.ttf", "arialbd.ttf", "Arial Bold.ttf", "DejaVuSans-Bold.ttf"]
+
+
+def fuente(tam: int):
+    for nombre in FUENTES:
+        try:
+            return ImageFont.truetype(nombre, tam)
+        except OSError:
+            continue
+    return None
+
 
 og = Image.new("RGB", OG, ROJO)
-og.paste(cabeza, ((OG[0] - cabeza.width) // 2, 0), cabeza)
+dibujo = ImageDraw.Draw(og)
+
+# El gato se apoya en la esquina inferior derecha y **sangra por el borde**:
+# recortado a propósito, no encajado con un marco de aire alrededor. Deja libre
+# la mitad izquierda, que es donde va el nombre.
+gato = src.crop((0, int(alto * 0.30), ancho, alto))
+escala = 500 / gato.height
+gato = gato.resize((round(gato.width * escala), 500), Image.LANCZOS)
+COLUMNA = OG[0] - gato.width + 120  # lo que se sale por la derecha
+og.paste(gato, (COLUMNA, OG[1] - gato.height), gato)
+
+# El tamaño del nombre no se elige a ojo: se mide y se encoge hasta caber en la
+# columna libre. Así el texto nunca se monta encima del gato aunque cambie el
+# arte o la tipografía disponible.
+disponible = COLUMNA - MARGEN * 2
+
+
+def ajustar(texto: str, tope: int, desde: int):
+    for tam in range(desde, 15, -2):
+        f = fuente(tam)
+        if f is None:
+            return None, 0
+        if dibujo.textlength(texto, font=f) <= tope:
+            return f, tam
+    return None, 0
+
+
+BAJADA = "Planificaciones para tus clientes"
+titulo, tam = ajustar("WiwiPlan", disponible, 104)
+if titulo is None:
+    print("aviso: sin tipografía disponible, la previsualización va sin nombre")
+else:
+    bajada, _ = ajustar(BAJADA, disponible, max(18, tam // 3))
+    alto_bloque = tam + (24 + bajada.size if bajada else 0)
+    y = (OG[1] - alto_bloque) // 2
+    dibujo.text((MARGEN, y), "WiwiPlan", font=titulo, fill="white")
+    if bajada:
+        dibujo.text((MARGEN + 3, y + tam + 24), BAJADA, font=bajada, fill=(255, 190, 200))
+
 og.save("public/icons/og.png")
 
 print("iconos generados:", sorted(os.listdir("public/icons")))
