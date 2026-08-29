@@ -120,6 +120,11 @@ else:
     if bajada:
         dibujo.text((MARGEN + 3, y + tam + 24), BAJADA, font=bajada, fill=(255, 190, 200))
 
-og.save("public/icons/og.png")
+# El número del nombre no es capricho: WhatsApp y Facebook guardan la
+# previsualización de cada enlace durante días, y cambiar el contenido de un
+# archivo que ya conocen no basta para que la vuelvan a bajar. Un nombre
+# nuevo sí. Va en el nombre y no en un "?v=" porque algunos rastreadores
+# tropiezan con las cadenas de consulta al pedir la imagen.
+og.save("public/icons/og-2.png")
 
 print("iconos generados:", sorted(os.listdir("public/icons")))

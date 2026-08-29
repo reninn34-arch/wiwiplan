@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 })
 
 const TITULO = "WiwiPlan - Planificaciones"
-const OG_IMAGEN = "/icons/og.png?v=2"
+const OG_IMAGEN = "/icons/og-2.png"
 const DESCRIPCION = "Crea y comparte planificaciones con tus clientes"
 
 export const metadata: Metadata = {
@@ -30,16 +30,17 @@ export const metadata: Metadata = {
   // agarrando el icono: cuadrado, con esquinas recortadas, sin llenar el
   // recuadro. og.png es opaca y de 1200x630, la proporción que esperan.
   //
-  // El `?v=` no es decoración: WhatsApp y Facebook guardan la previsualización
-  // de cada enlace durante días, así que cambiar el archivo no basta para que
-  // la vuelvan a bajar. Subir el número les da una dirección que no conocen.
+  // El número del nombre no es decoración: WhatsApp y Facebook guardan la
+  // previsualización de cada enlace durante días, así que cambiar el contenido
+  // del archivo no basta para que la vuelvan a bajar. Un nombre nuevo sí.
   openGraph: {
     type: "website",
     siteName: "WiwiPlan",
+    url: "/",
     title: TITULO,
     description: DESCRIPCION,
     locale: "es_EC",
-    images: [{ url: OG_IMAGEN, width: 1200, height: 630, alt: "WiwiPlan" }],
+    images: [{ url: OG_IMAGEN, width: 1200, height: 630, type: "image/png", alt: "WiwiPlan" }],
   },
   twitter: {
     card: "summary_large_image",
