@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     // Splash de instalación: el rojo exacto del arte del icono, tomado del
     // propio archivo. Así el icono no se ve como un recuadro pegado sobre otro
     // fondo, sino fundido con él.
-    background_color: "#E60023",
+    background_color: "#DB0A1D",
     theme_color: "#09090b",
     orientation: "portrait",
     icons: [

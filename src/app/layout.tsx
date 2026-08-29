@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 })
 
 const TITULO = "WiwiPlan - Planificaciones"
-const OG_IMAGEN = "/icons/og-2.png"
+const OG_IMAGEN = "/icons/og-3.png"
 const DESCRIPCION = "Crea y comparte planificaciones con tus clientes"
 
 export const metadata: Metadata = {
