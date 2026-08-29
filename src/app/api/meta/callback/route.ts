@@ -16,8 +16,21 @@ import {
  * porque quien autoriza puede ser el cliente desde su propio teléfono, sin
  * haber iniciado sesión en WiwiPlan.
  */
-function backTo(request: NextRequest, params: Record<string, string>) {
-  const url = new URL("/dashboard", request.url)
+/**
+ * Vuelve a la ficha del cliente, que es la única pantalla que sabe leer el
+ * resultado. Antes volvía siempre al dashboard: el aviso se generaba, viajaba
+ * en la URL y aterrizaba donde nadie lo miraba, así que la conexión fallaba en
+ * silencio y parecía que el botón no hacía nada.
+ *
+ * Sólo cae al dashboard cuando ni siquiera se sabe de qué cliente era —un
+ * `state` inválido—, porque ahí no hay ficha a la que volver.
+ */
+function backTo(
+  request: NextRequest,
+  clientId: string | null,
+  params: Record<string, string>,
+) {
+  const url = new URL(clientId ? `/clients/${clientId}` : "/dashboard", request.url)
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
   return NextResponse.redirect(url)
 }
@@ -26,12 +39,12 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams
   const error = params.get("error_description") ?? params.get("error")
   if (error) {
-    return backTo(request, { conexion: "cancelada", detalle: error.slice(0, 140) })
+    return backTo(request, null, { conexion: "cancelada", detalle: error.slice(0, 140) })
   }
 
   const state = verifyState(params.get("state") ?? "")
   if (!state) {
-    return backTo(request, { conexion: "invalida" })
+    return backTo(request, null, { conexion: "invalida" })
   }
 
   const account = await prisma.clientAccount.findFirst({
@@ -39,7 +52,7 @@ export async function GET(request: NextRequest) {
     select: { id: true, clientId: true },
   })
   if (!account) {
-    return backTo(request, { conexion: "invalida" })
+    return backTo(request, null, { conexion: "invalida" })
   }
 
   try {
@@ -53,9 +66,8 @@ export async function GET(request: NextRequest) {
       // sin páginas es a quién administras; páginas sin Instagram es la
       // vinculación de cada cuenta.
       const diag = await diagnosePages(token).catch(() => ({ pages: 0, withInstagram: 0 }))
-      return backTo(request, {
+      return backTo(request, account.clientId, {
         conexion: "sin-cuentas",
-        cliente: account.clientId,
         paginas: String(diag.pages),
       })
     }
@@ -74,7 +86,7 @@ export async function GET(request: NextRequest) {
           connectedAt: new Date(),
         },
       })
-      return backTo(request, { conexion: "lista", cliente: account.clientId })
+      return backTo(request, account.clientId, { conexion: "lista" })
     }
 
     // Varias: una agencia suele administrar las páginas de todos sus clientes
@@ -83,10 +95,10 @@ export async function GET(request: NextRequest) {
       where: { id: account.id },
       data: { accessToken: seal(token), tokenExpiresAt: expiresAt },
     })
-    return backTo(request, { conexion: "elegir", cuenta: account.id, cliente: account.clientId })
+    return backTo(request, account.clientId, { conexion: "elegir", cuenta: account.id })
   } catch (e) {
     console.error("[meta] Falló la conexión:", e)
     const detalle = e instanceof Error ? e.message.slice(0, 140) : ""
-    return backTo(request, { conexion: "error", detalle })
+    return backTo(request, account.clientId, { conexion: "error", detalle })
   }
 }
