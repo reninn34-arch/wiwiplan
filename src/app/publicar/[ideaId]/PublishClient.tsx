@@ -102,7 +102,10 @@ export function PublishClient({ piece }: { piece: Piece }) {
       return
     }
     if (data.estado === "procesando") {
-      toast.success(data.mensaje ?? "Meta está procesando el archivo.", { duration: 8000 })
+      toast.success(
+        "Meta está procesando el video. Se publica sola en unos minutos — no hace falta que hagas nada.",
+        { duration: 10000 },
+      )
       return
     }
     toast.success("Publicada.")

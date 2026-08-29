@@ -2,6 +2,7 @@ import "server-only"
 import { prisma } from "@/lib/prisma"
 import { pushConfigured, pushToUser } from "@/lib/push.server"
 import { publishTarget } from "@/lib/auto-publish.server"
+import { schedulePublishSweep } from "@/lib/publish-schedule.server"
 import {
   describePublication,
   networkLabels,
@@ -105,6 +106,8 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
       continue
     }
 
+    let seguirDespues = false
+
     // Primero lo que sale solo. Lo que no se pueda publicar cae al aviso, que
     // es la red de seguridad: una publicación que no salió y nadie avisó es
     // peor que no haberla prometido automática.
@@ -123,9 +126,28 @@ export async function runPublishReminders(userId?: string): Promise<PublishRemin
         attempts: target.attempts,
       })
 
-      if (resultado === "published") outcome.published += 1
-      else if (resultado === "processing") outcome.processing += 1
-      else pendientes.push(target)
+      if (resultado === "published") {
+        outcome.published += 1
+      } else if (resultado === "processing") {
+        outcome.processing += 1
+        // Meta sigue procesando —lo normal en un reel, que tarda minutos—.
+        // Hay que volver pronto: la cita de esta pieza ya se gastó, y el único
+        // reloj periódico en producción es el diario. Sin esto, un reel que
+        // tarda tres minutos se publicaría al día siguiente.
+        seguirDespues = true
+      } else {
+        pendientes.push(target)
+      }
+    }
+
+    if (seguirDespues) {
+      // Se acota a dos horas desde su hora: pasado eso, algo va mal de verdad y
+      // seguir volviendo cada minuto sólo acumula citas. Ahí lo recoge el reloj
+      // diario y, si tampoco sale, cae al aviso.
+      const lateHoras = (now.getTime() - moment.getTime()) / 3_600_000
+      if (lateHoras < 2) {
+        await schedulePublishSweep(new Date(Date.now() + 90_000))
+      }
     }
 
     // Todo salió solo: no hay nada que avisar.
