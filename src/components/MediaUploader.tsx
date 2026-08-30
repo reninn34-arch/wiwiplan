@@ -41,25 +41,8 @@ const ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
  */
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-/**
- * Los intentos, del menos destructivo al más. Se para en el primero que quepa.
- *
- * El orden importa y no es arbitrario: primero se recomprime **sin tocar la
- * resolución**, que es lo que casi siempre basta. Reducir el tamaño se deja
- * para cuando recomprimir no alcanza, porque perder pixeles es irreversible y
- * perder un poco de compresión JPEG no se nota — las redes recomprimen todo lo
- * que reciben de todos modos.
- *
- * 2048 px de lado sigue siendo el doble de lo que Instagram muestra en el feed
- * (1080), así que ni en el peor caso se llega a ver.
- */
-const INTENTOS: Array<{ lado: number | null; calidad: number }> = [
-  { lado: null, calidad: 0.95 },
-  { lado: null, calidad: 0.88 },
-  { lado: null, calidad: 0.8 },
-  { lado: 2048, calidad: 0.9 },
-  { lado: 2048, calidad: 0.8 },
-]
+/** Ninguna red muestra más lado que esto; de ahí para arriba son bytes tirados. */
+const MAX_LADO = 2048
 
 /**
  * Encoge una imagen sólo si se pasa del techo. Por debajo devuelve el archivo
@@ -68,44 +51,38 @@ const INTENTOS: Array<{ lado: number | null; calidad: number }> = [
  * Si el navegador no sabe hacerlo, devuelve el original y que sea la red quien
  * lo rechace: subir algo es mejor que perderlo por un fallo del canvas.
  */
-async function encogerSiHaceFalta(
-  file: File,
-): Promise<{ file: File; encogida: boolean; resolucion: boolean }> {
-  const intacto = { file, encogida: false, resolucion: false }
-  if (!file.type.startsWith("image/") || file.size <= MAX_IMAGE_BYTES) return intacto
+async function encogerSiHaceFalta(file: File): Promise<{ file: File; encogida: boolean }> {
+  if (!file.type.startsWith("image/") || file.size <= MAX_IMAGE_BYTES) {
+    return { file, encogida: false }
+  }
 
   try {
     const bitmap = await createImageBitmap(file)
+    const escala = Math.min(1, MAX_LADO / Math.max(bitmap.width, bitmap.height))
+    const ancho = Math.round(bitmap.width * escala)
+    const alto = Math.round(bitmap.height * escala)
+
     const canvas = document.createElement("canvas")
+    canvas.width = ancho
+    canvas.height = alto
     const ctx = canvas.getContext("2d")
-    if (!ctx) return intacto
+    if (!ctx) return { file, encogida: false }
+    ctx.drawImage(bitmap, 0, 0, ancho, alto)
+    bitmap.close()
 
-    for (const intento of INTENTOS) {
-      const escala = intento.lado
-        ? Math.min(1, intento.lado / Math.max(bitmap.width, bitmap.height))
-        : 1
-      canvas.width = Math.round(bitmap.width * escala)
-      canvas.height = Math.round(bitmap.height * escala)
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-
-      const blob = await new Promise<Blob | null>((r) =>
-        canvas.toBlob(r, "image/jpeg", intento.calidad),
-      )
+    // Se baja la calidad por pasos y se para en cuanto entra: así la primera
+    // que quepa es la mejor que cabía, en vez de comprimir de más por si acaso.
+    for (const calidad of [0.92, 0.85, 0.75, 0.65]) {
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", calidad))
       if (blob && blob.size <= MAX_IMAGE_BYTES) {
-        bitmap.close()
         const nombre = file.name.replace(/\.[^.]+$/, "") + ".jpg"
-        return {
-          file: new File([blob], nombre, { type: "image/jpeg" }),
-          encogida: true,
-          resolucion: escala < 1,
-        }
+        return { file: new File([blob], nombre, { type: "image/jpeg" }), encogida: true }
       }
     }
-    bitmap.close()
   } catch (error) {
     console.error("[media] No se pudo encoger la imagen:", error)
   }
-  return intacto
+  return { file, encogida: false }
 }
 
 function formatSize(bytes: number): string {
@@ -125,12 +102,11 @@ export function MediaUploader({ ideaId, media, onChange }: Props) {
     if (uploading) return
     setProgress(0)
     try {
-      const { file, encogida, resolucion } = await encogerSiHaceFalta(original)
+      const { file, encogida } = await encogerSiHaceFalta(original)
       if (encogida) {
         toast.info(
-          `"${original.name}" pesaba ${formatSize(original.size)} y las redes no admiten más de 8 MB. ` +
-            `Se guardó en ${formatSize(file.size)}` +
-            (resolucion ? ", reduciendo también el tamaño." : ", con la misma resolución."),
+          `"${original.name}" pesaba ${formatSize(original.size)} y Facebook no admite más de 8 MB. ` +
+            `Se guardó una versión de ${formatSize(file.size)}.`,
           { duration: 8000 },
         )
       }
