@@ -114,6 +114,8 @@ interface PlanningData {
     referenceUrl: string
     referenceEmbed: string
     status: string
+    /** Lo que dijo el cliente desde el enlace compartido. */
+    clientReview: string
     priority: string
     order: number
     dueDate: string | null
@@ -449,6 +451,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
                         ...idea,
                         dueDate: moved.dueDate,
                         publishTime: moved.publishTime,
+                        clientReview: moved.clientReview,
                         targets: moved.targets,
                         media: moved.media,
                       }

@@ -251,6 +251,8 @@ interface Idea {
   referenceUrl: string
   referenceEmbed: string
   status: string
+  /** Lo que dijo el cliente desde el enlace compartido. */
+  clientReview: string
   priority: string
   order: number
   /** El día en que sale. */

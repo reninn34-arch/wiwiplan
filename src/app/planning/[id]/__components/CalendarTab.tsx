@@ -38,6 +38,7 @@ export interface CalendarIdea {
   publishTime: string
   targets: Array<{ accountId: string; publishedAt: string | null }>
   media: MediaAssetRow[]
+  clientReview: string
 }
 
 interface Props {

@@ -71,6 +71,7 @@ export default async function PlanningDetailPage({ params }: Props) {
     contentIdeas: planning.contentIdeas.map((i) => ({
       ...i,
       dueDate: i.dueDate?.toISOString() ?? null,
+      reviewedAt: i.reviewedAt?.toISOString() ?? null,
       createdAt: i.createdAt.toISOString(),
       targets: i.targets.map((t) => ({
         accountId: t.accountId,

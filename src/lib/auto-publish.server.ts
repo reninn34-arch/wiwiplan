@@ -59,6 +59,7 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
         select: {
           caption: true,
           title: true,
+          clientReview: true,
           media: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], select: { url: true, kind: true } },
         },
       },
@@ -91,6 +92,26 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
       },
     })
     return "failed" as const
+  }
+
+  // El cliente pidió cambios: no sale sola. Es el único candado de revisión,
+  // y a propósito no bloquea lo que está **sin revisar**: con eso, un cliente
+  // que no contesta dejaría el mes entero sin publicar y en silencio, que es
+  // peor que publicar algo que nadie objetó. Bloquea el "no", no la ausencia
+  // de "sí".
+  //
+  // No pasa por `fail` porque no gasta intentos: esto no se arregla
+  // reintentando ni deja de arreglarse solo. En cuanto el cliente apruebe, la
+  // pieza puede salir en el barrido siguiente con su crédito intacto.
+  if (row.idea.clientReview === "CHANGES") {
+    await prisma.ideaTarget.update({
+      where: { ideaId_accountId: { ideaId: target.ideaId, accountId: target.accountId } },
+      data: {
+        attemptedAt: new Date(),
+        lastError: "El cliente pidió cambios en esta pieza, así que no sale sola.",
+      },
+    })
+    return "failed"
   }
 
   const account = row.account
