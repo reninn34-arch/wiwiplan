@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react"
 import {
   DndContext,
-  PointerSensor,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDraggable,
   useDroppable,
   pointerWithin,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core"
 import { toast } from "sonner"
 import { CalendarDays, CircleAlert, Paperclip } from "lucide-react"
@@ -48,6 +51,9 @@ interface Props {
 
 const UNSCHEDULED = "sin-fecha"
 
+/** Cuántos puntos caben en una casilla del celular antes de resumir con "+N". */
+const MAX_PUNTOS = 3
+
 const statusDot: Record<string, string> = {
   IDEA: "bg-zinc-500",
   SELECTED: "bg-blue-400",
@@ -55,51 +61,27 @@ const statusDot: Record<string, string> = {
   DONE: "bg-emerald-400",
 }
 
-/** Ficha de una pieza. Se arrastra en escritorio y se toca en el celular. */
-function IdeaChip({
+function estaPublicada(idea: CalendarIdea): boolean {
+  return idea.targets.length > 0 && idea.targets.every((t) => t.publishedAt !== null)
+}
+
+/** El contenido de una ficha, sin nada de arrastre. Lo comparten la ficha real
+ *  y la copia que sigue al dedo mientras se arrastra. */
+function ChipInterior({
   idea,
   networkColorsById,
-  open,
-  moving,
-  onOpen,
 }: {
   idea: CalendarIdea
   networkColorsById: Map<string, string>
-  open: boolean
-  moving: boolean
-  onOpen: () => void
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: idea.id })
-  // Ya salió en todas sus redes: se lee distinto para no confundirla con lo que
-  // todavía está pendiente.
-  const published = idea.targets.length > 0 && idea.targets.every((t) => t.publishedAt !== null)
-
+  const published = estaPublicada(idea)
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onOpen()
-        }
-      }}
-      aria-label={`${idea.title}. Tócalo para ver cuándo y dónde sale.`}
-      aria-pressed={open || moving}
-      className={`w-full cursor-grab touch-none rounded-md px-1.5 py-1 text-left text-[11px] leading-tight transition-colors active:cursor-grabbing ${
-        moving
-          ? "bg-brand/30 text-white ring-1 ring-inset ring-brand"
-          : open
-            ? "bg-white/15 text-white ring-1 ring-inset ring-white/30"
-            : "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]"
-      } ${isDragging ? "opacity-40" : ""}`}
-    >
+    <>
       <span className="flex items-center gap-1.5">
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDot[idea.status] ?? "bg-zinc-600"}`} aria-hidden />
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDot[idea.status] ?? "bg-zinc-600"}`}
+          aria-hidden
+        />
         <span className={`truncate ${published ? "text-zinc-500 line-through" : ""}`}>
           {idea.title || "Sin título"}
         </span>
@@ -107,7 +89,9 @@ function IdeaChip({
       {(idea.publishTime || idea.targets.length > 0 || idea.media.length > 0) && (
         <span className="mt-0.5 flex items-center gap-1 pl-3">
           {idea.publishTime && (
-            <span className="shrink-0 text-[10px] tabular-nums text-zinc-500">{idea.publishTime}</span>
+            <span className="shrink-0 text-[10px] tabular-nums text-zinc-500">
+              {idea.publishTime}
+            </span>
           )}
           {idea.media.length > 0 && (
             <Paperclip className="h-2.5 w-2.5 shrink-0 text-zinc-500" aria-hidden />
@@ -126,6 +110,55 @@ function IdeaChip({
           ))}
         </span>
       )}
+    </>
+  )
+}
+
+/** Ficha de una pieza. Se arrastra con el ratón, o dejando el dedo apoyado. */
+function IdeaChip({
+  idea,
+  networkColorsById,
+  open,
+  moving,
+  onOpen,
+}: {
+  idea: CalendarIdea
+  networkColorsById: Map<string, string>
+  open: boolean
+  moving: boolean
+  onOpen: () => void
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: idea.id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+      aria-label={`${idea.title}. Tócalo para ver cuándo y dónde sale.`}
+      aria-pressed={open || moving}
+      // `touch-manipulation` en el celular y `touch-none` sólo de tablet para
+      // arriba: con `touch-none` en todas partes, apoyar el dedo en una ficha
+      // impedía desplazar la página, y en un mes lleno casi todo es ficha.
+      // El arrastre táctil no lo necesita porque se activa manteniendo pulsado.
+      className={`w-full cursor-grab touch-manipulation rounded-md px-1.5 py-1 text-left text-[11px] leading-tight transition-colors active:cursor-grabbing sm:touch-none ${
+        moving
+          ? "bg-brand/30 text-white ring-1 ring-inset ring-brand"
+          : open
+            ? "bg-white/15 text-white ring-1 ring-inset ring-white/30"
+            : "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]"
+      } ${isDragging ? "opacity-40" : ""}`}
+    >
+      <ChipInterior idea={idea} networkColorsById={networkColorsById} />
     </div>
   )
 }
@@ -136,6 +169,8 @@ function DayCell({
   networkColorsById,
   openId,
   movingId,
+  selected,
+  onSelect,
   onDropDay,
   onOpen,
 }: {
@@ -144,6 +179,8 @@ function DayCell({
   networkColorsById: Map<string, string>
   openId: string | null
   movingId: string | null
+  selected: boolean
+  onSelect: () => void
   onDropDay: (dayKey: string) => void
   onOpen: (ideaId: string) => void
 }) {
@@ -153,20 +190,23 @@ function DayCell({
   return (
     <div
       ref={setNodeRef}
-      onClick={() => movingId && onDropDay(day.key)}
-      className={`min-h-[5.5rem] border-b border-r border-white/5 p-1 transition-colors ${
+      onClick={() => (movingId ? onDropDay(day.key) : onSelect())}
+      // En el celular la casilla mide 49px de ancho: no cabe texto, así que
+      // sólo lleva el número y un punto por pieza, y se toca para ver el día
+      // entero debajo. Las fichas con título aparecen de tablet para arriba.
+      className={`min-h-[3.5rem] cursor-pointer border-b border-r border-white/5 p-1 transition-colors sm:min-h-[5.5rem] ${
         day.inPeriod ? "" : "bg-black/20"
       } ${isOver ? "bg-brand/15 ring-1 ring-inset ring-brand" : ""} ${
-        movingId ? "cursor-copy hover:bg-white/[0.04]" : ""
-      }`}
+        selected ? "bg-white/[0.07] ring-1 ring-inset ring-white/25" : ""
+      } ${movingId ? "cursor-copy ring-1 ring-inset ring-brand/25 hover:bg-white/[0.04]" : ""}`}
     >
       <div className="mb-1 flex items-center justify-between px-0.5">
         <span
-          className={`text-[11px] tabular-nums ${
+          className={`text-xs tabular-nums sm:text-[11px] ${
             day.isToday
-              ? "flex h-5 w-5 items-center justify-center rounded-full bg-brand font-semibold text-white"
+              ? "flex h-6 w-6 items-center justify-center rounded-full bg-brand font-semibold text-white sm:h-5 sm:w-5"
               : day.inPeriod
-                ? "text-zinc-400"
+                ? "text-zinc-300 sm:text-zinc-400"
                 : "text-zinc-700"
           }`}
         >
@@ -174,7 +214,7 @@ function DayCell({
         </span>
         {clash && (
           <span
-            className="flex items-center gap-0.5 text-[10px] text-amber-400"
+            className="hidden items-center gap-0.5 text-[10px] text-amber-400 sm:flex"
             title={`${ideas.length} piezas el mismo día`}
           >
             <CircleAlert className="h-3 w-3" />
@@ -182,7 +222,27 @@ function DayCell({
           </span>
         )}
       </div>
-      <div className="space-y-1">
+
+      {/* Celular: un punto por pieza. */}
+      <div className="flex flex-wrap items-center gap-1 px-0.5 sm:hidden">
+        {ideas.slice(0, MAX_PUNTOS).map((idea) => (
+          <span
+            key={idea.id}
+            className={`h-2 w-2 rounded-full ${
+              estaPublicada(idea) ? "bg-emerald-400" : statusDot[idea.status] ?? "bg-zinc-600"
+            }`}
+            aria-hidden
+          />
+        ))}
+        {ideas.length > MAX_PUNTOS && (
+          <span className="text-[9px] leading-none text-zinc-500">
+            +{ideas.length - MAX_PUNTOS}
+          </span>
+        )}
+      </div>
+
+      {/* Tablet para arriba: las fichas completas, con título y hora. */}
+      <div className="hidden space-y-1 sm:block">
         {ideas.map((idea) => (
           <IdeaChip
             key={idea.id}
@@ -203,7 +263,19 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
   const [openId, setOpenId] = useState<string | null>(null)
   /** La pieza esperando que toques un día. Sale del botón "Mover de día". */
   const [movingId, setMovingId] = useState<string | null>(null)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  /** El día tocado en el celular, cuyas piezas se listan debajo del mes. */
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  /** La pieza que se está arrastrando, para dibujar la copia que sigue al dedo. */
+  const [dragId, setDragId] = useState<string | null>(null)
+
+  // Dos sensores en vez de uno, y no es un detalle: con `PointerSensor` un
+  // deslizamiento de 6px con el dedo arrancaba un arrastre en lugar de un
+  // toque, así que abrir una pieza en el celular fallaba la mitad de las veces.
+  // El ratón sigue arrastrando al instante; el dedo tiene que mantenerse.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  )
 
   const today = useMemo(() => todayKey(), [])
   const grid = useMemo(() => buildMonthGrid(period, today), [period, today])
@@ -228,6 +300,8 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
   )
   const scheduled = ideas.length - unscheduled.length
   const openPiece = ideas.find((i) => i.id === openId) ?? null
+  const dragPiece = ideas.find((i) => i.id === dragId) ?? null
+  const piezasDelDia = selectedDay ? byDay.get(selectedDay) ?? [] : []
 
   const moveIdea = async (ideaId: string, dayKey: string | null) => {
     const idea = ideas.find((i) => i.id === ideaId)
@@ -238,6 +312,9 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
     const snapshot = ideas
     const dueDate = dayKey ? `${dayKey}T00:00:00.000Z` : null
     onChange(ideas.map((i) => (i.id === ideaId ? { ...i, dueDate } : i)))
+    // Se sigue a la pieza: tras moverla, el día que se muestra debajo es aquel
+    // al que fue. Quedarse en el anterior obligaba a buscarla otra vez.
+    if (dayKey) setSelectedDay(dayKey)
 
     const res = await fetch(`/api/plannings/${planningId}/ideas/${ideaId}`, {
       method: "PUT",
@@ -253,6 +330,7 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
+    setDragId(null)
     const over = event.over?.id
     if (!over) return
     moveIdea(String(event.active.id), over === UNSCHEDULED ? null : String(over))
@@ -271,7 +349,13 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))}
+      onDragCancel={() => setDragId(null)}
+      onDragEnd={handleDragEnd}
+    >
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 className="text-sm font-semibold tracking-tight text-zinc-200">
@@ -317,9 +401,12 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
             {WEEKDAY_LABELS.map((label) => (
               <div
                 key={label}
-                className="border-b border-r border-white/5 bg-white/[0.02] px-2 py-1.5 text-center text-[10px] font-medium uppercase tracking-wider text-zinc-500"
+                className="border-b border-r border-white/5 bg-white/[0.02] px-1 py-1.5 text-center text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:px-2"
               >
-                {label}
+                {/* Dos letras y no una: con la inicial sola, martes y miércoles
+                    eran las dos "M" y no había forma de distinguir la columna. */}
+                <span className="sm:hidden">{label.slice(0, 2)}</span>
+                <span className="hidden sm:inline">{label}</span>
               </div>
             ))}
           </div>
@@ -333,6 +420,8 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
                   networkColorsById={networkColorsById}
                   openId={openId}
                   movingId={movingId}
+                  selected={selectedDay === day.key}
+                  onSelect={() => setSelectedDay(day.key === selectedDay ? null : day.key)}
                   onDropDay={(dayKey) => movingId && moveIdea(movingId, dayKey)}
                   onOpen={setOpenId}
                 />
@@ -341,13 +430,95 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
           ))}
         </div>
 
+        {/* El día tocado, a lo ancho. Es lo que hace legible el mes en el
+            celular: la casilla sólo puede decir "acá hay algo", y el detalle
+            necesita el ancho entero de la pantalla. */}
+        {selectedDay && (
+          <div className="rounded-xl border border-white/5 bg-[#0c0c0e] p-3 sm:hidden">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs font-medium text-zinc-300">
+                {new Date(`${selectedDay}T12:00:00Z`).toLocaleDateString("es-EC", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                Cerrar
+              </button>
+            </div>
+            {piezasDelDia.length === 0 ? (
+              <p className="py-1 text-xs text-zinc-500">
+                Nada este día. Abre una pieza y usa &laquo;Mover de día&raquo; para traerla acá.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {piezasDelDia.map((idea) => (
+                  <button
+                    key={idea.id}
+                    type="button"
+                    onClick={() => setOpenId(idea.id)}
+                    className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors ${
+                      openId === idea.id
+                        ? "bg-white/15 ring-1 ring-inset ring-white/30"
+                        : "bg-white/[0.06] hover:bg-white/[0.1]"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${
+                        statusDot[idea.status] ?? "bg-zinc-600"
+                      }`}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block truncate text-sm ${
+                          estaPublicada(idea) ? "text-zinc-500 line-through" : "text-zinc-200"
+                        }`}
+                      >
+                        {idea.title || "Sin título"}
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1.5">
+                        {idea.publishTime && (
+                          <span className="text-[11px] tabular-nums text-zinc-500">
+                            {idea.publishTime}
+                          </span>
+                        )}
+                        {idea.media.length > 0 && (
+                          <Paperclip className="h-3 w-3 text-zinc-500" aria-hidden />
+                        )}
+                        {idea.targets.map((t) => (
+                          <span
+                            key={t.accountId}
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{
+                              backgroundColor: t.publishedAt
+                                ? "#34d399"
+                                : networkColorsById.get(t.accountId) ?? "#52525b",
+                            }}
+                            aria-hidden
+                          />
+                        ))}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Cajón de las que todavía no tienen día. Soltar acá quita la fecha. */}
         <div
           ref={setTrayRef}
           onClick={() => movingId && moveIdea(movingId, null)}
           className={`rounded-xl border border-white/5 bg-[#0c0c0e] p-4 transition-colors ${
             trayIsOver ? "bg-brand/10 ring-1 ring-inset ring-brand" : ""
-          } ${movingId ? "cursor-copy" : ""}`}
+          } ${movingId ? "cursor-copy ring-1 ring-inset ring-brand/25" : ""}`}
         >
           <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
             Sin fecha ({unscheduled.length})
@@ -359,7 +530,7 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {unscheduled.map((idea) => (
-                <div key={idea.id} className="max-w-[14rem]">
+                <div key={idea.id} className="w-full sm:max-w-[14rem]">
                   <IdeaChip
                     idea={idea}
                     networkColorsById={networkColorsById}
@@ -374,8 +545,15 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
         </div>
 
         <p className="text-xs text-zinc-500">
-          Toca una pieza para decir cuándo y dónde sale. Para cambiarla de día, arrástrala — o usa
-          &laquo;Mover de día&raquo; y toca el día nuevo.{" "}
+          <span className="sm:hidden">
+            Toca un día para ver lo que sale ese día, y una pieza para decir cuándo y dónde. Para
+            cambiarla de día, mantén el dedo sobre ella y arrástrala — o usa &laquo;Mover de
+            día&raquo; y toca el día nuevo.{" "}
+          </span>
+          <span className="hidden sm:inline">
+            Toca una pieza para decir cuándo y dónde sale. Para cambiarla de día, arrástrala — o usa
+            &laquo;Mover de día&raquo; y toca el día nuevo.{" "}
+          </span>
           <button
             type="button"
             onClick={() => openPiece && onOpenIdea(openPiece.id)}
@@ -386,6 +564,17 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
           </button>
         </p>
       </div>
+
+      {/* La copia que sigue al puntero. Sin esto, en el celular no se veía nada
+          moverse: el original se atenuaba y ya, así que el arrastre parecía
+          roto aunque estuviera funcionando. */}
+      <DragOverlay dropAnimation={null}>
+        {dragPiece && (
+          <div className="max-w-[14rem] rounded-md bg-brand/80 px-1.5 py-1 text-[11px] leading-tight text-white shadow-lg ring-1 ring-inset ring-white/30">
+            <ChipInterior idea={dragPiece} networkColorsById={networkColorsById} />
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   )
 }
