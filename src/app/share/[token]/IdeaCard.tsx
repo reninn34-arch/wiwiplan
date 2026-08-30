@@ -588,7 +588,11 @@ export function IdeaCard({
           </div>
 
           <div
-            className="relative flex flex-1 items-center justify-center px-2"
+            // `min-h-0` no es decoración: sin él un hijo flexible no se
+            // encoge por debajo de su contenido, así que una imagen alta se
+            // dibujaba a su tamaño real —1104px en una ventana de 800— y
+            // empujaba el pie con el botón de cerrar fuera de la pantalla.
+            className="relative flex min-h-0 flex-1 items-center justify-center px-2"
             onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => setTocado(e.touches[0].clientX)}
             onTouchEnd={(e) => {
