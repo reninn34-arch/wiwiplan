@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, ExternalLink, Hash, ImageOff, Layout, MessageSquare, Send } from "lucide-react"
+import { Clock, Copy, ExternalLink, Hash, ImageOff, ImagePlus, MessageSquare, Send } from "lucide-react"
 import { detectEmbed, platformLabel, postTypeLabel } from "@/lib/embeds"
-import { ideaImageUrl } from "@/lib/media"
+import { ideaImageUrl, panelImageUrl } from "@/lib/media"
 
 /**
  * Una idea, como se la mira el cliente.
@@ -40,7 +40,17 @@ export interface CardIdea {
   images: Array<{ id: string }>
   contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
   comments: Comment[]
-  storyboard: { id: string; title: string } | null
+  storyboard: {
+    id: string
+    title: string
+    panels: Array<{
+      id: string
+      hasImage: boolean
+      description: string
+      duration: string
+      notes: string
+    }>
+  } | null
 }
 
 const estadoEtiqueta: Record<string, string> = {
@@ -368,6 +378,60 @@ export function IdeaCard({
           </div>
         )}
 
+        {/* ── El storyboard, acá y no en otra sección ──
+            Estaba abajo del todo y había que ir a buscarlo con un botón: el
+            cliente veía la idea en un sitio y sus escenas en otro. Es parte de
+            la idea, así que se mira con ella. */}
+        {idea.storyboard && idea.storyboard.panels.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-500">
+              {idea.storyboard.title || "Escenas"}
+            </p>
+            <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
+              {idea.storyboard.panels.map((panel, i) => (
+                <div
+                  key={panel.id}
+                  className="w-40 shrink-0 snap-start overflow-hidden rounded-lg border border-white/5 bg-white/[0.03]"
+                >
+                  <div className="flex aspect-video items-center justify-center bg-black">
+                    {panel.hasImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={panelImageUrl(panel.id)}
+                        alt={`Escena ${i + 1}`}
+                        // Sin carga diferida: dentro de este carrusel
+                        // horizontal el navegador nunca llegaba a pedirlas y
+                        // las escenas se quedaban en negro. Son miniaturas
+                        // pequeñas y pocas por tarjeta, así que no cuesta.
+                        onClick={() => onPreviewImage(panelImageUrl(panel.id))}
+                        className="h-full w-full cursor-zoom-in object-cover"
+                      />
+                    ) : (
+                      <ImagePlus className="h-5 w-5 text-zinc-700" aria-hidden />
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <span className="flex items-center gap-1 text-[11px] text-zinc-400">
+                      Escena {i + 1}
+                      {panel.duration && (
+                        <span className="ml-auto flex items-center gap-0.5 text-zinc-500">
+                          <Clock className="h-2.5 w-2.5" /> {panel.duration}
+                        </span>
+                      )}
+                    </span>
+                    {panel.description && (
+                      <div
+                        className="prose prose-xs dark:prose-invert mt-0.5 line-clamp-3 max-w-none text-[11px] leading-snug text-zinc-500"
+                        dangerouslySetInnerHTML={{ __html: panel.description }}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Contexto: pilar, etiquetas, referencia ── */}
         {(idea.pilar || idea.contentIdeaTags.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
@@ -390,7 +454,7 @@ export function IdeaCard({
 
         {/* El enlace de abajo sólo cuando arriba no se está mostrando ya:
             repetido dos veces en la misma tarjeta confunde más que ayuda. */}
-        {((idea.referenceUrl && !enlaceSuelto) || idea.storyboard) && (
+        {idea.referenceUrl && !enlaceSuelto && (
           <div className="flex flex-wrap gap-2 text-xs">
             {idea.referenceUrl && !enlaceSuelto && (
               <a
@@ -402,19 +466,7 @@ export function IdeaCard({
                 <ExternalLink className="h-3.5 w-3.5" /> {platformLabel(idea.platform)}
               </a>
             )}
-            {idea.storyboard && (
-              <button
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById(`sb-${idea.storyboard!.id}`)
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-white/5 px-2.5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <Layout className="h-3.5 w-3.5" /> {idea.storyboard.title}
-              </button>
-            )}
+
           </div>
         )}
 

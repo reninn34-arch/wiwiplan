@@ -306,7 +306,12 @@ export function SharedPlanningView({ planning, profile }: Props) {
           </section>
         )}
 
-        {planning.storyboards.map((sb) => (
+        {/* Sólo los que no cuelgan de ninguna idea. Los demás ya se ven dentro
+            de su tarjeta, y repetirlos abajo obligaba al cliente a leer lo
+            mismo dos veces sin saber si era otra cosa. */}
+        {planning.storyboards
+          .filter((sb) => !planning.contentIdeas.some((i) => i.storyboard?.id === sb.id))
+          .map((sb) => (
           <section key={sb.id} id={`sb-${sb.id}`} className="mb-8 scroll-mt-8">
             <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-200">
               <Layout className="h-5 w-5" /> {sb.title}
@@ -348,7 +353,7 @@ export function SharedPlanningView({ planning, profile }: Props) {
               </div>
             )}
           </section>
-        ))}
+          ))}
 
         {!isApproved && (
           <div className="flex justify-center py-8">
