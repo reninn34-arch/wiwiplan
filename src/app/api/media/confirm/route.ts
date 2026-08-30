@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { restoreAttemptsForIdea } from "@/lib/auto-publish.server"
 import { auth } from "@/lib/auth"
 import { belongsToIdea, kindOfContentType, maxBytesFor } from "@/lib/media-storage.server"
 
@@ -68,6 +69,10 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true, url: true, kind: true, contentType: true, sizeBytes: true, order: true },
     })
+
+    // Los archivos cambiaron: si el publicador había dictaminado que el
+    // contenido no servía, ese veredicto ya no vale sobre nada.
+    await restoreAttemptsForIdea(ideaId)
 
     return NextResponse.json(asset, { status: 201 })
   } catch (error) {

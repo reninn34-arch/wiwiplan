@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { restoreAttemptsForIdea } from "@/lib/auto-publish.server"
 import { auth } from "@/lib/auth"
 import { deleteStoredMedia } from "@/lib/media-storage.server"
 
@@ -17,7 +18,7 @@ export async function DELETE(
     const { assetId } = await params
     const asset = await prisma.mediaAsset.findFirst({
       where: { id: assetId, idea: { planning: { userId: session.user.id } } },
-      select: { id: true, url: true },
+      select: { id: true, url: true, ideaId: true },
     })
     if (!asset) {
       return NextResponse.json({ error: "No encontrado" }, { status: 404 })
@@ -27,6 +28,9 @@ export async function DELETE(
     // huérfano que cuesta centavos, no una pieza apuntando a algo que ya no está.
     await prisma.mediaAsset.delete({ where: { id: asset.id } })
     await deleteStoredMedia(asset.url)
+    // Igual que al añadir: quitar un archivo cambia lo que se va a publicar,
+    // así que un rechazo anterior por el contenido deja de aplicar.
+    await restoreAttemptsForIdea(asset.ideaId)
 
     return NextResponse.json({ success: true })
   } catch (error) {

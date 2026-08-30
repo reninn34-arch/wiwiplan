@@ -33,6 +33,58 @@ interface Props {
 
 const ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
 
+/**
+ * El techo de imagen que aceptan las dos redes. Instagram admite 8 MB y
+ * Facebook 10, así que 8 es el común: por encima, una red publica y la otra
+ * no, que es exactamente lo que pasó —tres fotos salieron en Instagram y
+ * Facebook rechazó el lote entero porque una pesaba 10.04 MB—.
+ */
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+
+/** Ninguna red muestra más lado que esto; de ahí para arriba son bytes tirados. */
+const MAX_LADO = 2048
+
+/**
+ * Encoge una imagen sólo si se pasa del techo. Por debajo devuelve el archivo
+ * intacto: no se toca el trabajo de nadie mientras se pueda publicar tal cual.
+ *
+ * Si el navegador no sabe hacerlo, devuelve el original y que sea la red quien
+ * lo rechace: subir algo es mejor que perderlo por un fallo del canvas.
+ */
+async function encogerSiHaceFalta(file: File): Promise<{ file: File; encogida: boolean }> {
+  if (!file.type.startsWith("image/") || file.size <= MAX_IMAGE_BYTES) {
+    return { file, encogida: false }
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file)
+    const escala = Math.min(1, MAX_LADO / Math.max(bitmap.width, bitmap.height))
+    const ancho = Math.round(bitmap.width * escala)
+    const alto = Math.round(bitmap.height * escala)
+
+    const canvas = document.createElement("canvas")
+    canvas.width = ancho
+    canvas.height = alto
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return { file, encogida: false }
+    ctx.drawImage(bitmap, 0, 0, ancho, alto)
+    bitmap.close()
+
+    // Se baja la calidad por pasos y se para en cuanto entra: así la primera
+    // que quepa es la mejor que cabía, en vez de comprimir de más por si acaso.
+    for (const calidad of [0.92, 0.85, 0.75, 0.65]) {
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", calidad))
+      if (blob && blob.size <= MAX_IMAGE_BYTES) {
+        const nombre = file.name.replace(/\.[^.]+$/, "") + ".jpg"
+        return { file: new File([blob], nombre, { type: "image/jpeg" }), encogida: true }
+      }
+    }
+  } catch (error) {
+    console.error("[media] No se pudo encoger la imagen:", error)
+  }
+  return { file, encogida: false }
+}
+
 function formatSize(bytes: number): string {
   if (bytes <= 0) return ""
   const mb = bytes / (1024 * 1024)
@@ -46,10 +98,18 @@ export function MediaUploader({ ideaId, media, onChange }: Props) {
 
   const uploading = progress !== null
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (original: File) => {
     if (uploading) return
     setProgress(0)
     try {
+      const { file, encogida } = await encogerSiHaceFalta(original)
+      if (encogida) {
+        toast.info(
+          `"${original.name}" pesaba ${formatSize(original.size)} y Facebook no admite más de 8 MB. ` +
+            `Se guardó una versión de ${formatSize(file.size)}.`,
+          { duration: 8000 },
+        )
+      }
       // La ruta lleva el id de la pieza porque el servidor la usa para
       // comprobar de quién es antes de firmar el permiso.
       const blob = await upload(`ideas/${ideaId}/${file.name}`, file, {

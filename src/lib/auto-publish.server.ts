@@ -194,3 +194,20 @@ export async function restoreAttempts(accountId: string): Promise<number> {
   })
   return count
 }
+
+/**
+ * Devuelve el crédito de reintento a los destinos de una pieza.
+ *
+ * Se llama al cambiar sus archivos. La razón es la misma que al reconectar una
+ * cuenta, vista del otro lado: si el publicador dictaminó "el contenido no
+ * sirve" y el contenido acaba de cambiar, ese veredicto ya no vale sobre nada.
+ * Sin esto, arreglar la foto que Meta rechazó no bastaba —la pieza seguía sin
+ * intentos y no volvía a salir sola—.
+ */
+export async function restoreAttemptsForIdea(ideaId: string): Promise<number> {
+  const { count } = await prisma.ideaTarget.updateMany({
+    where: { ideaId, publishedAt: null },
+    data: { attempts: 0, lastError: null },
+  })
+  return count
+}
