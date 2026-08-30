@@ -18,6 +18,7 @@ import { ContentIdeasTab } from "./ContentIdeasTab"
 import dynamic from "next/dynamic"
 import { ShareModal } from "./ShareModal"
 import { PaymentsTab } from "./PaymentsTab"
+import { ResultsTab } from "./ResultsTab"
 import { CalendarTab } from "./CalendarTab"
 import { PaymentStamp, type PaymentRecord } from "@/components/payments/PaymentStatus"
 import { ClientLogo } from "@/components/ClientLogo"
@@ -71,6 +72,7 @@ const statusDotStyles: Record<string, string> = {
 const tabs = [
   { id: "contenido", label: "Contenido" },
   { id: "calendario", label: "Calendario" },
+  { id: "resultados", label: "Resultados" },
   { id: "info", label: "Información" },
   { id: "storyboard", label: "Storyboards" },
   { id: "pagos", label: "Pagos" },
@@ -460,6 +462,7 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             }}
           />
         )}
+        {activeTab === "resultados" && <ResultsTab planningId={planning.id} />}
         {activeTab === "storyboard" && (
           <StoryboardsTab planningId={planning.id} />
         )}

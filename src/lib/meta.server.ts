@@ -34,6 +34,10 @@ const SCOPES_POR_DEFECTO = [
   // Publicar en la página de Facebook. Instagram no lo necesita, pero sin él
   // una página conectada sólo se puede leer.
   "pages_manage_posts",
+  // Alcance, guardados y reproducciones. Los "me gusta" y comentarios no lo
+  // necesitan, así que sin este permiso la pantalla de resultados sigue
+  // sirviendo a medias en vez de quedarse en blanco.
+  "instagram_manage_insights",
 ]
 
 export const META_SCOPES = (process.env.META_SCOPES || SCOPES_POR_DEFECTO.join(","))

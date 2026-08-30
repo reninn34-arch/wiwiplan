@@ -212,6 +212,23 @@ model IdeaTarget {
   /// El último error, para poder decir por qué no salió en vez de callarlo.
   lastError     String?
 
+  // ── Cómo le fue, una vez publicada ──
+  /// Nulos mientras no se hayan consultado nunca. Se distingue de cero a
+  /// propósito: "no lo sabemos" y "no lo vio nadie" no son lo mismo, y
+  /// mostrarlos igual sería inventarle un dato al cliente.
+  /// Cuentas únicas que la vieron.
+  reach       Int?
+  likes       Int?
+  commentCount Int?
+  /// Guardados. En una agencia es la señal más honesta de que algo sirvió.
+  saves       Int?
+  shares      Int?
+  /// Reproducciones. Sólo tiene sentido en video.
+  views       Int?
+  /// Cuándo se consultaron. Sin esto no se puede decir "hace dos días" ni
+  /// saber si vale la pena volver a preguntar.
+  metricsAt   DateTime?
+
   idea    ContentIdea   @relation(fields: [ideaId], references: [id], onDelete: Cascade)
   account ClientAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
