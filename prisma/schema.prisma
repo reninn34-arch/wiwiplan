@@ -559,5 +559,8 @@ model ShareLink {
   planning Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
 
   @@index([token])
-  @@index([planningId])
+  /// Uno por plan, garantizado por la base. Generar de nuevo reemplaza al
+  /// anterior; sin esta restricción, un fallo en el código volvía a dejar el
+  /// mismo plan repartido en varias direcciones vivas a la vez.
+  @@unique([planningId])
 }
