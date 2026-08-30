@@ -116,9 +116,9 @@ interface Props {
 }
 
 export function SharedPlanningView({ planning, profile }: Props) {
-  /** El feed primero: es lo que el cliente quiere ver, y el detalle es donde
-   *  después trabaja. */
-  const [vista, setVista] = useState<"feed" | "detalle">("feed")
+  /** El detalle primero: lo que el cliente tiene que revisar son las ideas, y
+   *  el feed es para ver cómo queda una vez entendido lo que se propone. */
+  const [vista, setVista] = useState<"feed" | "detalle">("detalle")
   const [status, setStatus] = useState(planning.status)
   const [isApproving, setIsApproving] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -236,8 +236,8 @@ export function SharedPlanningView({ planning, profile }: Props) {
               <div className="flex rounded-lg bg-white/[0.06] p-0.5 text-xs">
                 {(
                   [
-                    ["feed", "Feed"],
                     ["detalle", "Detalle"],
+                    ["feed", "Feed"],
                   ] as const
                 ).map(([id, label]) => (
                   <button
