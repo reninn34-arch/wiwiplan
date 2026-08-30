@@ -31,6 +31,8 @@ export interface SchedulePiece {
   publishTime: string
   targets: Array<{ accountId: string; publishedAt: string | null }>
   media: MediaAssetRow[]
+  /** Decide el camino de publicación: una historia no sale como el feed. */
+  postType: string
 }
 
 interface Props {
@@ -135,6 +137,15 @@ export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, o
           <X className="h-4 w-4" />
         </button>
       </div>
+
+      {piece.postType === "STORY" && (
+        <p className="mt-3 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-zinc-400">
+          Va como historia: <span className="text-zinc-200">un solo archivo</span> y{" "}
+          <span className="text-zinc-200">sin texto</span>. Instagram no admite pie de foto en
+          historias, así que el copy que escribas no sale — guárdalo para cuando lo publiques a
+          mano. En Facebook, por ahora sólo salen solas las de foto.
+        </p>
+      )}
 
       {/* ── Qué se publica ── */}
       <div className="mt-4">

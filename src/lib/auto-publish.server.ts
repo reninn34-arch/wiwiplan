@@ -59,6 +59,7 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
         select: {
           caption: true,
           title: true,
+          postType: true,
           media: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], select: { url: true, kind: true } },
         },
       },
@@ -112,6 +113,9 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
 
   const texto = row.idea.caption || row.idea.title || ""
   const archivos = row.idea.media.map((m) => ({ url: m.url, isVideo: m.kind === "VIDEO" }))
+  // Historia o feed no se puede deducir del archivo —la misma foto sirve para
+  // las dos—, así que manda el tipo elegido al planificar.
+  const esHistoria = row.idea.postType === "STORY"
 
   const marcarPublicada = async (postId: string) => {
     await prisma.ideaTarget.update({
@@ -138,6 +142,7 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
         token,
         message: texto,
         mediaUrls: archivos,
+        isStory: esHistoria,
       })
       return marcarPublicada(postId)
     }
@@ -150,7 +155,13 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
     }
 
     const progress = await advancePublish(
-      { instagramId: account.externalId, token, caption: texto, mediaUrls: archivos },
+      {
+        instagramId: account.externalId,
+        token,
+        caption: texto,
+        mediaUrls: archivos,
+        isStory: esHistoria,
+      },
       row.containerId,
     )
 

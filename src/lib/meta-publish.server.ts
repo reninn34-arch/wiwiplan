@@ -13,7 +13,8 @@ import "server-only"
  *    servidor: por eso el contenedor se guarda y la corrida siguiente retoma.
  * 3. El carrusel necesita un contenedor **por archivo** más uno que los agrupa.
  *
- * Los tres formatos son tres caminos distintos por eso, no por capricho.
+ * Los cuatro formatos —imagen, carrusel, reel e historia— son cuatro caminos
+ * distintos por eso, no por capricho.
  */
 
 const GRAPH = "https://graph.facebook.com/v21.0"
@@ -22,7 +23,7 @@ const GRAPH = "https://graph.facebook.com/v21.0"
 const POLL_TRIES = 5
 const POLL_WAIT_MS = 3000
 
-export type PublishKind = "IMAGE" | "CAROUSEL" | "REEL"
+export type PublishKind = "IMAGE" | "CAROUSEL" | "REEL" | "STORY"
 
 export interface PublishInput {
   instagramId: string
@@ -30,6 +31,12 @@ export interface PublishInput {
   caption: string
   /** URLs públicas, en el orden en que deben salir. */
   mediaUrls: Array<{ url: string; isVideo: boolean }>
+  /**
+   * Si la pieza va como historia. No se deduce del archivo —una foto sirve
+   * igual para el feed que para una historia—, así que viene del tipo elegido
+   * en la planificación.
+   */
+  isStory?: boolean
 }
 
 export interface PublishProgress {
@@ -108,7 +115,8 @@ async function get(path: string, params: Record<string, string>): Promise<Record
   return data
 }
 
-export function kindOf(mediaUrls: PublishInput["mediaUrls"]): PublishKind {
+export function kindOf(mediaUrls: PublishInput["mediaUrls"], isStory = false): PublishKind {
+  if (isStory) return "STORY"
   if (mediaUrls.length > 1) return "CAROUSEL"
   return mediaUrls[0]?.isVideo ? "REEL" : "IMAGE"
 }
@@ -116,7 +124,29 @@ export function kindOf(mediaUrls: PublishInput["mediaUrls"]): PublishKind {
 /** Crea el contenedor que Meta va a procesar. Devuelve su id. */
 async function createContainer(input: PublishInput): Promise<string> {
   const { instagramId, token, caption, mediaUrls } = input
-  const kind = kindOf(mediaUrls)
+  const kind = kindOf(mediaUrls, input.isStory)
+
+  if (kind === "STORY") {
+    // Una historia es un archivo. Si hay varios no se publica el primero en
+    // silencio: eso perdería los otros dos sin que nadie se entere. Se dice, y
+    // la salida es una pieza por historia, que además es como se planifican.
+    if (mediaUrls.length > 1) {
+      throw new MetaPublishError(
+        "Una historia sale de un solo archivo. Deja uno, o haz una pieza por cada historia.",
+        "contenido",
+      )
+    }
+    const archivo = mediaUrls[0]
+    // Las historias no llevan pie de foto: Instagram no lo admite y mandarlo
+    // hace fallar la llamada. El texto de la pieza sigue guardado para cuando
+    // se publique a mano o se reutilice.
+    const data = await post(`/${instagramId}/media`, {
+      media_type: "STORIES",
+      ...(archivo.isVideo ? { video_url: archivo.url } : { image_url: archivo.url }),
+      access_token: token,
+    })
+    return data.id
+  }
 
   if (kind === "IMAGE") {
     const data = await post(`/${instagramId}/media`, {
@@ -233,12 +263,44 @@ export interface PagePublishInput {
   token: string
   message: string
   mediaUrls: PublishInput["mediaUrls"]
+  isStory?: boolean
 }
 
 export async function publishToPage(input: PagePublishInput): Promise<string> {
   const { pageId, token, message, mediaUrls } = input
   if (mediaUrls.length === 0) {
     throw new MetaPublishError("La pieza no tiene ningún archivo que publicar", "contenido")
+  }
+
+  if (input.isStory) {
+    if (mediaUrls.length > 1) {
+      throw new MetaPublishError(
+        "Una historia sale de un solo archivo. Deja uno, o haz una pieza por cada historia.",
+        "contenido",
+      )
+    }
+    const archivo = mediaUrls[0]
+    if (archivo.isVideo) {
+      // El video de historia exige la subida por tramos de Meta, que es otro
+      // protocolo entero. Decirlo es mejor que fallar con un error suyo que no
+      // explica nada; en Instagram sí sale, y en Facebook queda asistida.
+      throw new MetaPublishError(
+        "Las historias de video en Facebook todavía no salen solas. Ponla en «Te avisamos».",
+        "contenido",
+      )
+    }
+    // Dos pasos: la foto se sube sin publicar y después se convierte en
+    // historia. Subirla publicada dejaría además una entrada en el muro.
+    const foto = await post(`/${pageId}/photos`, {
+      url: archivo.url,
+      published: "false",
+      access_token: token,
+    })
+    const historia = await post(`/${pageId}/photo_stories`, {
+      photo_id: foto.id,
+      access_token: token,
+    })
+    return historia.post_id || historia.id
   }
 
   const video = mediaUrls.find((m) => m.isVideo)
