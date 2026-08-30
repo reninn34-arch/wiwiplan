@@ -8,6 +8,7 @@ import {
   longLivedToken,
   verifyState,
 } from "@/lib/meta.server"
+import { restoreAttempts } from "@/lib/auto-publish.server"
 
 /**
  * Vuelta de Meta tras autorizar.
@@ -86,6 +87,9 @@ export async function GET(request: NextRequest) {
           connectedAt: new Date(),
         },
       })
+      // Igual que al elegir entre varias: reconectar devuelve los intentos que
+      // las piezas gastaron mientras la cuenta no servía.
+      await restoreAttempts(account.id)
       return backTo(request, account.clientId, { conexion: "lista" })
     }
 

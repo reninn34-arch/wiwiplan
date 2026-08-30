@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { unseal } from "@/lib/secret-box.server"
 import { listConnectableAccounts } from "@/lib/meta.server"
+import { restoreAttempts } from "@/lib/auto-publish.server"
 
 /**
  * Las cuentas que la autorización dejó disponibles, para elegir cuál es la de
@@ -90,6 +91,10 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true, externalId: true, externalName: true, connectedAt: true },
     })
+
+    // La cuenta vuelve a servir: sus piezas pendientes recuperan los intentos
+    // que gastaron mientras estaba caída.
+    await restoreAttempts(account.id)
 
     return NextResponse.json(updated)
   } catch (error) {

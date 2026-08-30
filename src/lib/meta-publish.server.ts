@@ -39,14 +39,43 @@ export interface PublishProgress {
   containerId?: string
 }
 
+/**
+ * De quién es la culpa cuando Meta rechaza algo. La distinción no es
+ * académica: decide si insistir sirve de algo.
+ *
+ * - `contenido`: el archivo no le vale —formato, duración, proporción—.
+ *   Reintentar lo mismo da lo mismo.
+ * - `cuenta`: el token murió, faltan permisos, la cuenta está bloqueada. El
+ *   contenido está perfecto; lo que hay que arreglar está fuera de la app.
+ * - `temporal`: límite de uso o un tropiezo de Meta. Se pasa solo.
+ */
+export type PublishFailureKind = "contenido" | "cuenta" | "temporal"
+
+/** Token muerto, permisos que faltan, sesión invalidada. */
+const CODIGOS_DE_CUENTA = new Set([3, 10, 102, 190, 200, 463, 467])
+/** Límite de uso o error pasajero del lado de Meta. */
+const CODIGOS_TEMPORALES = new Set([1, 2, 4, 17, 32, 341, 613])
+
+function clasificar(status: number, code?: number): PublishFailureKind {
+  if (typeof code === "number") {
+    if (CODIGOS_DE_CUENTA.has(code)) return "cuenta"
+    if (CODIGOS_TEMPORALES.has(code)) return "temporal"
+  }
+  if (status >= 500) return "temporal"
+  return "contenido"
+}
+
 export class MetaPublishError extends Error {
+  readonly kind: PublishFailureKind
+
   /** `true` cuando reintentar no va a servir: el problema es el contenido. */
   readonly permanent: boolean
 
-  constructor(message: string, permanent = false) {
+  constructor(message: string, kind: PublishFailureKind = "temporal") {
     super(message)
     this.name = "MetaPublishError"
-    this.permanent = permanent
+    this.kind = kind
+    this.permanent = kind === "contenido"
   }
 }
 
@@ -62,10 +91,7 @@ async function post(path: string, params: Record<string, string>): Promise<Recor
   if (!res.ok) {
     const error = data?.error ?? {}
     const message = error.error_user_msg || error.message || `Meta respondió ${res.status}`
-    // Un 4xx que no sea límite de uso es del contenido: el formato, la duración,
-    // la proporción. Reintentar lo mismo daría lo mismo.
-    const permanent = res.status >= 400 && res.status < 500 && error.code !== 4 && error.code !== 17
-    throw new MetaPublishError(message, permanent)
+    throw new MetaPublishError(message, clasificar(res.status, error.code))
   }
   return data
 }
@@ -74,7 +100,10 @@ async function get(path: string, params: Record<string, string>): Promise<Record
   const res = await fetch(`${GRAPH}${path}?${new URLSearchParams(params)}`, { cache: "no-store" })
   const data = await res.json()
   if (!res.ok) {
-    throw new MetaPublishError(data?.error?.message ?? `Meta respondió ${res.status}`)
+    throw new MetaPublishError(
+      data?.error?.message ?? `Meta respondió ${res.status}`,
+      clasificar(res.status, data?.error?.code),
+    )
   }
   return data
 }
@@ -111,7 +140,7 @@ async function createContainer(input: PublishInput): Promise<string> {
   // Carrusel: cada archivo es su propio contenedor hijo, y después uno que los
   // agrupa. Meta no acepta más de diez.
   if (mediaUrls.length > 10) {
-    throw new MetaPublishError("Un carrusel admite hasta 10 archivos", true)
+    throw new MetaPublishError("Un carrusel admite hasta 10 archivos", "contenido")
   }
 
   const children: string[] = []
@@ -145,7 +174,7 @@ async function isReady(containerId: string, token: string): Promise<boolean> {
   if (status === "ERROR" || status === "EXPIRED") {
     throw new MetaPublishError(
       data.status || "Meta no pudo procesar el archivo. Revisa formato, duración y proporción.",
-      true,
+      "contenido",
     )
   }
   return false
@@ -163,7 +192,7 @@ export async function advancePublish(
   existingContainer?: string | null,
 ): Promise<PublishProgress> {
   if (input.mediaUrls.length === 0) {
-    throw new MetaPublishError("La pieza no tiene ningún archivo que publicar", true)
+    throw new MetaPublishError("La pieza no tiene ningún archivo que publicar", "contenido")
   }
 
   const containerId = existingContainer || (await createContainer(input))
