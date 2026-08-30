@@ -46,7 +46,7 @@ export function AccountsSection({ clientId, accounts, onChange }: Props) {
   const router = useRouter()
   const params = useSearchParams()
   const [adding, setAdding] = useState<SocialNetwork | null>(null)
-  const [options, setOptions] = useState<Array<{ instagramId: string; username: string; pageName: string }>>([])
+  const [options, setOptions] = useState<Array<{ externalId: string; name: string; pageName: string }>>([])
 
   /**
    * Qué cuenta está esperando que elijan, derivado de la URL en vez de copiado
@@ -105,11 +105,11 @@ export function AccountsSection({ clientId, accounts, onChange }: Props) {
     }
   }, [choosing])
 
-  const elegir = async (instagramId: string) => {
+  const elegir = async (externalId: string) => {
     const res = await fetch("/api/meta/accounts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accountId: choosing, instagramId }),
+      body: JSON.stringify({ accountId: choosing, externalId }),
     })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
@@ -407,15 +407,23 @@ export function AccountsSection({ clientId, accounts, onChange }: Props) {
               <li className="text-xs text-zinc-500">Buscando cuentas…</li>
             ) : (
               options.map((o) => (
-                <li key={o.instagramId}>
+                <li key={o.externalId}>
                   <button
                     type="button"
-                    onClick={() => elegir(o.instagramId)}
+                    onClick={() => elegir(o.externalId)}
                     className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-white/5"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-sm text-zinc-200">@{o.username}</span>
-                      <span className="block truncate text-xs text-zinc-500">{o.pageName}</span>
+                      {/* La arroba sólo tiene sentido en Instagram: una página
+                          de Facebook tiene nombre, no usuario. Y ahí el nombre
+                          y el de la página son el mismo, así que repetirlo
+                          debajo sólo ocuparía sitio. */}
+                      <span className="block truncate text-sm text-zinc-200">
+                        {o.name === o.pageName ? o.name : `@${o.name}`}
+                      </span>
+                      {o.name !== o.pageName && (
+                        <span className="block truncate text-xs text-zinc-500">{o.pageName}</span>
+                      )}
                     </span>
                     <span className="shrink-0 text-xs text-zinc-400">Elegir</span>
                   </button>

@@ -36,6 +36,17 @@ export function isSocialNetwork(value: unknown): value is SocialNetwork {
 
 export type PublishMode = "ASSISTED" | "AUTOMATIC"
 
+/**
+ * Las redes que la app sabe publicar sola. El resto existen para planificar y
+ * para el carril asistido, pero prometerles "sale sola" sería mentir: no hay
+ * publicador detrás, y la pieza se quedaría esperando sin que nadie avise.
+ */
+export const autoPublishNetworks: readonly SocialNetwork[] = ["INSTAGRAM", "FACEBOOK"]
+
+export function canAutoPublish(network: SocialNetwork): boolean {
+  return autoPublishNetworks.includes(network)
+}
+
 export const publishModeLabels: Record<PublishMode, string> = {
   ASSISTED: "Te avisamos",
   AUTOMATIC: "Sale sola",

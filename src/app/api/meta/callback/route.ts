@@ -7,6 +7,7 @@ import {
   listConnectableAccounts,
   longLivedToken,
   verifyState,
+  type ConnectableNetwork,
 } from "@/lib/meta.server"
 import { restoreAttempts } from "@/lib/auto-publish.server"
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   const account = await prisma.clientAccount.findFirst({
     where: { id: state.accountId, client: { userId: state.userId } },
-    select: { id: true, clientId: true },
+    select: { id: true, clientId: true, network: true },
   })
   if (!account) {
     return backTo(request, null, { conexion: "invalida" })
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
   try {
     const short = await exchangeCode(params.get("code") ?? "")
     const { token, expiresAt } = await longLivedToken(short)
-    const available = await listConnectableAccounts(token)
+    const available = await listConnectableAccounts(token, account.network as ConnectableNetwork)
 
     if (available.length === 0) {
       // El caso más frecuente y el que más confunde. Se cuentan las páginas
@@ -79,8 +80,8 @@ export async function GET(request: NextRequest) {
       await prisma.clientAccount.update({
         where: { id: account.id },
         data: {
-          externalId: only.instagramId,
-          externalName: only.username,
+          externalId: only.externalId,
+          externalName: only.name,
           pageId: only.pageId,
           accessToken: seal(only.pageToken),
           tokenExpiresAt: expiresAt,

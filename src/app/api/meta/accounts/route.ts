@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { unseal } from "@/lib/secret-box.server"
-import { listConnectableAccounts } from "@/lib/meta.server"
+import { listConnectableAccounts, type ConnectableNetwork } from "@/lib/meta.server"
 import { restoreAttempts } from "@/lib/auto-publish.server"
 
 /**
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const accountId = request.nextUrl.searchParams.get("accountId") ?? ""
     const account = await prisma.clientAccount.findFirst({
       where: { id: accountId, client: { userId: session.user.id } },
-      select: { id: true, accessToken: true },
+      select: { id: true, accessToken: true, network: true },
     })
     if (!account) {
       return NextResponse.json({ error: "No encontrada" }, { status: 404 })
@@ -34,7 +34,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(await listConnectableAccounts(token))
+    // La red importa para listar: en Instagram sólo valen las páginas con una
+    // cuenta vinculada; en Facebook vale cualquiera.
+    return NextResponse.json(
+      await listConnectableAccounts(token, account.network as ConnectableNetwork),
+    )
   } catch (error) {
     console.error("[meta] No se pudieron listar las cuentas:", error)
     return NextResponse.json(
@@ -54,11 +58,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const accountId = typeof body?.accountId === "string" ? body.accountId : ""
-    const instagramId = typeof body?.instagramId === "string" ? body.instagramId : ""
+    const externalId = typeof body?.externalId === "string" ? body.externalId : ""
 
     const account = await prisma.clientAccount.findFirst({
       where: { id: accountId, client: { userId: session.user.id } },
-      select: { id: true, accessToken: true },
+      select: { id: true, accessToken: true, network: true },
     })
     if (!account) {
       return NextResponse.json({ error: "No encontrada" }, { status: 404 })
@@ -71,8 +75,8 @@ export async function POST(request: NextRequest) {
 
     // Se vuelve a consultar en vez de confiar en lo que manda el navegador:
     // así nadie puede fijar una cuenta que la autorización no concedió.
-    const available = await listConnectableAccounts(token)
-    const chosen = available.find((a) => a.instagramId === instagramId)
+    const available = await listConnectableAccounts(token, account.network as ConnectableNetwork)
+    const chosen = available.find((a) => a.externalId === externalId)
     if (!chosen) {
       return NextResponse.json({ error: "Esa cuenta no está autorizada" }, { status: 400 })
     }
@@ -81,8 +85,8 @@ export async function POST(request: NextRequest) {
     const updated = await prisma.clientAccount.update({
       where: { id: account.id },
       data: {
-        externalId: chosen.instagramId,
-        externalName: chosen.username,
+        externalId: chosen.externalId,
+        externalName: chosen.name,
         pageId: chosen.pageId,
         // Se guarda el token de la página, que es el que publica; el del
         // usuario ya cumplió su función de listar.

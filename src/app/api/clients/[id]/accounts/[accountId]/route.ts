@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
-import { isPublishMode, normalizeHandle } from "@/lib/social"
+import { canAutoPublish, isPublishMode, networkLabels, normalizeHandle, type SocialNetwork } from "@/lib/social"
 
 /** Ownership por la relación: la cuenta es del cliente y el cliente del usuario. */
 function ownedWhere(accountId: string, clientId: string, userId: string) {
@@ -32,11 +32,23 @@ export async function PUT(
     if (body?.mode === "AUTOMATIC") {
       const conectada = await prisma.clientAccount.findFirst({
         where: { ...ownedWhere(accountId, id, session.user.id), NOT: { externalId: null } },
-        select: { accessToken: true },
+        select: { accessToken: true, network: true },
       })
       if (!conectada?.accessToken) {
         return NextResponse.json(
           { error: "Conecta la cuenta antes de ponerla en automático" },
+          { status: 400 },
+        )
+      }
+      // Sin publicador detrás, "sale sola" sería una promesa vacía: la pieza
+      // se quedaría esperando una hora que nunca llega y sin aviso, porque el
+      // aviso es justo lo que el modo automático desactiva.
+      const red = conectada.network as SocialNetwork
+      if (!canAutoPublish(red)) {
+        return NextResponse.json(
+          {
+            error: `Todavía no se puede publicar solo en ${networkLabels[red]}. Déjala en «Te avisamos».`,
+          },
           { status: 400 },
         )
       }

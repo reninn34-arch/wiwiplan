@@ -31,6 +31,9 @@ const SCOPES_POR_DEFECTO = [
   "instagram_content_publish",
   "pages_show_list",
   "pages_read_engagement",
+  // Publicar en la página de Facebook. Instagram no lo necesita, pero sin él
+  // una página conectada sólo se puede leer.
+  "pages_manage_posts",
 ]
 
 export const META_SCOPES = (process.env.META_SCOPES || SCOPES_POR_DEFECTO.join(","))
@@ -154,13 +157,22 @@ export async function longLivedToken(
   }
 }
 
+/** Las dos redes que la app sabe conectar hoy. */
+export type ConnectableNetwork = "INSTAGRAM" | "FACEBOOK"
+
 export interface ConnectableAccount {
-  /** Id de la cuenta de Instagram Business: con esto se publica. */
-  instagramId: string
-  username: string
+  /**
+   * Con lo que se publica. Para Instagram es el id de la cuenta Business; para
+   * Facebook, el de la propia página. Son cosas distintas y por eso el campo
+   * dejó de llamarse `instagramId`: guardar el de Instagram en una cuenta de
+   * Facebook publicaría en la red equivocada.
+   */
+  externalId: string
+  /** Para reconocerla: el usuario de Instagram, o el nombre de la página. */
+  name: string
   pageId: string
   pageName: string
-  /** El token de la página, que es el que sirve para publicar. */
+  /** El token de la página, que es el que sirve para publicar en ambas. */
   pageToken: string
 }
 
@@ -198,7 +210,10 @@ export async function diagnosePages(userToken: string): Promise<PagesDiagnostic>
   }
 }
 
-export async function listConnectableAccounts(userToken: string): Promise<ConnectableAccount[]> {
+export async function listConnectableAccounts(
+  userToken: string,
+  network: ConnectableNetwork = "INSTAGRAM",
+): Promise<ConnectableAccount[]> {
   const data = await graph<{
     data: Array<{
       id: string
@@ -212,11 +227,24 @@ export async function listConnectableAccounts(userToken: string): Promise<Connec
     limit: "100",
   })
 
+  // Para Facebook vale cualquier página: publicar en ella no exige que tenga
+  // una cuenta de Instagram vinculada. Filtrar como en Instagram escondería
+  // justo las páginas de los clientes que sólo usan Facebook.
+  if (network === "FACEBOOK") {
+    return data.data.map((page) => ({
+      externalId: page.id,
+      name: page.name,
+      pageId: page.id,
+      pageName: page.name,
+      pageToken: page.access_token,
+    }))
+  }
+
   return data.data
     .filter((page) => page.instagram_business_account?.id)
     .map((page) => ({
-      instagramId: page.instagram_business_account!.id,
-      username: page.instagram_business_account!.username ?? "",
+      externalId: page.instagram_business_account!.id,
+      name: page.instagram_business_account!.username ?? "",
       pageId: page.id,
       pageName: page.name,
       pageToken: page.access_token,

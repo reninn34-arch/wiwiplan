@@ -215,3 +215,73 @@ export async function advancePublish(
 
   return { containerId }
 }
+
+/**
+ * Publicar en una página de Facebook.
+ *
+ * Es mucho más simple que Instagram: no hay contenedores ni espera de
+ * procesado, la página devuelve el id de la entrada en la misma llamada. Pero
+ * son tres caminos igual, porque Facebook trata cada caso por su lado:
+ *
+ * - Una foto va directa a `/photos`, con su texto como pie.
+ * - Varias fotos se suben **sin publicar** y después se cuelgan de una entrada.
+ *   Subirlas publicadas dejaría una publicación por foto en vez de un álbum.
+ * - El video va a `/videos`, que además no admite mezclarse con fotos.
+ */
+export interface PagePublishInput {
+  pageId: string
+  token: string
+  message: string
+  mediaUrls: PublishInput["mediaUrls"]
+}
+
+export async function publishToPage(input: PagePublishInput): Promise<string> {
+  const { pageId, token, message, mediaUrls } = input
+  if (mediaUrls.length === 0) {
+    throw new MetaPublishError("La pieza no tiene ningún archivo que publicar", "contenido")
+  }
+
+  const video = mediaUrls.find((m) => m.isVideo)
+  if (video) {
+    if (mediaUrls.length > 1) {
+      throw new MetaPublishError(
+        "Facebook no admite video y fotos en la misma publicación. Deja sólo el video.",
+        "contenido",
+      )
+    }
+    const data = await post(`/${pageId}/videos`, {
+      file_url: video.url,
+      description: message,
+      access_token: token,
+    })
+    return data.id
+  }
+
+  if (mediaUrls.length === 1) {
+    const data = await post(`/${pageId}/photos`, {
+      url: mediaUrls[0].url,
+      caption: message,
+      access_token: token,
+    })
+    // `post_id` es la entrada; `id` es la foto suelta. Interesa la entrada,
+    // que es lo que la gente ve en la página.
+    return data.post_id || data.id
+  }
+
+  const subidas: string[] = []
+  for (const media of mediaUrls) {
+    const foto = await post(`/${pageId}/photos`, {
+      url: media.url,
+      published: "false",
+      access_token: token,
+    })
+    subidas.push(foto.id)
+  }
+
+  const data = await post(`/${pageId}/feed`, {
+    message,
+    attached_media: JSON.stringify(subidas.map((id) => ({ media_fbid: id }))),
+    access_token: token,
+  })
+  return data.id
+}

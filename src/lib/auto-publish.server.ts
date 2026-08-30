@@ -4,6 +4,7 @@ import { unseal } from "@/lib/secret-box.server"
 import {
   advancePublish,
   MetaPublishError,
+  publishToPage,
   type PublishFailureKind,
 } from "@/lib/meta-publish.server"
 
@@ -45,7 +46,14 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
       containerId: true,
       attempts: true,
       account: {
-        select: { mode: true, externalId: true, accessToken: true, tokenExpiresAt: true },
+        select: {
+          network: true,
+          mode: true,
+          externalId: true,
+          pageId: true,
+          accessToken: true,
+          tokenExpiresAt: true,
+        },
       },
       idea: {
         select: {
@@ -102,29 +110,52 @@ export async function publishTarget(target: TargetToPublish): Promise<"published
     return fail("La pieza no tiene ningún archivo subido.", "contenido")
   }
 
-  try {
-    const progress = await advancePublish(
-      {
-        instagramId: account.externalId,
-        token,
-        caption: row.idea.caption || row.idea.title || "",
-        mediaUrls: row.idea.media.map((m) => ({ url: m.url, isVideo: m.kind === "VIDEO" })),
+  const texto = row.idea.caption || row.idea.title || ""
+  const archivos = row.idea.media.map((m) => ({ url: m.url, isVideo: m.kind === "VIDEO" }))
+
+  const marcarPublicada = async (postId: string) => {
+    await prisma.ideaTarget.update({
+      where: { ideaId_accountId: { ideaId: target.ideaId, accountId: target.accountId } },
+      data: {
+        publishedAt: new Date(),
+        externalPostId: postId,
+        containerId: null,
+        lastError: null,
+        attemptedAt: new Date(),
       },
+    })
+    return "published" as const
+  }
+
+  try {
+    // Cada red tiene su camino. Antes no se miraba cuál era y todo se enviaba
+    // por el de Instagram: una cuenta de Facebook en automático habría acabado
+    // publicando en la red equivocada.
+    if (account.network === "FACEBOOK") {
+      // La página se publica con su propio id, no con el de Instagram.
+      const postId = await publishToPage({
+        pageId: account.pageId || account.externalId,
+        token,
+        message: texto,
+        mediaUrls: archivos,
+      })
+      return marcarPublicada(postId)
+    }
+
+    if (account.network !== "INSTAGRAM") {
+      return fail(
+        "Esa red todavía no sabe publicar sola. Ponla en «Te avisamos».",
+        "contenido",
+      )
+    }
+
+    const progress = await advancePublish(
+      { instagramId: account.externalId, token, caption: texto, mediaUrls: archivos },
       row.containerId,
     )
 
     if (progress.postId) {
-      await prisma.ideaTarget.update({
-        where: { ideaId_accountId: { ideaId: target.ideaId, accountId: target.accountId } },
-        data: {
-          publishedAt: new Date(),
-          externalPostId: progress.postId,
-          containerId: null,
-          lastError: null,
-          attemptedAt: new Date(),
-        },
-      })
-      return "published"
+      return marcarPublicada(progress.postId)
     }
 
     // Sigue procesando: se guarda el contenedor para retomarlo sin volver a
