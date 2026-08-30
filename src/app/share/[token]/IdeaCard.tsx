@@ -1,7 +1,21 @@
 "use client"
 
-import { useState } from "react"
-import { Clock, Copy, ExternalLink, Hash, ImageOff, ImagePlus, MessageSquare, Send } from "lucide-react"
+import { useEffect, useState } from "react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clapperboard,
+  Clock,
+  Copy,
+  ExternalLink,
+  Hash,
+  ImageOff,
+  ImagePlus,
+  MessageSquare,
+  Maximize2,
+  Send,
+  X,
+} from "lucide-react"
 import { detectEmbed, platformLabel, postTypeLabel } from "@/lib/embeds"
 import { ideaImageUrl, panelImageUrl } from "@/lib/media"
 
@@ -82,6 +96,25 @@ export function IdeaCard({
   const [comentarios, setComentarios] = useState(idea.comments)
   const [copyEntero, setCopyEntero] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  /** Qué escena está abierta en el visor, o `null`. */
+  const [escena, setEscena] = useState<number | null>(null)
+  /** Dónde empezó el arrastre del dedo, para saber hacia dónde fue. */
+  const [tocado, setTocado] = useState<number | null>(null)
+
+  const escenas = idea.storyboard?.panels ?? []
+
+  // Flechas y Escape: si el visor se pasa escena por escena, el teclado tiene
+  // que poder hacerlo igual que el dedo.
+  useEffect(() => {
+    if (escena === null) return
+    const teclas = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEscena(null)
+      if (e.key === "ArrowRight") setEscena((n) => (n === null ? n : Math.min(n + 1, escenas.length - 1)))
+      if (e.key === "ArrowLeft") setEscena((n) => (n === null ? n : Math.max(n - 1, 0)))
+    }
+    window.addEventListener("keydown", teclas)
+    return () => window.removeEventListener("keydown", teclas)
+  }, [escena, escenas.length])
 
   const comentar = async () => {
     const msg = texto.trim()
@@ -379,57 +412,51 @@ export function IdeaCard({
         )}
 
         {/* ── El storyboard, acá y no en otra sección ──
-            Estaba abajo del todo y había que ir a buscarlo con un botón: el
-            cliente veía la idea en un sitio y sus escenas en otro. Es parte de
-            la idea, así que se mira con ella. */}
-        {idea.storyboard && idea.storyboard.panels.length > 0 && (
-          <div>
-            <p className="mb-1.5 text-[11px] uppercase tracking-wider text-zinc-500">
-              {idea.storyboard.title || "Escenas"}
-            </p>
-            <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
-              {idea.storyboard.panels.map((panel, i) => (
-                <div
-                  key={panel.id}
-                  className="w-40 shrink-0 snap-start overflow-hidden rounded-lg border border-white/5 bg-white/[0.03]"
-                >
-                  <div className="flex aspect-video items-center justify-center bg-black">
-                    {panel.hasImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={panelImageUrl(panel.id)}
-                        alt={`Escena ${i + 1}`}
-                        // Sin carga diferida: dentro de este carrusel
-                        // horizontal el navegador nunca llegaba a pedirlas y
-                        // las escenas se quedaban en negro. Son miniaturas
-                        // pequeñas y pocas por tarjeta, así que no cuesta.
-                        onClick={() => onPreviewImage(panelImageUrl(panel.id))}
-                        className="h-full w-full cursor-zoom-in object-cover"
-                      />
-                    ) : (
-                      <ImagePlus className="h-5 w-5 text-zinc-700" aria-hidden />
-                    )}
-                  </div>
-                  <div className="p-2">
-                    <span className="flex items-center gap-1 text-[11px] text-zinc-400">
-                      Escena {i + 1}
-                      {panel.duration && (
-                        <span className="ml-auto flex items-center gap-0.5 text-zinc-500">
-                          <Clock className="h-2.5 w-2.5" /> {panel.duration}
-                        </span>
-                      )}
-                    </span>
-                    {panel.description && (
-                      <div
-                        className="prose prose-xs dark:prose-invert mt-0.5 line-clamp-3 max-w-none text-[11px] leading-snug text-zinc-500"
-                        dangerouslySetInnerHTML={{ __html: panel.description }}
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            Estaba al final de la página y había que ir a buscarlo con un
+            botón: el cliente leía la idea en un sitio y sus escenas en otro.
+
+            Se enseña **sólo la primera escena**. Un storyboard se mira escena
+            por escena, no de un vistazo: desplegar la tira entera dentro de la
+            tarjeta llenaba de miniaturas ilegibles y empujaba hacia abajo lo
+            demás. Se toca y se pasan dentro. */}
+        {escenas.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setEscena(0)}
+            className="group relative block w-full overflow-hidden rounded-lg border border-white/10 bg-black text-left"
+          >
+            <span className="flex aspect-video items-center justify-center">
+              {escenas[0].hasImage ? (
+                // Sin carga diferida: es la portada del storyboard y se ve de
+                // entrada, así que esperar a que el navegador decida no aporta.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={panelImageUrl(escenas[0].id)}
+                  alt={`${idea.storyboard?.title || "Storyboard"}, escena 1`}
+                  className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+                />
+              ) : (
+                <ImagePlus className="h-6 w-6 text-zinc-700" aria-hidden />
+              )}
+            </span>
+
+            {/* Un velo abajo para que el texto se lea sobre cualquier foto. */}
+            <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/85 to-transparent px-3 pb-2 pt-6">
+              <Clapperboard className="h-3.5 w-3.5 shrink-0 text-zinc-300" aria-hidden />
+              <span className="min-w-0 truncate text-xs text-zinc-100">
+                {idea.storyboard?.title || "Storyboard"}
+              </span>
+              <span className="ml-auto shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-[11px] text-white">
+                {escenas.length} {escenas.length === 1 ? "escena" : "escenas"}
+              </span>
+            </span>
+
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="rounded-full bg-black/50 p-2.5 opacity-90">
+                <Maximize2 className="h-4 w-4 text-white" aria-hidden />
+              </span>
+            </span>
+          </button>
         )}
 
         {/* ── Contexto: pilar, etiquetas, referencia ── */}
@@ -527,6 +554,136 @@ export function IdeaCard({
           )}
         </div>
       </div>
+
+      {/* ── El visor de escenas ──
+          Se abre en la escena que se tocó y se pasa de una a otra sin salir:
+          antes había que volver a la tira y acertarle a la miniatura de al
+          lado, que en el celular es un blanco de 36 píxeles. */}
+      {escena !== null && escenas[escena] && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-center bg-black"
+          onClick={() => setEscena(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="flex items-center justify-between px-4 py-3 text-sm text-zinc-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="min-w-0 truncate">
+              {idea.storyboard?.title || "Storyboard"}
+              <span className="text-zinc-500">
+                {" "}
+                · Escena {escena + 1} de {escenas.length}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setEscena(null)}
+              aria-label="Cerrar"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-zinc-400 hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div
+            className="relative flex flex-1 items-center justify-center px-2"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => setTocado(e.touches[0].clientX)}
+            onTouchEnd={(e) => {
+              // 50px de umbral: por debajo de eso suele ser un toque con la
+              // mano temblando, no una intención de pasar de escena.
+              if (tocado === null) return
+              const recorrido = e.changedTouches[0].clientX - tocado
+              setTocado(null)
+              if (recorrido < -50) setEscena((n) => (n === null ? n : Math.min(n + 1, escenas.length - 1)))
+              if (recorrido > 50) setEscena((n) => (n === null ? n : Math.max(n - 1, 0)))
+            }}
+          >
+            {escenas[escena].hasImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={panelImageUrl(escenas[escena].id)}
+                alt={`Escena ${escena + 1}`}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <ImagePlus className="h-10 w-10 text-zinc-700" aria-hidden />
+            )}
+
+            {escena > 0 && (
+              <button
+                type="button"
+                onClick={() => setEscena(escena - 1)}
+                aria-label="Escena anterior"
+                className="absolute left-2 flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            )}
+            {escena < escenas.length - 1 && (
+              <button
+                type="button"
+                onClick={() => setEscena(escena + 1)}
+                aria-label="Escena siguiente"
+                className="absolute right-2 flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            )}
+          </div>
+
+          <div
+            className="space-y-1 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {escenas[escena].duration && (
+              <p className="flex items-center gap-1 text-xs text-zinc-500">
+                <Clock className="h-3 w-3" /> {escenas[escena].duration}
+              </p>
+            )}
+            {escenas[escena].description && (
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none text-sm text-zinc-300"
+                dangerouslySetInnerHTML={{ __html: escenas[escena].description }}
+              />
+            )}
+            {escenas[escena].notes && (
+              <div
+                className="prose prose-xs dark:prose-invert max-w-none text-xs text-zinc-500"
+                dangerouslySetInnerHTML={{ __html: escenas[escena].notes }}
+              />
+            )}
+
+            {/* Puntos de posición y una salida escrita. La X arriba, la tecla
+                Escape y tocar el fondo también cierran, pero ninguna de las
+                tres se ve: en el celular hay que poder salir sin adivinar. */}
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <span className="flex gap-1.5">
+                {escenas.map((p, i) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setEscena(i)}
+                    aria-label={`Ir a la escena ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === escena ? "w-5 bg-zinc-200" : "w-1.5 bg-zinc-600 hover:bg-zinc-400"
+                    }`}
+                  />
+                ))}
+              </span>
+              <button
+                type="button"
+                onClick={() => setEscena(null)}
+                className="min-h-10 rounded-md px-3 text-xs text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   )
 }
