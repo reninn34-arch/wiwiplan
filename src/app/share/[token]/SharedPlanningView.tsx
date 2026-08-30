@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { CheckCircle, Lightbulb, Layout, Clock, ImagePlus, ExternalLink, MessageSquare, Send, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { FeedPreview } from "./FeedPreview"
+import { IdeaCard } from "./IdeaCard"
 import { platformLabel, postTypeLabel } from "@/lib/embeds"
 import {
   PaymentAccountHeader,
@@ -72,6 +74,10 @@ interface ContentIdea {
   contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
   comments: Comment[]
   images: Array<{ id: string }>
+  /** El texto que va en la publicación. */
+  caption: string
+  /** El archivo que de verdad se publica, distinto de `images`. */
+  media: Array<{ id: string; url: string; kind: string; order: number }>
 }
 
 interface Planning {
@@ -83,256 +89,36 @@ interface Planning {
   targetAudience: string
   goals: string
   notes: string
-  client: { id: string; name: string } | null
+  client: {
+    id: string
+    name: string
+    logo: string | null
+    accounts: Array<{ network: string; handle: string }>
+  } | null
   priceCents: number
   contentIdeas: ContentIdea[]
   storyboards: Storyboard[]
   payments: PaymentRecord[]
 }
 
+/** El perfil real de Instagram, cuando la cuenta está conectada. */
+interface Profile {
+  username: string
+  name: string
+  pictureUrl: string | null
+  followers: number | null
+  mediaCount: number | null
+}
+
 interface Props {
   planning: Planning
+  profile: Profile | null
 }
 
-function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPreviewImage: (url: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const [text, setText] = useState("")
-  const [sending, setSending] = useState(false)
-  const [comments, setComments] = useState(idea.comments)
-
-  const addComment = async () => {
-    const msg = text.trim()
-    if (!msg || sending) return
-    setSending(true)
-    setText("")
-    const res = await fetch(`/api/ideas/${idea.id}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: msg, authorName: "Cliente" }),
-    })
-    if (res.ok) {
-      const comment = await res.json()
-      setComments((prev) => [...prev, comment])
-    }
-    setSending(false)
-  }
-
-  return (
-    <div className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden">
-      <div className="p-3 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-zinc-200">{idea.title}</p>
-          <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-zinc-300">{ideaStatusLabels[idea.status]}</span>
-        </div>
-
-        {idea.description && <p className="text-xs text-zinc-400">{idea.description}</p>}
-
-        <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
-          {idea.pilar && (
-            <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
-              <Hash size={10} /> {idea.pilar}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5">
-            {postTypeLabel(idea.postType)}
-          </span>
-        </div>
-
-        <div className="text-xs">
-          {idea.referenceEmbed && (idea.platform === "YOUTUBE" || idea.platform === "VIMEO") ? (
-            <div className="aspect-video rounded overflow-hidden">
-              <iframe src={idea.referenceEmbed} className="h-full w-full" allowFullScreen title={idea.title} />
-            </div>
-          ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
-            <img src={idea.referenceEmbed} alt={idea.title} className="h-16 w-16 rounded object-cover bg-white/[0.03] cursor-pointer hover:opacity-80" onClick={() => onPreviewImage(idea.referenceEmbed)} />
-          ) : idea.referenceUrl ? (
-            <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="-ml-2 inline-flex min-h-10 items-center gap-1.5 rounded-md px-2 text-white underline transition-colors hover:bg-white/5">
-              <ExternalLink className="h-4 w-4" /> {platformLabel(idea.platform)}
-            </a>
-          ) : idea.storyboard ? (
-            <button type="button" onClick={() => document.getElementById(`sb-${idea.storyboard!.id}`)?.scrollIntoView({ behavior: "smooth" })} className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-white/5 px-2.5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white">
-              <Layout className="h-4 w-4" /> {idea.storyboard.title}
-            </button>
-          ) : null}
-        </div>
-
-        {(idea.images?.length ?? 0) > 0 && (
-          <div className={`grid gap-1.5 ${idea.images.length > 1 ? "grid-cols-3" : ""}`}>
-            {idea.images.map((img) => (
-              <img
-                key={img.id}
-                src={ideaImageUrl(img.id)}
-                alt=""
-                loading="lazy"
-                className="h-24 w-full cursor-pointer rounded-lg object-cover bg-white/[0.03] hover:opacity-90"
-                onClick={() => onPreviewImage(ideaImageUrl(img.id))}
-              />
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between border-t border-white/5">
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-expanded={open}
-            className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
-          >
-            <MessageSquare className="h-4 w-4" />
-            {comments.length} {comments.length === 1 ? "comentario" : "comentarios"}
-          </button>
-        </div>
-
-        {open && (
-          <div className="space-y-2 pt-2 border-t border-white/5">
-            {comments.length === 0 && <p className="text-xs text-zinc-400">Sin comentarios.</p>}
-            {comments.map((c) => (
-              <div key={c.id} className="rounded border border-white/5 px-3 py-2">
-                <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
-                <p className="text-sm text-zinc-200">{c.text}</p>
-                <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-EC")}</p>
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <input
-                className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50 sm:h-9"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
-                placeholder="Escribe un comentario..."
-                disabled={sending}
-              />
-              <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand text-white disabled:opacity-50 sm:h-9 sm:w-9">
-                <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPreviewImage: (url: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const [text, setText] = useState("")
-  const [sending, setSending] = useState(false)
-  const [comments, setComments] = useState(idea.comments)
-
-  const addComment = async () => {
-    const msg = text.trim()
-    if (!msg || sending) return
-    setSending(true)
-    setText("")
-    const res = await fetch(`/api/ideas/${idea.id}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: msg, authorName: "Cliente" }),
-    })
-    if (res.ok) {
-      const comment = await res.json()
-      setComments((prev) => [...prev, comment])
-    }
-    setSending(false)
-  }
-
-  return (
-    <>
-      <tr className="border-b last:border-0">
-        <td className="px-3 py-2">
-          <p className="font-medium text-sm text-zinc-200">{idea.title}</p>
-        </td>
-        <td className="px-3 py-2">
-          {idea.description ? <p className="text-xs text-zinc-400 line-clamp-2">{idea.description}</p> : <span className="text-xs text-zinc-400">—</span>}
-        </td>
-        <td className="px-3 py-2">
-          {idea.referenceEmbed && (idea.platform === "YOUTUBE" || idea.platform === "VIMEO") ? (
-            <div className="aspect-video w-32 rounded overflow-hidden">
-              <iframe src={idea.referenceEmbed} className="h-full w-full" allowFullScreen title={idea.title} />
-            </div>
-          ) : idea.referenceEmbed && idea.platform === "IMAGE" ? (
-            <img src={idea.referenceEmbed} alt={idea.title} className="h-10 w-10 shrink-0 rounded object-cover bg-white/[0.03] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => onPreviewImage(idea.referenceEmbed)} />
-          ) : idea.referenceUrl ? (
-            <a href={idea.referenceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-white underline">
-              <ExternalLink className="h-3 w-3" /> {platformLabel(idea.platform)}
-            </a>
-          ) : idea.storyboard ? (
-            <button
-              type="button"
-              onClick={() => document.getElementById(`sb-${idea.storyboard!.id}`)?.scrollIntoView({ behavior: "smooth" })}
-              className="inline-flex items-center gap-1 text-xs rounded bg-white/5 px-2 py-0.5 text-zinc-400 hover:bg-white/10"
-            >
-              <Layout className="h-3 w-3" /> {idea.storyboard.title}
-            </button>
-          ) : (
-            <span className="text-xs text-zinc-400">—</span>
-          )}
-          {(idea.images?.length ?? 0) > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1">
-              {idea.images.map((img) => (
-                <img
-                  key={img.id}
-                  src={ideaImageUrl(img.id)}
-                  alt=""
-                  loading="lazy"
-                  className="h-10 w-10 cursor-pointer rounded object-cover bg-white/[0.03] hover:opacity-80"
-                  onClick={() => onPreviewImage(ideaImageUrl(img.id))}
-                />
-              ))}
-            </div>
-          )}
-        </td>
-        <td className="px-3 py-2 text-xs text-zinc-400">{idea.pilar || <span className="text-zinc-400">—</span>}</td>
-        <td className="px-3 py-2">
-          <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400">{ideaStatusLabels[idea.status]}</span>
-        </td>
-        <td className="px-3 py-2 text-center">
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-label={`${comments.length} comentarios`}
-            aria-expanded={open}
-            className="inline-flex min-h-9 min-w-9 items-center justify-center gap-1 rounded-md px-2 text-xs text-primary transition-colors hover:bg-white/5 hover:underline"
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>{comments.length}</span>
-          </button>
-        </td>
-      </tr>
-      {open && (
-        <tr>
-          <td colSpan={6} className="bg-white/[0.02] px-6 py-3">
-            <div className="space-y-2">
-              {comments.length === 0 && <p className="text-xs text-zinc-400">Sin comentarios.</p>}
-              {comments.map((c) => (
-                <div key={c.id} className="rounded-lg border border-white/5 bg-[#0c0c0e] px-3 py-2">
-                  <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
-                  <p className="text-sm text-zinc-200">{c.text}</p>
-                  <p className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleString("es-EC")}</p>
-                </div>
-              ))}
-              <div className="flex gap-2">
-                <input
-                  className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50 sm:h-9"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addComment() } }}
-                  placeholder="Escribe un comentario..."
-                  disabled={sending}
-                />
-                <button type="button" onClick={addComment} disabled={sending} aria-label="Enviar comentario" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand text-white disabled:opacity-50 sm:h-9 sm:w-9">
-                  <Send className={`h-3 w-3 ${sending ? "animate-pulse" : ""}`} />
-                </button>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  )
-}
-
-export function SharedPlanningView({ planning }: Props) {
+export function SharedPlanningView({ planning, profile }: Props) {
+  /** El feed primero: es lo que el cliente quiere ver, y el detalle es donde
+   *  después trabaja. */
+  const [vista, setVista] = useState<"feed" | "detalle">("feed")
   const [status, setStatus] = useState(planning.status)
   const [isApproving, setIsApproving] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -440,37 +226,76 @@ export function SharedPlanningView({ planning }: Props) {
 
         {planning.contentIdeas.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-200">
-              <Lightbulb className="h-5 w-5" /> Ideas de Contenido
-            </h2>
-
-            {/* Mobile cards */}
-            <div className="space-y-3 sm:hidden">
-              {planning.contentIdeas.map((idea) => (
-                <ClientCommentCard key={idea.id} idea={idea} onPreviewImage={setPreviewImage} />
-              ))}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-200">
+                <Lightbulb className="h-5 w-5" /> Ideas de Contenido
+              </h2>
+              {/* Dos lentes sobre el mismo mes: el feed se ve entero y responde
+                  "cómo va a quedar"; el detalle se lee pieza por pieza y es
+                  donde se comenta. */}
+              <div className="flex rounded-lg bg-white/[0.06] p-0.5 text-xs">
+                {(
+                  [
+                    ["feed", "Feed"],
+                    ["detalle", "Detalle"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setVista(id)}
+                    className={`min-h-9 rounded-md px-3 transition-colors ${
+                      vista === id ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Desktop table */}
-            <div className="hidden sm:block overflow-x-auto rounded-lg border border-white/5">
-              <table className="w-full text-sm">
-                <thead className="bg-white/[0.03]">
-                  <tr className="border-b border-white/5">
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Tema</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Objetivo</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Referencia</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Pilar</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">Estado</th>
-                    <th className="w-14 px-3 py-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-400"><MessageSquare className="h-3 w-3" /></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planning.contentIdeas.map((idea) => (
-                    <ClientCommentRow key={idea.id} idea={idea} onPreviewImage={setPreviewImage} />
+            {vista === "feed" && (
+              <FeedPreview
+                ideas={planning.contentIdeas}
+                clientName={profile?.name || planning.client?.name || "Cliente"}
+                // La foto real manda sobre el logo guardado: es la que la gente
+                // asocia con la cuenta, y ya viene recortada en círculo.
+                avatarUrl={profile?.pictureUrl ?? null}
+                clientLogo={planning.client?.logo ?? null}
+                handle={
+                  profile?.username ||
+                  planning.client?.accounts.find((a) => a.network === "INSTAGRAM")?.handle ||
+                  ""
+                }
+                followers={profile?.followers ?? null}
+                period={planning.period}
+                referenceUrl={ideaImageUrl}
+              />
+            )}
+
+            {vista === "detalle" && (
+              // Ordenadas por fecha y no por el orden interno de la app: el
+              // cliente lee su mes en calendario, no en la secuencia en que se
+              // crearon las piezas.
+              <div>
+                <p className="mb-3 text-xs text-zinc-500">
+                  Cada tarjeta es una publicación: qué día sale, qué se va a ver y qué va a decir.
+                  Si quieres cambiar algo, déjalo en el comentario de esa pieza.
+                </p>
+                {/* `items-start` para que cada tarjeta mida lo suyo. Sin esto la
+                    rejilla iguala las alturas de cada fila y una tarjeta corta
+                    se estira con un vacío debajo. */}
+                <div className="grid items-start gap-3 lg:grid-cols-2">
+                {[...planning.contentIdeas]
+                  .sort((a, b) =>
+                    (a.dueDate ?? "￿").localeCompare(b.dueDate ?? "￿"),
+                  )
+                  .map((idea) => (
+                    <IdeaCard key={idea.id} idea={idea} onPreviewImage={setPreviewImage} />
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            )}
           </section>
         )}
 

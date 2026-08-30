@@ -17,8 +17,19 @@ export function detectEmbed(url: string): { embedUrl: string; platform: string }
   const tiktokShort = cleanUrl.match(/vm\.tiktok\.com\/([\w]+)/)
   if (tiktokShort) return { embedUrl: `https://www.tiktok.com/embed/v2/${tiktokShort[1]}`, platform: "TIKTOK" }
 
-  const instagram = cleanUrl.match(/(?:instagram\.com\/(?:p|reel)\/|instagr\.am\/(?:p|reel)\/)([a-zA-Z0-9_-]+)/)
-  if (instagram) return { embedUrl: `https://www.instagram.com/p/${instagram[1]}/embed`, platform: "INSTAGRAM" }
+  // `reels` en plural entra a propósito: es la forma que copia la app de
+  // Instagram desde el celular, y sin ella la referencia se guardaba sin
+  // incrustación y sólo quedaba el enlace.
+  const instagram = cleanUrl.match(
+    /(?:instagram\.com|instagr\.am)\/(?:p|reel|reels|tv)\/([a-zA-Z0-9_-]+)/,
+  )
+  // `captioned` trae además la cuenta, sus seguidores y el pie: para juzgar una
+  // referencia, el texto importa tanto como la imagen.
+  if (instagram)
+    return {
+      embedUrl: `https://www.instagram.com/p/${instagram[1]}/embed/captioned`,
+      platform: "INSTAGRAM",
+    }
 
   const facebook = cleanUrl.match(/facebook\.com\/(?:watch\/?\?v=|[\w.]+\/videos\/)(\d+)/)
   if (facebook) return { embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}`, platform: "FACEBOOK" }
