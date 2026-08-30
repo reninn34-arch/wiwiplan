@@ -38,6 +38,10 @@ const SCOPES_POR_DEFECTO = [
   // necesitan, así que sin este permiso la pantalla de resultados sigue
   // sirviendo a medias en vez de quedarse en blanco.
   "instagram_manage_insights",
+  // Los de Facebook van aparte: `pages_read_engagement` deja publicar y leer la
+  // página, pero no leer lo que la gente hace en cada entrada ni sus métricas.
+  "pages_read_user_content",
+  "read_insights",
 ]
 
 export const META_SCOPES = (process.env.META_SCOPES || SCOPES_POR_DEFECTO.join(","))

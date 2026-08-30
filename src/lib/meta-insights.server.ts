@@ -42,8 +42,7 @@ interface RespuestaInsights {
 interface CamposPublicacion {
   like_count?: number
   comments_count?: number
-  media_product_type?: string
-  likes?: { summary?: { total_count?: number } }
+  reactions?: { summary?: { total_count?: number } }
   comments?: { summary?: { total_count?: number } }
   shares?: { count?: number }
 }
@@ -120,51 +119,50 @@ export async function instagramMetrics(mediaId: string, token: string): Promise<
 }
 
 /**
- * Facebook, que da bastante menos que Instagram y conviene saber por qué.
+ * Facebook, que da menos que Instagram y conviene saber exactamente cuánto.
  *
- * Lo comprobado contra la API, no lo que dice la documentación:
+ * Todo esto está comprobado contra la API con una entrada real, no leído en la
+ * documentación:
  *
- * - `likes.summary` y `comments.summary` se rechazan con un error 10 aunque el
- *   token tenga `pages_read_engagement`; los recuentos de una entrada piden
- *   además `pages_read_user_content`, que no se pide para publicar.
- * - `post_impressions` y `post_impressions_unique` ya no son métricas válidas.
- *   **No hay alcance de entrada disponible**, y por eso se queda en nulo en vez
- *   de intentarlo y llenar los registros de avisos en cada actualización.
- * - Sí valen `post_reactions_by_type_total`, `post_clicks` y
- *   `post_video_views_organic`.
+ * - Las reacciones y los comentarios se cuentan por `summary`, y piden
+ *   `pages_read_user_content` — que es distinto de `pages_read_engagement`:
+ *   ése deja publicar y leer la página, no leer lo que la gente hace en cada
+ *   entrada. Sin él, Meta responde con un error 10.
+ *   Se cuentan **reacciones** y no "me gusta": en Facebook alguien puede poner
+ *   "me enorgullece" o "me encanta", y contar sólo los pulgares dejaría fuera
+ *   la mitad de la reacción real.
+ * - Las métricas de la entrada piden `read_insights`. Sin él **no dan error**:
+ *   devuelven listas vacías, que es el peor modo de fallar porque parece que
+ *   la publicación no tuvo ningún movimiento.
+ * - `post_impressions` y `post_impressions_unique` ya no son métricas válidas
+ *   en ninguna versión viva, así que **no hay alcance de entrada**. Se queda en
+ *   nulo y se muestra como «—»; no es un permiso que falte, es que no existe.
  */
 export async function facebookMetrics(postId: string, token: string): Promise<PostMetrics> {
   const metrics = { ...VACIO }
 
-  // `shares` viene como campo suelto y no da error; simplemente no aparece
-  // cuando la entrada no tiene ninguno, que es lo mismo que cero.
+  // `limit(0)` porque interesa el recuento, no la lista: sin él Meta manda
+  // hasta veinticinco reacciones enteras para contar una.
   const campos = await pedir<CamposPublicacion>(`/${postId}`, {
-    fields: "shares",
+    fields: "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares",
     access_token: token,
   })
   if (campos) {
+    const reacciones = campos.reactions?.summary?.total_count
+    const comentarios = campos.comments?.summary?.total_count
+    if (typeof reacciones === "number") metrics.likes = reacciones
+    if (typeof comentarios === "number") metrics.commentCount = comentarios
+    // `shares` no aparece cuando no hay ninguno, que es lo mismo que cero.
     metrics.shares = typeof campos.shares?.count === "number" ? campos.shares.count : 0
   }
 
   const stats = await pedir<RespuestaInsights>(`/${postId}/insights`, {
-    metric: "post_reactions_by_type_total,post_video_views_organic",
+    metric: "post_video_views_organic",
     access_token: token,
   })
   if (stats) {
-    for (const fila of stats.data ?? []) {
-      const valor = fila?.values?.[0]?.value
-      // Las reacciones vienen desglosadas por tipo —me gusta, me encanta— y
-      // lo que interesa es el total, así que se suman.
-      if (fila?.name === "post_reactions_by_type_total" && valor && typeof valor === "object") {
-        const total = Object.values(valor as Record<string, unknown>).filter(
-          (n): n is number => typeof n === "number",
-        )
-        if (total.length > 0) metrics.likes = total.reduce((a, b) => a + b, 0)
-      }
-      if (fila?.name === "post_video_views_organic" && typeof valor === "number") {
-        metrics.views = valor
-      }
-    }
+    const v = porNombre(stats)
+    if ("post_video_views_organic" in v) metrics.views = v.post_video_views_organic
   }
 
   return metrics
