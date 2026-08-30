@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { CalendarDays, Check, CircleCheck, Move, Pencil, Send, X } from "lucide-react"
+import { CalendarDays, Check, CircleCheck, Move, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MediaUploader, type MediaAssetRow } from "@/components/MediaUploader"
 import { dayKeyOf } from "@/lib/calendar"
@@ -31,8 +31,6 @@ export interface SchedulePiece {
   publishTime: string
   targets: Array<{ accountId: string; publishedAt: string | null }>
   media: MediaAssetRow[]
-  /** Lo que dijo el cliente desde el enlace compartido. */
-  clientReview: string
 }
 
 interface Props {
@@ -137,24 +135,6 @@ export function SchedulePanel({ planningId, piece, accounts, onChange, onMove, o
           <X className="h-4 w-4" />
         </button>
       </div>
-
-      {/* Lo que dijo el cliente manda sobre la programación, así que va antes
-          de decidir hora y redes y no escondido al final. */}
-      {piece.clientReview === "CHANGES" && (
-        <p className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-200 ring-1 ring-inset ring-amber-400/25">
-          <Pencil className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span>
-            El cliente pidió cambios en esta pieza. Aunque su cuenta esté en «Sale sola», no va a
-            salir hasta que él la apruebe desde el enlace.
-          </span>
-        </p>
-      )}
-      {piece.clientReview === "APPROVED" && (
-        <p className="mt-3 flex items-center gap-2 text-xs text-emerald-300">
-          <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Aprobada por el cliente.
-        </p>
-      )}
 
       {/* ── Qué se publica ── */}
       <div className="mt-4">

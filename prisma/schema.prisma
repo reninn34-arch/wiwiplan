@@ -36,15 +36,6 @@ enum IdeaPlatform {
   OTHER
 }
 
-/// Qué dijo el cliente sobre una pieza. Es distinto de `IdeaStatus`, que
-/// cuenta cómo va la producción de nuestro lado: una pieza puede estar
-/// terminada y aún sin revisar, o aprobada y sin empezar.
-enum ClientReview {
-  PENDING
-  APPROVED
-  CHANGES
-}
-
 enum IdeaStatus {
   IDEA
   SELECTED
@@ -375,9 +366,6 @@ model ContentIdea {
   referenceUrl    String       @default("")
   referenceEmbed  String       @default("")
   status          IdeaStatus   @default(IDEA)
-  /// Lo que dijo el cliente desde el enlace compartido.
-  clientReview    ClientReview @default(PENDING)
-  reviewedAt      DateTime?
   priority        Priority     @default(MEDIUM)
   order           Int          @default(0)
   /// El día en que sale. El calendario del mes se arma con esto.

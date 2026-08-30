@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, CheckCircle, Lightbulb, Layout, Clock, ImagePlus, ExternalLink, MessageSquare, Pencil, Send, Hash } from "lucide-react"
+import { CheckCircle, Lightbulb, Layout, Clock, ImagePlus, ExternalLink, MessageSquare, Send, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { platformLabel, postTypeLabel } from "@/lib/embeds"
 import {
@@ -72,8 +72,6 @@ interface ContentIdea {
   contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
   comments: Comment[]
   images: Array<{ id: string }>
-  clientReview: string
-  reviewedAt: string | null
 }
 
 interface Planning {
@@ -93,14 +91,10 @@ interface Planning {
 }
 
 interface Props {
-  /** Hace falta para que el cliente pueda opinar sin iniciar sesión. */
-  token: string
   planning: Planning
 }
 
-function ClientCommentCard({ idea, token, onPreviewImage }: { idea: ContentIdea; token: string; onPreviewImage: (url: string) => void }) {
-  const [review, setReview] = useState(idea.clientReview)
-  const [deciding, setDeciding] = useState(false)
+function ClientCommentCard({ idea, onPreviewImage }: { idea: ContentIdea; onPreviewImage: (url: string) => void }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState("")
   const [sending, setSending] = useState(false)
@@ -123,36 +117,8 @@ function ClientCommentCard({ idea, token, onPreviewImage }: { idea: ContentIdea;
     setSending(false)
   }
 
-  const decidir = async (decision: "APPROVED" | "CHANGES") => {
-    if (deciding) return
-    setDeciding(true)
-    const previo = review
-    setReview(decision)
-    const res = await fetch(`/api/share/${token}/ideas/${idea.id}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision }),
-    })
-    setDeciding(false)
-    if (!res.ok) {
-      setReview(previo)
-      return
-    }
-    // Pedir cambios sin decir cuáles no le sirve a nadie: se abre el recuadro
-    // de comentarios en el mismo gesto.
-    if (decision === "CHANGES") setOpen(true)
-  }
-
   return (
-    <div
-      className={`rounded-lg border bg-[#0c0c0e] overflow-hidden ${
-        review === "APPROVED"
-          ? "border-emerald-400/25"
-          : review === "CHANGES"
-            ? "border-amber-400/30"
-            : "border-white/5"
-      }`}
-    >
+    <div className="rounded-lg border border-white/5 bg-[#0c0c0e] overflow-hidden">
       <div className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium text-zinc-200">{idea.title}</p>
@@ -203,44 +169,6 @@ function ClientCommentCard({ idea, token, onPreviewImage }: { idea: ContentIdea;
               />
             ))}
           </div>
-        )}
-
-        {/* La decisión de esta pieza. Aprobar el mes entero o nada dejaba sin
-            salida al caso normal: el cliente quiere cambios en dos de doce. */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-2">
-          <button
-            type="button"
-            onClick={() => decidir("APPROVED")}
-            disabled={deciding}
-            className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-xs transition-colors disabled:opacity-50 ${
-              review === "APPROVED"
-                ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/30"
-                : "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]"
-            }`}
-          >
-            <Check className="h-3.5 w-3.5" />
-            {review === "APPROVED" ? "Aprobada" : "Aprobar"}
-          </button>
-          <button
-            type="button"
-            onClick={() => decidir("CHANGES")}
-            disabled={deciding}
-            className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-xs transition-colors disabled:opacity-50 ${
-              review === "CHANGES"
-                ? "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-400/30"
-                : "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]"
-            }`}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            {review === "CHANGES" ? "Cambios pedidos" : "Pedir cambios"}
-          </button>
-        </div>
-
-        {review === "CHANGES" && (
-          <p className="text-[11px] text-amber-300/80">
-            Esta pieza no se va a publicar sola hasta que se resuelva. Cuéntanos qué cambiar en un
-            comentario.
-          </p>
         )}
 
         <div className="flex items-center justify-between border-t border-white/5">
@@ -404,7 +332,7 @@ function ClientCommentRow({ idea, onPreviewImage }: { idea: ContentIdea; onPrevi
   )
 }
 
-export function SharedPlanningView({ planning, token }: Props) {
+export function SharedPlanningView({ planning }: Props) {
   const [status, setStatus] = useState(planning.status)
   const [isApproving, setIsApproving] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -519,7 +447,7 @@ export function SharedPlanningView({ planning, token }: Props) {
             {/* Mobile cards */}
             <div className="space-y-3 sm:hidden">
               {planning.contentIdeas.map((idea) => (
-                <ClientCommentCard key={idea.id} idea={idea} token={token} onPreviewImage={setPreviewImage} />
+                <ClientCommentCard key={idea.id} idea={idea} onPreviewImage={setPreviewImage} />
               ))}
             </div>
 

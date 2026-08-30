@@ -62,7 +62,6 @@ export default async function SharePage({ params }: Props) {
     contentIdeas: shareLink.planning.contentIdeas.map((i) => ({
       ...i,
       dueDate: i.dueDate?.toISOString() ?? null,
-      reviewedAt: i.reviewedAt?.toISOString() ?? null,
       createdAt: i.createdAt.toISOString(),
       storyboard: i.storyboard ? {
         ...i.storyboard,
@@ -95,5 +94,5 @@ export default async function SharePage({ params }: Props) {
     })),
   }
 
-  return <SharedPlanningView planning={serialized} token={token} />
+  return <SharedPlanningView planning={serialized} />
 }
