@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { ImageError, normalizeImageDataUrl } from "@/lib/image-processing.server"
+import { publishMomentUtc } from "@/lib/social"
+import { schedulePublishSweep } from "@/lib/publish-schedule.server"
 
 type AuthResult = { ok: false; response: NextResponse } | { ok: true; userId: string }
 
@@ -35,6 +37,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(typeof body.caption === "string" ? { caption: body.caption.slice(0, 5000) } : {}),
         ...(body.postType !== undefined ? { postType: body.postType } : {}),
         ...(body.platform !== undefined ? { platform: body.platform } : {}),
         ...(body.referenceUrl !== undefined ? { referenceUrl: body.referenceUrl } : {}),
@@ -56,6 +59,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
     if (idea.count === 0) {
       return NextResponse.json({ error: "No encontrada" }, { status: 404 })
+    }
+
+    // Cambiar de día —arrastrando en el calendario o desde el editor— es una
+    // cita nueva, y la cita puntual se agenda acá igual que al programar. Sin
+    // esto la pieza movida quedaba esperando al reloj diario: un reel pasado
+    // al martes a las 9:00 salía el miércoles, ya fuera del carril automático.
+    if (body.dueDate) {
+      const moved = await prisma.contentIdea.findUnique({
+        where: { id: ideaId },
+        select: { dueDate: true, publishTime: true },
+      })
+      const moment = moved
+        ? publishMomentUtc(moved.dueDate?.toISOString() ?? null, moved.publishTime)
+        : null
+      if (moment) await schedulePublishSweep(moment)
     }
     return NextResponse.json(idea)
   } catch (error) {

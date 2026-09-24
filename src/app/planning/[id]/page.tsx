@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth"
 import { redirect, notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { ideaDetailInclude } from "@/lib/idea-detail.server"
 import { PlanningDetailClient } from "./__components/PlanningDetailClient"
 
 interface Props {
@@ -29,17 +30,7 @@ export default async function PlanningDetailPage({ params }: Props) {
       },
       contentIdeas: {
         orderBy: { order: "asc" },
-        include: {
-          contentIdeaTags: { include: { tag: true } },
-          comments: { orderBy: { createdAt: "asc" } },
-          images: { orderBy: { order: "asc" }, select: { id: true, order: true } },
-          targets: { select: { accountId: true, publishedAt: true } },
-          media: {
-            orderBy: [{ order: "asc" }, { createdAt: "asc" }],
-            select: { id: true, url: true, kind: true, contentType: true, sizeBytes: true, order: true },
-          },
-          storyboard: true,
-        },
+        include: ideaDetailInclude,
       },
       installments: {
         orderBy: { dueDate: "asc" },

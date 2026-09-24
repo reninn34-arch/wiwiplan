@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useSyncExternalStore } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Share2, MoreHorizontal, ChevronRight, ChevronDown, Trash2, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ import { formatMoney, summarizePayments } from "@/lib/payments"
 import { NotificationBell } from "@/components/NotificationBell"
 import { GlobalSearch } from "@/components/GlobalSearch"
 import { toast } from "sonner"
+import type { Idea } from "./idea-types"
 
 const loadStoryboardsTab = () => import("./StoryboardsTab")
 const StoryboardsTab = dynamic(() => loadStoryboardsTab().then((m) => ({ default: m.StoryboardsTab })), { ssr: false })
@@ -80,6 +81,12 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]["id"]
 
+const noSubscribe = () => () => {}
+
+function isTabId(value: string | null): value is TabId {
+  return tabs.some((t) => t.id === value)
+}
+
 interface PlanningData {
   id: string
   title: string
@@ -104,28 +111,7 @@ interface PlanningData {
     email: string
     accounts: Array<{ id: string; network: string; handle: string; mode: string }>
   } | null
-  contentIdeas: Array<{
-    id: string
-    title: string
-    description: string
-    pilar: string
-    postType: string
-    platform: string
-    referenceUrl: string
-    referenceEmbed: string
-    status: string
-    priority: string
-    order: number
-    dueDate: string | null
-    publishTime: string
-    targets: Array<{ accountId: string; publishedAt: string | null }>
-    media: Array<{ id: string; url: string; kind: string; contentType: string; sizeBytes: number; order: number }>
-    storyboardId: string | null
-    storyboard: { id: string; title: string } | null
-    contentIdeaTags: Array<{ tag: { id: string; name: string; color: string } }>
-    comments: Array<{ id: string; authorName: string; text: string; createdAt: string }>
-    images: Array<{ id: string; order: number }>
-  }>
+  contentIdeas: Idea[]
   storyboards: Array<{
     id: string
     title: string
@@ -150,12 +136,31 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const focusIdeaId = searchParams.get("idea")
+  // Desde un aviso de comentario se llega directo a la conversación de la pieza.
+  const focusMode = searchParams.get("ver") === "comentarios" ? "comments" : "highlight"
   const [planning, setPlanning] = useState(initial)
   const [editingPeriod, setEditingPeriod] = useState(false)
   const [periodMonth, setPeriodMonth] = useState("")
   const [periodYear, setPeriodYear] = useState("")
-  const [activeTab, setActiveTab] = useState<TabId>("contenido")
-  /** Idea a resaltar al saltar desde el calendario a Contenido. */
+  // La pestaña vive en la dirección: recargar, o volver a la app en el
+  // celular, deja donde estabas en vez de devolverte siempre a Contenido.
+  const tabParam = searchParams.get("tab")
+  const [activeTab, setActiveTabState] = useState<TabId>(
+    focusIdeaId ? "contenido" : isTabId(tabParam) ? tabParam : "contenido",
+  )
+  const setActiveTab = useCallback((tab: TabId) => {
+    setActiveTabState(tab)
+    const url = new URL(window.location.href)
+    if (tab === "contenido") url.searchParams.delete("tab")
+    else url.searchParams.set("tab", tab)
+    window.history.replaceState(null, "", url.pathname + url.search)
+  }, [])
+  // Las demás pestañas formatean fechas con la zona de quien mira, así que se
+  // dibujan en el navegador aunque se abra directo en ellas desde la dirección:
+  // en el servidor la hora es otra y el HTML no coincidiría.
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false)
+  const shows = (tab: TabId) => activeTab === tab && (tab === "contenido" || mounted)
+  /** Idea a abrir al saltar desde el calendario a Contenido. */
   const [jumpToIdeaId, setJumpToIdeaId] = useState<string | null>(null)
   const [showShare, setShowShare] = useState(false)
 
@@ -207,6 +212,14 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
       toast.error("No se pudo cambiar el período")
     }
   }
+
+  /** Lo que hay dentro de cada pestaña, para saber sin abrirla si está vacía. */
+  const tabCount = (tab: TabId) =>
+    tab === "contenido"
+      ? planning.contentIdeas.length
+      : tab === "storyboard"
+        ? planning.storyboards.length
+        : 0
 
   const paymentSummary = summarizePayments(planning.priceCents, planning.payments)
   const showPaymentBadge = planning.priceCents > 0 || planning.payments.length > 0
@@ -402,7 +415,10 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                if (tab.id !== "contenido") setJumpToIdeaId(null)
+                setActiveTab(tab.id)
+              }}
               onMouseEnter={tab.id === "storyboard" ? loadStoryboardsTab : undefined}
               onFocus={tab.id === "storyboard" ? loadStoryboardsTab : undefined}
               aria-current={activeTab === tab.id ? "page" : undefined}
@@ -413,6 +429,11 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
               }`}
             >
               {tab.label}
+              {tabCount(tab.id) > 0 && (
+                <span className="ml-1.5 rounded-full bg-white/5 px-1.5 py-px text-[10px] font-medium tabular-nums text-zinc-400">
+                  {tabCount(tab.id)}
+                </span>
+              )}
               {activeTab === tab.id && (
                 <div className="absolute bottom-[-1px] left-0 h-[2px] w-full rounded-t-full bg-white" />
               )}
@@ -420,19 +441,20 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
           ))}
         </div>
 
-        {activeTab === "info" && (
+        {shows("info") && (
           <InfoTab planning={planning} clients={clients} onUpdate={updatePlanning} />
         )}
-        {activeTab === "contenido" && (
+        {shows("contenido") && (
           <ContentIdeasTab
             planningId={planning.id}
             ideas={planning.contentIdeas}
             storyboards={planning.storyboards.map((s) => ({ id: s.id, title: s.title }))}
             focusIdeaId={jumpToIdeaId ?? focusIdeaId}
+            focusMode={jumpToIdeaId ? "open" : focusMode}
             onIdeasChange={(next) => updatePlanning({ contentIdeas: next })}
           />
         )}
-        {activeTab === "calendario" && (
+        {shows("calendario") && (
           <CalendarTab
             planningId={planning.id}
             period={planning.period}
@@ -462,11 +484,11 @@ export function PlanningDetailClient({ planning: initial, clients }: Props) {
             }}
           />
         )}
-        {activeTab === "resultados" && <ResultsTab planningId={planning.id} />}
-        {activeTab === "storyboard" && (
+        {shows("resultados") && <ResultsTab planningId={planning.id} />}
+        {shows("storyboard") && (
           <StoryboardsTab planningId={planning.id} />
         )}
-        {activeTab === "pagos" && (
+        {shows("pagos") && (
           <PaymentsTab
             planningId={planning.id}
             priceCents={planning.priceCents}

@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle, Lightbulb, Layout, Clock, ImagePlus, ExternalLink, MessageSquare, Send, Hash } from "lucide-react"
+import { CheckCircle, Lightbulb, Layout, Clock, ImagePlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FeedPreview } from "./FeedPreview"
 import { IdeaCard } from "./IdeaCard"
-import { platformLabel, postTypeLabel } from "@/lib/embeds"
 import {
   PaymentAccountHeader,
   PaymentLedger,
@@ -26,10 +25,6 @@ const statusColors: Record<string, string> = {
   REVIEW: "bg-yellow-500/10 text-yellow-400",
   APPROVED: "bg-green-500/10 text-green-400",
   PUBLISHED: "bg-purple-500/10 text-purple-400",
-}
-
-const ideaStatusLabels: Record<string, string> = {
-  IDEA: "Idea", SELECTED: "Seleccionada", IN_PRODUCTION: "En Producción", DONE: "Lista",
 }
 
 interface Panel {
@@ -54,6 +49,7 @@ interface Comment {
   authorName: string
   text: string
   createdAt: string
+  byOwner?: boolean
 }
 
 interface ContentIdea {
@@ -111,11 +107,13 @@ interface Profile {
 }
 
 interface Props {
+  /** El enlace por el que entró el cliente: es su permiso para comentar y aprobar. */
+  token: string
   planning: Planning
   profile: Profile | null
 }
 
-export function SharedPlanningView({ planning, profile }: Props) {
+export function SharedPlanningView({ token, planning, profile }: Props) {
   /** El detalle primero: lo que el cliente tiene que revisar son las ideas, y
    *  el feed es para ver cómo queda una vez entendido lo que se propone. */
   const [vista, setVista] = useState<"feed" | "detalle">("detalle")
@@ -143,7 +141,7 @@ export function SharedPlanningView({ planning, profile }: Props) {
   const handleApprove = async () => {
     setIsApproving(true)
     try {
-      const res = await fetch(`/api/share/${window.location.pathname.split("/").pop()}/approve`, {
+      const res = await fetch(`/api/share/${token}/approve`, {
         method: "POST",
       })
       if (res.ok) {
@@ -291,7 +289,7 @@ export function SharedPlanningView({ planning, profile }: Props) {
                     (a.dueDate ?? "￿").localeCompare(b.dueDate ?? "￿"),
                   )
                   .map((idea) => (
-                    <IdeaCard key={idea.id} idea={idea} onPreviewImage={setPreviewImage} />
+                    <IdeaCard key={idea.id} token={token} idea={idea} onPreviewImage={setPreviewImage} />
                   ))}
                 </div>
               </div>

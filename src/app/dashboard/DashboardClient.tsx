@@ -65,6 +65,7 @@ const ACTIVE_STATES = ["IN_PROGRESS", "REVIEW", "APPROVED"]
 function MonthCard({ p }: { p: Planning }) {
   const router = useRouter()
   const cobro = summarizePayments(p.priceCents, p.payments)
+  const total = p._count.contentIdeas
   return (
     <button
       type="button"
@@ -85,7 +86,9 @@ function MonthCard({ p }: { p: Planning }) {
           <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {p.client.name}</span>
         )}
         <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> {p._count.contentIdeas} ideas</span>
-        <span className="flex items-center gap-1"><Layout className="h-3 w-3" /> {p._count.storyboards} sb</span>
+        {p._count.storyboards > 0 && (
+          <span className="flex items-center gap-1" title="Storyboards"><Layout className="h-3 w-3" /> {p._count.storyboards}</span>
+        )}
         {cobro.state !== "UNPRICED" && (
           <span className="flex items-center gap-1 tabular-nums">
             <span className={`h-1.5 w-1.5 rounded-full ${paymentDotStyles[cobro.state]}`} aria-hidden />
@@ -93,6 +96,19 @@ function MonthCard({ p }: { p: Planning }) {
           </span>
         )}
       </div>
+      {total > 0 && (
+        <div className="mt-3 flex items-center gap-2" title={`${p.doneIdeas} de ${total} piezas listas`}>
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/5">
+            <div
+              className={`h-full rounded-full ${p.doneIdeas === total ? "bg-emerald-400" : "bg-zinc-400"}`}
+              style={{ width: `${Math.round((p.doneIdeas / total) * 100)}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-[10px] tabular-nums text-zinc-500">
+            {p.doneIdeas === total ? "todo listo" : `${p.doneIdeas}/${total} listas`}
+          </span>
+        </div>
+      )}
     </button>
   )
 }
@@ -112,6 +128,8 @@ interface Planning {
   createdAt: string
   client: { id: string; name: string } | null
   _count: { contentIdeas: number; storyboards: number }
+  /** Piezas del mes que ya están listas. */
+  doneIdeas: number
   priceCents: number
   payments: Array<{ amountCents: number }>
 }

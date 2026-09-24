@@ -88,8 +88,21 @@ export default async function SharePage({ params }: Props) {
     ? await fetchInstagramProfile(cuentaIg.externalId, cuentaIg.accessToken)
     : null
 
+  const planning = shareLink.planning
+  // Campo por campo y no `...planning`: esta página la abre alguien de afuera y
+  // todo lo que se pasa al componente viaja entero a su navegador, se dibuje o
+  // no. Con el objeto completo viajaban `costCents` —lo que costó producir el
+  // mes, es decir el margen— y el id del dueño de la cuenta.
   const serialized = {
-    ...shareLink.planning,
+    id: planning.id,
+    title: planning.title,
+    description: planning.description,
+    status: planning.status,
+    period: planning.period,
+    targetAudience: planning.targetAudience,
+    goals: planning.goals,
+    notes: planning.notes,
+    priceCents: planning.priceCents,
     // El cliente se recompone a mano y no se pasa entero: `accounts` trae el
     // token de acceso, y aunque vaya cifrado no tiene por qué viajar al
     // navegador de nadie. Sólo sale de acá lo que la pantalla dibuja.
@@ -104,10 +117,14 @@ export default async function SharePage({ params }: Props) {
     },
     contentIdeas: shareLink.planning.contentIdeas.map((i) => ({
       ...i,
+      // Internos de la cuenta: quién la creó y cuándo se avisó. No se dibujan.
+      createdBy: undefined,
+      notifiedAt: undefined,
       dueDate: i.dueDate?.toISOString() ?? null,
       createdAt: i.createdAt.toISOString(),
       storyboard: i.storyboard ? {
         ...i.storyboard,
+        createdBy: undefined,
         createdAt: i.storyboard.createdAt.toISOString(),
         panels: i.storyboard.panels.map((p) => ({
           ...p,
@@ -129,6 +146,7 @@ export default async function SharePage({ params }: Props) {
     })),
     storyboards: shareLink.planning.storyboards.map((s) => ({
       ...s,
+      createdBy: undefined,
       createdAt: s.createdAt.toISOString(),
       panels: s.panels.map((p) => ({
         ...p,
@@ -137,5 +155,5 @@ export default async function SharePage({ params }: Props) {
     })),
   }
 
-  return <SharedPlanningView planning={serialized} profile={perfil} />
+  return <SharedPlanningView token={token} planning={serialized} profile={perfil} />
 }
