@@ -36,6 +36,8 @@ export interface Comment {
   authorName: string
   text: string
   createdAt: string
+  /** Lo escribió quien hizo el plan, respondiendo. */
+  byOwner?: boolean
 }
 
 export interface CardIdea {
@@ -84,15 +86,18 @@ function fecha(iso: string | null): string {
 }
 
 export function IdeaCard({
+  token,
   idea,
   onPreviewImage,
 }: {
+  token: string
   idea: CardIdea
   onPreviewImage: (url: string) => void
 }) {
   const [abierto, setAbierto] = useState(false)
   const [texto, setTexto] = useState("")
   const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [comentarios, setComentarios] = useState(idea.comments)
   const [copyEntero, setCopyEntero] = useState(false)
   const [copiado, setCopiado] = useState(false)
@@ -121,14 +126,25 @@ export function IdeaCard({
     if (!msg || enviando) return
     setEnviando(true)
     setTexto("")
-    const res = await fetch(`/api/ideas/${idea.id}/comments`, {
+    // El comentario viaja con el enlace: es lo que prueba que quien escribe
+    // recibió este plan, y deja de valer cuando el enlace vence o se regenera.
+    const res = await fetch(`/api/share/${token}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: msg, authorName: "Cliente" }),
-    })
-    if (res.ok) {
+      body: JSON.stringify({ ideaId: idea.id, text: msg, authorName: "Cliente" }),
+    }).catch(() => null)
+    if (res?.ok) {
       const nuevo = await res.json()
       setComentarios((prev) => [...prev, nuevo])
+    } else {
+      // Se devuelve el texto: perder lo que alguien escribió porque falló la
+      // red obliga a escribirlo de nuevo, y casi nadie lo hace.
+      setTexto(msg)
+      setError(
+        res?.status === 410
+          ? "Este enlace venció. Pide uno nuevo para comentar."
+          : "No se pudo enviar. Revisa tu conexión e inténtalo otra vez.",
+      )
     }
     setEnviando(false)
   }
@@ -518,8 +534,16 @@ export function IdeaCard({
                 </p>
               )}
               {comentarios.map((c) => (
-                <div key={c.id} className="rounded-lg border border-white/5 px-3 py-2">
-                  <p className="text-xs font-medium text-zinc-300">{c.authorName}</p>
+                <div
+                  key={c.id}
+                  className={`rounded-lg border px-3 py-2 ${
+                    c.byOwner ? "ml-6 border-brand/25 bg-brand/[0.06]" : "border-white/5"
+                  }`}
+                >
+                  <p className="text-xs font-medium text-zinc-300">
+                    {c.authorName}
+                    {c.byOwner && <span className="ml-1.5 font-normal text-zinc-500">respondió</span>}
+                  </p>
                   <p className="text-sm text-zinc-200">{c.text}</p>
                   <p className="text-[10px] text-zinc-500">
                     {new Date(c.createdAt).toLocaleString("es-EC")}
@@ -530,7 +554,10 @@ export function IdeaCard({
                 <input
                   className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-[#18181b] px-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600 disabled:opacity-50"
                   value={texto}
-                  onChange={(e) => setTexto(e.target.value)}
+                  onChange={(e) => {
+                    setTexto(e.target.value)
+                    if (error) setError(null)
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault()
@@ -550,6 +577,11 @@ export function IdeaCard({
                   <Send className={`h-3.5 w-3.5 ${enviando ? "animate-pulse" : ""}`} />
                 </button>
               </div>
+              {error && (
+                <p role="alert" className="text-xs text-amber-300">
+                  {error}
+                </p>
+              )}
             </div>
           )}
         </div>

@@ -457,6 +457,9 @@ model Comment {
   contentIdeaId String
   authorName String  @default("Cliente")
   text      String
+  /// Lo escribió el dueño del plan, respondiendo al cliente. Sin esta marca
+  /// las respuestas se confundían con los pedidos del cliente en los dos lados.
+  byOwner   Boolean  @default(false)
   createdAt DateTime @default(now())
 
   contentIdea ContentIdea @relation(fields: [contentIdeaId], references: [id], onDelete: Cascade)
