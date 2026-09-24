@@ -83,7 +83,14 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body className="min-h-full">
-        <Toaster richColors />
+        {/* Oscuro como el resto de la app. En el celular los avisos suben por
+            encima del botón flotante de "Nueva idea": el "Deshacer" quedaba
+            tapado justo debajo del pulgar. */}
+        <Toaster
+          richColors
+          theme="dark"
+          mobileOffset={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+        />
         {children}
         <script dangerouslySetInnerHTML={{
           __html: `

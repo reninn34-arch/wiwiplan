@@ -31,6 +31,10 @@
 }
 
 :root {
+  /* La app es oscura: con esto los controles nativos —el desplegable de un
+     <select>, el calendario de un campo de fecha, las barras de scroll— se
+     dibujan oscuros también, en vez de abrirse en blanco sobre la interfaz. */
+  color-scheme: dark;
   --background: #09090b;
   --foreground: #d4d4d4;
   --card: #0c0c0e;

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -50,6 +50,8 @@ interface Props {
 }
 
 const UNSCHEDULED = "sin-fecha"
+
+const noSubscribe = () => () => {}
 
 /** Cuántos puntos caben en una casilla del celular antes de resumir con "+N". */
 const MAX_PUNTOS = 3
@@ -277,7 +279,10 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
   )
 
-  const today = useMemo(() => todayKey(), [])
+  // "Hoy" es el del teléfono de quien mira, no el del servidor: en Ecuador,
+  // después de las 19:00 el servidor (UTC) ya está en el día siguiente. Se
+  // calcula sólo en el navegador para que el HTML inicial no marque otro día.
+  const today = useSyncExternalStore(noSubscribe, todayKey, () => "")
   const grid = useMemo(() => buildMonthGrid(period, today), [period, today])
   const byDay = useMemo(() => groupByDay(ideas), [ideas])
   const unscheduled = useMemo(() => ideas.filter((i) => !dayKeyOf(i.dueDate)), [ideas])
@@ -350,6 +355,9 @@ export function CalendarTab({ planningId, period, ideas, accounts, onChange, onO
 
   return (
     <DndContext
+      // Id fijo: la pestaña puede abrirse desde la dirección y dibujarse en el
+      // servidor, y los ids automáticos de dnd-kit no coinciden entre los dos.
+      id="calendario"
       sensors={sensors}
       collisionDetection={pointerWithin}
       onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))}
